@@ -1,0 +1,6 @@
+/data/*.json
+/data/images/*
+/backup-glosquiz-2025-10-03/
+/.claude/
+/config.local.php
+/nul

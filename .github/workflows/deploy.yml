@@ -1,0 +1,26 @@
+name: Deploy via SFTP
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.SFTP_HOST }}
+          username: ${{ secrets.SFTP_USER }}
+          password: ${{ secrets.SFTP_PASS }}
+          protocol: sftp
+          port: ${{ secrets.SFTP_PORT }}
+          server-dir: /customers/a/b/a/ximon.se/httpd.www/quiz-app/
+          exclude: |
+            **/.git*
+            **/.github/**
+            **/data/*.json
+            **/data/images/**
+            **/backup-*/**
+            **/.claude/**

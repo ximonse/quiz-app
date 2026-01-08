@@ -1,0 +1,7 @@
+RewriteEngine On
+RewriteBase /quiz-app/
+
+# Skydda data-mappen
+<Files "data/*">
+    Deny from all
+</Files>

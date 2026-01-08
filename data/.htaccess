@@ -1,0 +1,13 @@
+# Blockera åtkomst till JSON-filer (innehåller känslig data)
+<FilesMatch "\.(json)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Tillåt åtkomst till images/-undermappen
+# (hanteras av images/.htaccess)
