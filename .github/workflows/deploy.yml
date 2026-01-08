@@ -8,19 +8,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
       - name: Deploy
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.SFTP_HOST }}
-          username: ${{ secrets.SFTP_USER }}
-          password: ${{ secrets.SFTP_PASS }}
-          protocol: sftp
-          port: ${{ secrets.SFTP_PORT }}
-          server-dir: /customers/a/b/a/ximon.se/httpd.www/quiz-app/
-          exclude: |
-            **/.git*
-            **/.github/**
-            **/data/*.json
-            **/data/images/**
-            **/backup-*/**
-            **/.claude/**
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          SFTP_PASS: ${{ secrets.SFTP_PASS }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+        run: |
+          lftp -c "
+            set sftp:auto-confirm yes;
+            open -u $SFTP_USER,$SFTP_PASS sftp://$SFTP_HOST:$SFTP_PORT;
+            mirror -R --verbose \
+              --exclude-glob .git* \
+              --exclude-glob .github/ \
+              --exclude-glob data/*.json \
+              --exclude-glob data/images/ \
+              --exclude-glob backup-*/ \
+              --exclude-glob .claude/ \
+              ./ /customers/a/b/a/ximon.se/httpd.www/quiz-app/
+          "
