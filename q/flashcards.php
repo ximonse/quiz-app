@@ -202,6 +202,7 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const [availableVoices, setAvailableVoices] = useState([]);
             const [difficultCards, setDifficultCards] = useState(new Set());
             const [showDifficultOnly, setShowDifficultOnly] = useState(false);
+            const [cardHeight, setCardHeight] = useState(400);
 
             const deckLanguage = deckData.language || 'sv';
 
@@ -619,7 +620,6 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             }
 
             const currentCard = cards[currentQueue[currentCardIndex]];
-            const [cardHeight, setCardHeight] = useState(400);
 
             // Dynamiskt beräkna kortets höjd baserat på innehåll
             useEffect(() => {
