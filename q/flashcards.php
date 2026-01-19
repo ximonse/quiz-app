@@ -160,11 +160,10 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             overflow-y: auto;
         }
 
-        /* Bildvisning A7-format */
+        /* Bildvisning - full bredd */
         .flashcard-image {
-            max-width: 250px;
             width: 100%;
-            aspect-ratio: 74 / 105;
+            max-width: 100%;
             object-fit: contain;
             border-radius: 0.5rem;
             margin: 1rem auto;
