@@ -297,6 +297,24 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 }
             }, [theme]);
 
+            // Dynamiskt beräkna kortets höjd baserat på innehåll
+            useEffect(() => {
+                if (!hasStarted || isComplete || currentQueue.length === 0) return;
+                const timer = setTimeout(() => {
+                    const frontCard = document.querySelector('.flip-card-front > div');
+                    const backCard = document.querySelector('.flip-card-back > div');
+                    if (frontCard && backCard) {
+                        const maxHeight = Math.max(
+                            frontCard.offsetHeight + 80,
+                            backCard.offsetHeight + 80,
+                            400
+                        );
+                        setCardHeight(maxHeight);
+                    }
+                }, 100);
+                return () => clearTimeout(timer);
+            }, [currentCardIndex, isFlipped, hasStarted, isComplete, currentQueue.length]);
+
             function cycleTheme() {
                 setTheme(t => {
                     if (t === 'light') return 'night';
@@ -620,23 +638,6 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             }
 
             const currentCard = cards[currentQueue[currentCardIndex]];
-
-            // Dynamiskt beräkna kortets höjd baserat på innehåll
-            useEffect(() => {
-                const timer = setTimeout(() => {
-                    const frontCard = document.querySelector('.flip-card-front > div');
-                    const backCard = document.querySelector('.flip-card-back > div');
-                    if (frontCard && backCard) {
-                        const maxHeight = Math.max(
-                            frontCard.offsetHeight + 80, // 80px padding
-                            backCard.offsetHeight + 80,
-                            400 // minimum height
-                        );
-                        setCardHeight(maxHeight);
-                    }
-                }, 100);
-                return () => clearTimeout(timer);
-            }, [currentCardIndex, isFlipped]);
 
             return (
                 <div className="min-h-screen p-4" style={{background: `linear-gradient(to bottom right, var(--bg-from), var(--bg-to))`}}>
