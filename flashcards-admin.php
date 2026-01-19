@@ -2,6 +2,12 @@
 require_once 'config.php';
 requireTeacher();
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrf();
+}
+
+$csrf_field = csrfField();
+
 $teacher_id = getCurrentTeacherID();
 $teacher_name = $_SESSION['teacher_name'] ?? 'Lärare';
 
@@ -261,8 +267,11 @@ foreach ($my_decks as $did => $deck) {
             <h2 class="text-2xl font-bold text-gray-800 mb-4">➕ Skapa nytt flashcard-deck</h2>
 
             <!-- Tabs -->
-            <div class="flex gap-2 mb-4 border-b">
-                <button onclick="showTab('csv')" id="tab-csv" class="px-4 py-2 font-medium border-b-2 border-green-500 text-green-600">
+            <div class="flex flex-wrap gap-2 mb-4 border-b">
+                <button onclick="showTab('excel')" id="tab-excel" class="px-4 py-2 font-medium border-b-2 border-green-500 text-green-600">
+                    📊 Excel med bilder
+                </button>
+                <button onclick="showTab('csv')" id="tab-csv" class="px-4 py-2 font-medium text-gray-500 hover:text-gray-700">
                     CSV-uppladdning
                 </button>
                 <button onclick="showTab('paste')" id="tab-paste" class="px-4 py-2 font-medium text-gray-500 hover:text-gray-700">
@@ -273,9 +282,92 @@ foreach ($my_decks as $did => $deck) {
                 </button>
             </div>
 
+            <!-- Excel Tab -->
+            <div id="content-excel" class="tab-content">
+                <div class="space-y-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                        <h4 class="font-bold text-blue-800 mb-2">📊 Excel-format med bilder i celler</h4>
+                        <p class="text-blue-700 text-sm mb-2">
+                            Skapa en Excel-fil (.xlsx) med följande struktur:
+                        </p>
+                        <ul class="text-blue-700 text-sm list-disc list-inside space-y-1">
+                            <li><strong>Kolumn A:</strong> Begrepp (framsidan av kortet)</li>
+                            <li><strong>Kolumn B:</strong> Definition (baksidan av kortet)</li>
+                            <li><strong>Kolumn C:</strong> Bild (klistra in bilden direkt i cellen - valfritt)</li>
+                        </ul>
+                        <p class="text-blue-600 text-xs mt-2">
+                            💡 Tips: Första raden används som rubrikrad och hoppas över. Bilder extraheras automatiskt!
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Deck-titel *</label>
+                        <input type="text" id="excel_title" required
+                               placeholder="t.ex. Biologibegrepp med bilder"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Ämne</label>
+                            <input type="text" id="excel_subject"
+                                   placeholder="t.ex. Biologi, NO"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Årskurs</label>
+                            <input type="text" id="excel_grade"
+                                   placeholder="t.ex. åk 7, åk 9"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Egna taggar</label>
+                            <input type="text" id="excel_tags"
+                                   placeholder="Komma-separerade"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Språk för TTS</label>
+                            <select id="excel_language"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                                <option value="sv">Svenska</option>
+                                <option value="en">Engelska</option>
+                                <option value="mongolian">Mongoliska</option>
+                                <option value="uk">Ukrainska</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Visa bilder på</label>
+                            <select id="excel_image_side"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                                <option value="front">Framsidan (tillsammans med begreppet)</option>
+                                <option value="back">Baksidan (tillsammans med definitionen)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Excel-fil (.xlsx) *</label>
+                        <input type="file" id="excel_file" accept=".xlsx" required
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100">
+                    </div>
+
+                    <button type="button" onclick="uploadExcel()" id="excel_submit_btn"
+                            class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">
+                        📊 Importera från Excel
+                    </button>
+
+                    <div id="excel_status" class="hidden mt-4 p-4 rounded-lg"></div>
+                </div>
+            </div>
+
             <!-- CSV Tab -->
-            <div id="content-csv" class="tab-content">
+            <div id="content-csv" class="tab-content hidden">
                 <form method="POST" enctype="multipart/form-data" class="space-y-4">
+                    <?= $csrf_field ?>
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Deck-titel</label>
                         <input type="text" name="csv_title" required
@@ -339,6 +431,7 @@ foreach ($my_decks as $did => $deck) {
             <!-- Klistra in CSV Tab -->
             <div id="content-paste" class="tab-content hidden">
                 <form method="POST" class="space-y-4">
+                    <?= $csrf_field ?>
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Deck-titel</label>
                         <input type="text" name="csv_title" required
@@ -570,6 +663,7 @@ foreach ($my_decks as $did => $deck) {
                                 </div>
                                 <div class="flex flex-wrap gap-2">
                                     <form method="POST" class="inline">
+                                        <?= $csrf_field ?>
                                         <input type="hidden" name="action" value="toggle_deck">
                                         <input type="hidden" name="deck_id" value="<?= $did ?>">
                                         <button type="submit" class="<?= $is_active ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600' ?> text-white px-3 py-1.5 rounded text-sm whitespace-nowrap">
@@ -593,6 +687,7 @@ foreach ($my_decks as $did => $deck) {
                                         Redigera
                                     </a>
                                     <form method="POST" class="inline" onsubmit="return confirm('Är du säker?')">
+                                        <?= $csrf_field ?>
                                         <input type="hidden" name="action" value="delete_deck">
                                         <input type="hidden" name="deck_id" value="<?= $did ?>">
                                         <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-sm whitespace-nowrap">
@@ -609,6 +704,7 @@ foreach ($my_decks as $did => $deck) {
     </div>
 
     <script>
+        const csrfToken = <?= json_encode(getCsrfToken()) ?>;
         let cardCount = 0;
 
         function showTab(tab) {
@@ -677,6 +773,7 @@ foreach ($my_decks as $did => $deck) {
             form.method = 'POST';
             form.innerHTML = `
                 <input type="hidden" name="action" value="create_deck_manual">
+                <input type="hidden" name="csrf_token" value="${csrfToken}">
                 <input type="hidden" name="title" value="${title}">
                 <input type="hidden" name="language" value="${language}">
                 <input type="hidden" name="subject" value="${subject}">
@@ -731,6 +828,74 @@ foreach ($my_decks as $did => $deck) {
             document.getElementById('filter-language').value = '';
             document.getElementById('filter-search').value = '';
             filterDecks();
+        }
+
+        async function uploadExcel() {
+            const title = document.getElementById('excel_title').value.trim();
+            const file = document.getElementById('excel_file').files[0];
+            const statusDiv = document.getElementById('excel_status');
+            const submitBtn = document.getElementById('excel_submit_btn');
+
+            if (!title) {
+                alert('Du måste ange en titel');
+                return;
+            }
+
+            if (!file) {
+                alert('Du måste välja en Excel-fil');
+                return;
+            }
+
+            // Visa laddningsstatus
+            statusDiv.className = 'mt-4 p-4 rounded-lg bg-blue-100 text-blue-700';
+            statusDiv.innerHTML = '⏳ Importerar Excel-fil med bilder...';
+            statusDiv.classList.remove('hidden');
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50');
+
+            const formData = new FormData();
+            formData.append('excel_file', file);
+            formData.append('title', title);
+            formData.append('language', document.getElementById('excel_language').value);
+            formData.append('subject', document.getElementById('excel_subject').value.trim());
+            formData.append('grade', document.getElementById('excel_grade').value.trim());
+            formData.append('tags', document.getElementById('excel_tags').value.trim());
+            formData.append('image_side', document.getElementById('excel_image_side').value);
+            formData.append('csrf_token', csrfToken);
+
+            try {
+                const response = await fetch('api/import-excel-flashcard.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    statusDiv.className = 'mt-4 p-4 rounded-lg bg-green-100 text-green-700';
+                    statusDiv.innerHTML = `
+                        ✅ <strong>Import lyckades!</strong><br>
+                        📝 ${result.cards_count} kort importerades<br>
+                        🖼️ ${result.cards_with_images} kort med bilder<br>
+                        ${result.skipped_rows > 0 ? `⚠️ ${result.skipped_rows} rader hoppades över (saknade text)` : ''}
+                        <br><br>
+                        <a href="q/flashcards.php?deck_id=${result.deck_id}" target="_blank" class="text-blue-600 underline">Öppna deck</a> |
+                        <a href="edit-flashcard.php?deck_id=${result.deck_id}" class="text-blue-600 underline">Redigera</a>
+                    `;
+
+                    // Ladda om sidan efter 2 sekunder
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    statusDiv.className = 'mt-4 p-4 rounded-lg bg-red-100 text-red-700';
+                    statusDiv.innerHTML = '❌ <strong>Fel:</strong> ' + (result.error || 'Okänt fel');
+                }
+            } catch (error) {
+                statusDiv.className = 'mt-4 p-4 rounded-lg bg-red-100 text-red-700';
+                statusDiv.innerHTML = '❌ <strong>Nätverksfel:</strong> ' + error.message;
+            }
+
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-50');
         }
     </script>
 </body>
