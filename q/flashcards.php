@@ -120,13 +120,13 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
         /* Flip animation */
         .flip-card {
             perspective: 1000px;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
         }
 
         .flip-card-inner {
             position: relative;
             width: 100%;
-            min-height: 400px;
+            min-height: 35vh;
             transition: transform 0.6s;
             transform-style: preserve-3d;
         }
@@ -138,12 +138,12 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
         .flip-card-front, .flip-card-back {
             position: absolute;
             width: 100%;
-            min-height: 400px;
+            min-height: 35vh;
             backface-visibility: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 2rem;
+            padding: 1rem;
             border-radius: 1rem;
             background: var(--card-bg);
             overflow-y: auto;
@@ -160,15 +160,62 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             overflow-y: auto;
         }
 
-        /* Bildvisning - full bredd */
+        /* Bildvisning - responsiv */
         .flashcard-image {
             width: 100%;
             max-width: 100%;
+            max-height: 25vh;
             object-fit: contain;
             border-radius: 0.5rem;
-            margin: 1rem auto;
+            margin: 0.5rem auto;
             display: block;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* iPad/tablet optimering - ingen scroll */
+        @media (min-width: 768px) and (max-height: 1024px) {
+            .flip-card-inner,
+            .flip-card-front,
+            .flip-card-back {
+                min-height: 30vh;
+            }
+            .flashcard-image {
+                max-height: 20vh;
+            }
+        }
+
+        /* Landscape mode */
+        @media (orientation: landscape) {
+            .flip-card-inner,
+            .flip-card-front,
+            .flip-card-back {
+                min-height: 40vh;
+            }
+            .flashcard-image {
+                max-height: 30vh;
+            }
+        }
+
+        /* Kompakt layout för iPad */
+        @media (min-width: 768px) {
+            .compact-header {
+                padding: 0.75rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+            .compact-progress {
+                padding: 0.5rem 0.75rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+            .compact-container {
+                padding-top: 0.5rem !important;
+                padding-bottom: 0.5rem !important;
+            }
+            .compact-buttons {
+                margin-top: 0.5rem !important;
+            }
+            .compact-timer {
+                margin-top: 0.25rem !important;
+            }
         }
     </style>
 </head>
@@ -639,12 +686,12 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const currentCard = cards[currentQueue[currentCardIndex]];
 
             return (
-                <div className="min-h-screen p-4" style={{background: `linear-gradient(to bottom right, var(--bg-from), var(--bg-to))`}}>
-                    <div className="max-w-2xl mx-auto py-8">
+                <div className="min-h-screen p-2 md:p-4" style={{background: `linear-gradient(to bottom right, var(--bg-from), var(--bg-to))`}}>
+                    <div className="max-w-2xl mx-auto py-2 compact-container">
                         {/* Header */}
-                        <div className="rounded-xl shadow-lg p-6 mb-6" style={{backgroundColor: 'var(--card-bg)'}}>
-                            <div className="flex justify-between items-center mb-2">
-                                <h1 className="text-2xl font-bold" style={{color: 'var(--text-primary)'}}>{deckData.title}</h1>
+                        <div className="rounded-xl shadow-lg p-4 mb-4 compact-header" style={{backgroundColor: 'var(--card-bg)'}}>
+                            <div className="flex justify-between items-center">
+                                <h1 className="text-xl md:text-2xl font-bold" style={{color: 'var(--text-primary)'}}>{deckData.title}</h1>
                                 <div className="flex items-center gap-3">
                                     <button
                                         onClick={toggleMute}
@@ -662,11 +709,10 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                                     </button>
                                 </div>
                             </div>
-                            <div className="text-sm" style={{color: 'var(--text-secondary)'}}>Hej {studentName}!</div>
                         </div>
 
                         {/* Progress */}
-                        <div className="rounded-xl shadow-lg p-6 mb-6" style={{backgroundColor: 'var(--card-bg)'}}>
+                        <div className="rounded-xl shadow-lg p-3 mb-3 compact-progress" style={{backgroundColor: 'var(--card-bg)'}}>
                             <div className="flex justify-between items-center mb-2">
                                 <div className="text-sm" style={{color: 'var(--text-secondary)'}}>
                                     Kort kvar: {currentQueue.length} / {cards.length}
@@ -724,51 +770,51 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                         </div>
 
                         {/* Action buttons */}
-                        <div className="mt-6">
+                        <div className="mt-3 compact-buttons">
                             {!isFlipped ? (
                                 <button
                                     onClick={handleFlip}
-                                    className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 rounded-lg text-xl"
+                                    className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-lg text-lg"
                                 >
                                     🔄 Vänd kort
                                 </button>
                             ) : showGrading && (
-                                <div className="grid grid-cols-4 gap-3">
+                                <div className="grid grid-cols-4 gap-2">
                                     <button
                                         onClick={() => handleGrade(0)}
-                                        className="bg-red-500 hover:bg-red-600 text-white font-bold py-4 rounded-lg flex flex-col items-center"
+                                        className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg flex flex-col items-center"
                                     >
-                                        <span className="text-3xl">❌</span>
-                                        <span className="text-xs mt-1">Fel</span>
+                                        <span className="text-2xl">❌</span>
+                                        <span className="text-xs">Fel</span>
                                     </button>
                                     <button
                                         onClick={() => handleGrade(1)}
-                                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-lg flex flex-col items-center"
+                                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 rounded-lg flex flex-col items-center"
                                     >
-                                        <span className="text-3xl">🤔</span>
-                                        <span className="text-xs mt-1">Osäker</span>
+                                        <span className="text-2xl">🤔</span>
+                                        <span className="text-xs">Osäker</span>
                                     </button>
                                     <button
                                         onClick={() => handleGrade(2)}
-                                        className="bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-lg flex flex-col items-center"
+                                        className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg flex flex-col items-center"
                                     >
-                                        <span className="text-3xl">✅</span>
-                                        <span className="text-xs mt-1">Rätt</span>
+                                        <span className="text-2xl">✅</span>
+                                        <span className="text-xs">Rätt</span>
                                     </button>
                                     <button
                                         onClick={() => handleGrade(3)}
-                                        className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 rounded-lg flex flex-col items-center"
+                                        className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 rounded-lg flex flex-col items-center"
                                     >
-                                        <span className="text-3xl">⭐</span>
-                                        <span className="text-xs mt-1">Perfekt</span>
+                                        <span className="text-2xl">⭐</span>
+                                        <span className="text-xs">Perfekt</span>
                                     </button>
                                 </div>
                             )}
                         </div>
 
                         {/* Timer */}
-                        <div className="text-right mt-4">
-                            <span className="text-sm text-gray-400">{formatTime(timer)}</span>
+                        <div className="text-right mt-1 compact-timer">
+                            <span className="text-xs text-gray-400">{formatTime(timer)}</span>
                         </div>
                     </div>
                 </div>
