@@ -2,6 +2,12 @@
 require_once 'config.php';
 requireTeacher();
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrf();
+}
+
+$csrf_field = csrfField();
+
 $teacher_id = getCurrentTeacherID();
 $teacher_name = $_SESSION['teacher_name'] ?? 'Lärare';
 
@@ -270,6 +276,9 @@ foreach ($my_quizzes as $qid => $quiz) {
                     <p class="text-gray-500">Hantera dina quizzes här</p>
                 </div>
                 <div class="flex gap-2">
+                    <a href="multi-quiz-admin.php" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg">
+                        🎯 Multi-Quiz
+                    </a>
                     <a href="flashcards-admin.php" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">
                         🗂️ Flashcard Admin
                     </a>
@@ -362,6 +371,7 @@ foreach ($my_quizzes as $qid => $quiz) {
             <!-- CSV Tab -->
             <div id="content-csv" class="tab-content">
                 <form method="POST" enctype="multipart/form-data" class="space-y-4" onsubmit="saveQuizSettings()">
+                    <?= $csrf_field ?>
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Quiz-titel</label>
                         <input type="text" name="csv_title" required
@@ -485,6 +495,7 @@ foreach ($my_quizzes as $qid => $quiz) {
             <!-- Klistra in CSV Tab -->
             <div id="content-paste" class="tab-content hidden">
                 <form method="POST" class="space-y-4" onsubmit="saveQuizSettings()">
+                    <?= $csrf_field ?>
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Quiz-titel</label>
                         <input type="text" name="csv_title" required
@@ -696,6 +707,7 @@ foreach ($my_quizzes as $qid => $quiz) {
                     <div class="border-2 border-blue-200 rounded-lg p-4">
                         <h3 class="text-lg font-bold text-blue-800 mb-3">📝 Batch-import: Fakta-quiz</h3>
                         <form id="batch-fact-form" class="space-y-3">
+                            <?= $csrf_field ?>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Excel-fil (.csv)</label>
                                 <input type="file" id="batch_fact_file" accept=".csv" required
@@ -740,6 +752,7 @@ foreach ($my_quizzes as $qid => $quiz) {
                     <div class="border-2 border-green-200 rounded-lg p-4">
                         <h3 class="text-lg font-bold text-green-800 mb-3">📚 Batch-import: Glosquiz</h3>
                         <form id="batch-gloss-form" class="space-y-3">
+                            <?= $csrf_field ?>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Excel-fil (.csv)</label>
                                 <input type="file" id="batch_gloss_file" accept=".csv" required
@@ -1019,6 +1032,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
                                 </div>
                                 <div class="flex flex-wrap gap-1.5">
                                     <form method="POST" class="inline">
+                                        <?= $csrf_field ?>
                                         <input type="hidden" name="action" value="toggle_quiz">
                                         <input type="hidden" name="quiz_id" value="<?= $qid ?>">
                                         <button type="submit" class="<?= $is_active ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600' ?> text-white px-2 py-1 rounded text-xs whitespace-nowrap">
@@ -1042,6 +1056,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
                                         Redigera
                                     </a>
                                     <form method="POST" class="inline" onsubmit="return confirm('Är du säker?')">
+                                        <?= $csrf_field ?>
                                         <input type="hidden" name="action" value="delete_quiz">
                                         <input type="hidden" name="quiz_id" value="<?= $qid ?>">
                                         <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs whitespace-nowrap">
@@ -1058,6 +1073,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
     </div>
 
     <script>
+        const csrfToken = <?= json_encode(getCsrfToken()) ?>;
         let questionCount = 0;
         let currentQuizMode = 'fact'; // 'fact' or 'glossary'
         let currentAnswerMode = 'hybrid'; // 'hybrid', 'multiple_choice', 'text_only'
@@ -1371,6 +1387,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
             form.method = 'POST';
             form.innerHTML = `
                 <input type="hidden" name="action" value="create_quiz_manual">
+                <input type="hidden" name="csrf_token" value="${csrfToken}">
                 <input type="hidden" name="title" value="${title}">
                 <input type="hidden" name="quiz_type" value="${quizType}">
                 <input type="hidden" name="language" value="${language}">
@@ -1521,6 +1538,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
             const formData = new FormData();
             formData.append('batch_fact_file', file);
             formData.append('action', 'batch_import_fact');
+            formData.append('csrf_token', csrfToken);
             formData.append('answer_mode', document.getElementById('batch_fact_answer_mode').value);
             formData.append('required_phase1', document.getElementById('batch_fact_required_phase1').value);
             formData.append('required_phase2', document.getElementById('batch_fact_required_phase2').value);
@@ -1580,6 +1598,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
             formData.append('required_phase1', document.getElementById('batch_gloss_required_phase1').value);
             formData.append('required_phase2', document.getElementById('batch_gloss_required_phase2').value);
             formData.append('action', 'batch_import_gloss');
+            formData.append('csrf_token', csrfToken);
 
             try {
                 const response = await fetch('api/batch-import.php', {
