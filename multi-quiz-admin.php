@@ -284,10 +284,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <textarea name="csv_data" rows="8" required
                               placeholder="Begrepp/glosa;Beskrivning;Exempelmening;Översättning;Fråga;Felsvar1;Felsvar2;Felsvar3&#10;Hungry;när man inte ätit på länge;I'm very hungry today;Hungrig;Vad kallas det när man inte ätit på länge;mätt;trött;glad"
                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-sm font-mono"></textarea>
-                    <p class="text-xs text-gray-500 mt-1">
+                    
+                    <!-- AI Prompt Helper -->
+                    <div class="mt-2 text-sm">
+                        <button type="button" onclick="toggleAiPrompt()" class="flex items-center text-purple-600 hover:text-purple-800 font-medium text-xs">
+                            <span class="mr-1">🤖</span> Behöver du hjälp att skapa CSV? Klicka här för AI-prompt
+                        </button>
+                        
+                        <div id="ai-prompt-box" class="hidden mt-2 p-3 bg-purple-50 border border-purple-100 rounded-lg">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs font-bold text-purple-800">Kopiera denna prompt till ChatGPT/Claude:</span>
+                                <button type="button" onclick="copyAiPrompt()" class="bg-purple-200 hover:bg-purple-300 text-purple-800 px-2 py-1 rounded text-xs transition">
+                                    📋 Kopiera prompt
+                                </button>
+                            </div>
+                            <pre id="prompt-text" class="text-xs bg-white p-2 rounded border border-gray-200 overflow-x-auto whitespace-pre-wrap text-gray-600">
+Du är en expert på pedagogik. Jag vill skapa quiz-material.
+
+Processen sker i två steg:
+
+STEG 1: ANALYS & FÖRSLAG
+1. Analysera texten/bilden jag bifogar.
+2. Föreslå 10-20 relevanta begrepp/glosor.
+3. Fråga mig om jag vill ändra något.
+
+STEG 2: GENERERING (Efter mitt godkännande)
+Skapa CSV-text med semikolon som separator.
+
+FORMAT:
+Begrepp/glosa;Beskrivning;Exempelmening;Översättning;Fråga;Felsvar1;Felsvar2;Felsvar3
+
+REGLER:
+- "Begrepp/glosa": Ordet som ska läras.
+- "Beskrivning": Förklaring (för flashcards).
+- "Exempelmening": Ordet i sammanhang (eller tomt).
+- "Översättning": Bara för språkglosor (annars tomt ;;).
+- "Fråga": Fråga där begreppet är svaret.
+- "Felsvar": 3 trovärdiga felalternativ.
+- Inga citattecken. Inga radbrytningar i celler.
+
+Nu, invänta mitt material.
+                            </pre>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-gray-500 mt-2">
                         Format: <code class="bg-gray-100 px-1 rounded">Begrepp;Beskrivning;Exempelmening;Översättning;Fråga;Felsvar1;Felsvar2;...</code>
                     </p>
                 </div>
+
+                <script>
+                    function toggleAiPrompt() {
+                        const box = document.getElementById('ai-prompt-box');
+                        box.classList.toggle('hidden');
+                    }
+                    
+                    function copyAiPrompt() {
+                        const text = document.getElementById('prompt-text').innerText;
+                        navigator.clipboard.writeText(text).then(() => {
+                            alert('📋 Prompt kopierad! Klistra in den i din AI-chatt.');
+                        });
+                    }
+                </script>
 
                 <!-- Variant Selection -->
                 <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200">
