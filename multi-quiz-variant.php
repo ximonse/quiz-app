@@ -31,6 +31,7 @@ if ($variant === 'flashcard') {
     $mode = 'flashcard';
     foreach ($items as $item) {
         $gameData[] = [
+            'id' => uniqid(),
             'front' => $item['concept'],
             'back' => $item['description']
         ];
@@ -39,6 +40,7 @@ if ($variant === 'flashcard') {
     $mode = 'flashcard';
     foreach ($items as $item) {
         $gameData[] = [
+            'id' => uniqid(),
             'front' => $item['description'],
             'back' => $item['concept']
         ];
@@ -52,13 +54,18 @@ if ($variant === 'flashcard') {
     $selectedItems = array_slice($items, 0, $limit);
     
     foreach ($selectedItems as $item) {
-        // Skapa alternativ: rätt svar + 3 felaktiga
         $options = $item['wrong_answers'] ?? [];
+        // Se till att vi har array (kan vara null/tomt)
+        if (!is_array($options)) $options = [];
+        
+        // Ta max 3 fel svar
         if (count($options) > 3) {
             shuffle($options);
             $options = array_slice($options, 0, 3);
         }
-        $options[] = $item['concept']; // Rätt svar
+        
+        // Lägg till rätt svar
+        $options[] = $item['concept'];
         shuffle($options); // Blanda
         
         $gameData[] = [
@@ -84,6 +91,7 @@ if ($variant === 'flashcard') {
         $q = '';
         $correct = '';
         $wrongs = $item['wrong_answers'] ?? [];
+        if (!is_array($wrongs)) $wrongs = [];
         
         if ($variant === 'glossary') {
             // Begrepp + Mening -> Översättning
@@ -101,6 +109,10 @@ if ($variant === 'flashcard') {
             shuffle($wrongs);
             $wrongs = array_slice($wrongs, 0, 3);
         }
+        
+        // VIKTIGT: Se till att rätt svar faktiskt läggs till och inte är tomt
+        if ($correct === '') $correct = '(Saknar svar)';
+        
         $options = array_merge([$correct], $wrongs);
         shuffle($options);
         
@@ -137,8 +149,8 @@ if ($variant === 'flashcard') {
 }
 
 $title_map = [
-    'glossary' => '📚 Glosquiz',
-    'reverse_glossary' => '🔄 Omvänd Glosquiz',
+    'glossary' => '📚 Glosor',
+    'reverse_glossary' => '🔄 Omvända Glosor',
     'flashcard' => '🗂️ Flashcards',
     'reverse_flashcard' => '🔄 Omvända Flashcards',
     'quiz' => '❓ Quiz'
@@ -181,30 +193,45 @@ $page_title = $title_map[$variant] ?? 'Quiz';
         }
         .card-back {
             transform: rotateY(180deg);
-            background-color: #f0fdf4; /* green-50 */
+            background-color: #f3f4f6; /* gray-100 istället för grön */
+            border: 2px solid #e5e7eb;
         }
         
         .fade-enter {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(10px);
         }
         .fade-enter-active {
             opacity: 1;
             transform: translateY(0);
             transition: opacity 300ms, transform 300ms;
         }
+        
+        /* För att förhindra layout-shift i Quiz */
+        .quiz-container {
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .options-grid {
+            min-height: 240px; /* Reservera plats för knappar */
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
+<body class="bg-gray-100 min-h-screen flex flex-col font-sans">
 
     <!-- Header -->
-    <div class="bg-white shadow-sm p-4 sticky top-0 z-10">
+    <div class="bg-white shadow-sm p-4 sticky top-0 z-10 border-b border-gray-200">
         <div class="max-w-3xl mx-auto flex justify-between items-center">
-            <a href="multi-quiz-student.php?id=<?= $mq_id ?>" class="text-gray-500 hover:text-gray-700">
+            <a href="multi-quiz-student.php?id=<?= $mq_id ?>" class="text-gray-500 hover:text-gray-900 font-medium">
                 ← Tillbaka
             </a>
             <div class="font-bold text-gray-800"><?= htmlspecialchars($mq['title']) ?></div>
-            <div class="text-sm font-medium text-purple-600">
+            <div class="text-sm font-medium text-purple-600 bg-purple-50 px-3 py-1 rounded-full">
                 <span id="progress-text">1 / <?= count($gameData) ?></span>
             </div>
         </div>
@@ -220,22 +247,22 @@ $page_title = $title_map[$variant] ?? 'Quiz';
             <!-- Innehåll renderas av JS -->
         </div>
         
-        <!-- Result Screen (Hidden by default) -->
-        <div id="result-screen" class="hidden text-center w-full max-w-lg">
+        <!-- Result Screen -->
+        <div id="result-screen" class="hidden text-center w-full max-w-lg bg-white p-8 rounded-2xl shadow-xl border border-gray-200">
             <div class="text-6xl mb-6">🎉</div>
             <h2 class="text-3xl font-bold text-gray-800 mb-4">Bra jobbat!</h2>
             <p class="text-xl text-gray-600 mb-8">Du klarade hela övningen!</p>
             
-            <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="bg-gray-50 rounded-xl p-6 mb-8 border border-gray-200">
                 <div class="text-sm text-gray-500 mb-1">Ditt resultat</div>
                 <div class="text-4xl font-bold text-green-600" id="final-score"></div>
             </div>
             
             <div class="space-y-3">
-                <a href="multi-quiz-student.php?id=<?= $mq_id ?>" class="block w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition transform hover:scale-105">
+                <a href="multi-quiz-student.php?id=<?= $mq_id ?>" class="block w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl transition transform hover:scale-105 shadow">
                     Tillbaka till menyn
                 </a>
-                <button onclick="location.reload()" class="block w-full bg-white border-2 border-purple-200 text-purple-700 font-bold py-3 px-6 rounded-lg hover:bg-purple-50 transition">
+                <button onclick="location.reload()" class="block w-full bg-white border-2 border-purple-200 text-purple-700 font-bold py-3 px-6 rounded-xl hover:bg-purple-50 transition">
                     Gör igen 🔄
                 </button>
             </div>
@@ -243,7 +270,8 @@ $page_title = $title_map[$variant] ?? 'Quiz';
     </div>
 
     <script>
-        const gameData = <?= json_encode($gameData) ?>;
+        // Initiera data
+        let gameData = <?= json_encode($gameData) ?>;
         const mode = '<?= $mode ?>';
         const mqId = '<?= $mq_id ?>';
         const variant = '<?= $variant ?>';
@@ -251,7 +279,7 @@ $page_title = $title_map[$variant] ?? 'Quiz';
         
         let currentIndex = 0;
         let score = 0;
-        let mistakes = [];
+        let initialCount = gameData.length; // För att räkna progress baserat på startantal
 
         const container = document.getElementById('game-container');
         const progressBar = document.getElementById('progress-bar');
@@ -259,40 +287,28 @@ $page_title = $title_map[$variant] ?? 'Quiz';
         const resultScreen = document.getElementById('result-screen');
         const finalScore = document.getElementById('final-score');
 
+        // Uppdatera progress. I Flashcards kan length öka, så vi visar bara hur många "unika" som är klara?
+        // Nej, om kön växer (pga fel svar) så minskar procenten. Det är logiskt.
         function updateProgress() {
-            const pct = ((currentIndex) / gameData.length) * 100;
+            const pct = (currentIndex / gameData.length) * 100;
             progressBar.style.width = pct + '%';
             progressText.textContent = `${currentIndex + 1} / ${gameData.length}`;
-        }
-
-        function playSound(isCorrect) {
-            // Enkel ljud-feedback (valfritt)
         }
 
         function showResult() {
             container.classList.add('hidden');
             resultScreen.classList.remove('hidden');
-            finalScore.textContent = `${score} / ${gameData.length} rätt`;
+            finalScore.textContent = `${score} / ${initialCount} rätt på första försöket`; // Visar poäng baserat på "flyt"
             
-            // Konfetti!
-            confetti({
-                particleCount: 150,
-                spread: 70,
-                origin: { y: 0.6 }
-            });
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
             
-            // Spara progress via API
+            // Spara
             fetch('api/save-multi-progress.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    mq_id: mqId,
-                    variant: variant,
-                    student_id: studentId
-                })
-            }).then(r => r.json()).then(console.log);
+                body: JSON.stringify({ mq_id: mqId, variant: variant, student_id: studentId })
+            });
 
-            // Spara progress lokalt också
             if (studentId) {
                 const localProgress = JSON.parse(localStorage.getItem('multiQuizProgress') || '{}');
                 if (!localProgress[mqId]) localProgress[mqId] = {};
@@ -315,23 +331,27 @@ $page_title = $title_map[$variant] ?? 'Quiz';
             // --- FLASHCARD MODE ---
             if (mode === 'flashcard') {
                 const card = document.createElement('div');
-                card.className = 'w-full h-96 bg-white rounded-2xl shadow-xl cursor-pointer card-flip';
+                card.className = 'w-full h-96 bg-white rounded-2xl shadow-xl cursor-pointer card-flip select-none';
+                
+                // Gemensam stil för text (centrerad, samma storlek)
+                const textStyle = "text-3xl font-bold text-gray-800 text-center px-4 leading-tight";
+                
                 card.innerHTML = `
                     <div class="card-inner">
-                        <div class="card-front bg-white rounded-2xl border-2 border-gray-100 p-8">
-                            <span class="text-sm text-gray-400 uppercase tracking-widest mb-4">Fråga</span>
-                            <h2 class="text-3xl font-bold text-gray-800 text-center">${item.front}</h2>
-                            <p class="mt-8 text-gray-400 text-sm">(Klicka för att vända)</p>
+                        <div class="card-front bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
+                            <span class="absolute top-8 text-xs font-bold text-gray-400 uppercase tracking-widest">Fråga</span>
+                            <h2 class="${textStyle}">${item.front}</h2>
+                            <p class="absolute bottom-8 text-gray-400 text-sm">(Klicka för att vända)</p>
                         </div>
-                        <div class="card-back bg-green-50 rounded-2xl border-2 border-green-100 p-8">
-                            <span class="text-sm text-green-600 uppercase tracking-widest mb-4">Svar</span>
-                            <h2 class="text-2xl font-medium text-gray-800 text-center">${item.back}</h2>
+                        <div class="card-back bg-white rounded-2xl border-2 border-gray-100 p-8">
+                            <span class="absolute top-8 text-xs font-bold text-gray-400 uppercase tracking-widest">Svar</span>
+                            <h2 class="${textStyle}">${item.back}</h2>
                             
                             <div class="absolute bottom-8 flex gap-4 w-full px-8">
-                                <button onclick="nextCard(false)" class="flex-1 bg-red-100 hover:bg-red-200 text-red-700 py-3 rounded-lg font-bold transition">
+                                <button onclick="nextCard(false)" class="flex-1 bg-red-100 hover:bg-red-200 text-red-700 py-3 rounded-xl font-bold transition">
                                     Behöver öva mer
                                 </button>
-                                <button onclick="nextCard(true)" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-bold transition shadow-lg">
+                                <button onclick="nextCard(true)" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-bold transition shadow-lg hover:shadow-xl transform active:scale-95">
                                     Jag kunde den!
                                 </button>
                             </div>
@@ -340,7 +360,7 @@ $page_title = $title_map[$variant] ?? 'Quiz';
                 `;
                 
                 card.addEventListener('click', (e) => {
-                    if (e.target.closest('button')) return; // Klicka inte om man trycker på knapp
+                    if (e.target.closest('button')) return; 
                     card.classList.toggle('flipped');
                 });
                 
@@ -352,19 +372,21 @@ $page_title = $title_map[$variant] ?? 'Quiz';
                 const isMc = mode === 'quiz' || item.type === 'mc';
                 
                 const wrapper = document.createElement('div');
-                wrapper.className = 'bg-white rounded-2xl shadow-xl p-8 fade-enter-active';
+                wrapper.className = 'bg-white rounded-2xl shadow-lg border border-gray-200 p-8 fade-enter-active quiz-container';
                 
                 let html = `
-                    <div class="mb-8">
-                        <h2 class="text-2xl font-bold text-gray-800 text-center">${item.question}</h2>
+                    <div class="mb-6 min-h-[60px] flex items-center justify-center">
+                        <h2 class="text-2xl font-bold text-gray-800 text-center leading-snug">${item.question}</h2>
                     </div>
                 `;
                 
                 if (isMc) {
-                    html += `<div class="grid grid-cols-1 gap-3">`;
+                    html += `<div class="options-grid">`;
                     item.options.forEach(opt => {
+                        // Säkra escape av strängar
+                        const optSafe = opt.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                         html += `
-                            <button onclick="checkAnswer('${opt.replace(/'/g, "\\'")}', this)" class="w-full text-left p-4 rounded-xl border-2 border-gray-100 hover:border-purple-200 hover:bg-purple-50 transition text-lg group relative">
+                            <button onclick="checkAnswer(this, '${optSafe}')" class="w-full text-left px-6 py-4 rounded-xl border-2 border-gray-100 hover:border-purple-200 hover:bg-purple-50 transition text-lg group relative font-medium text-gray-700 bg-white">
                                 <span class="group-hover:text-purple-700">${opt}</span>
                             </button>
                         `;
@@ -372,25 +394,31 @@ $page_title = $title_map[$variant] ?? 'Quiz';
                     html += `</div>`;
                 } else {
                     html += `
-                        <div class="space-y-4">
-                            <input type="text" id="text-input" class="w-full p-4 text-lg border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none" placeholder="Skriv ditt svar här..." autocomplete="off">
-                            <button onclick="checkTextAnswer()" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl hover:bg-purple-700 transition shadow-lg text-lg">
-                                Svara →
+                        <div class="space-y-6 py-4">
+                            <input type="text" id="text-input" class="w-full p-5 text-xl border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-50 outline-none transition text-center font-medium" placeholder="Skriv svaret här..." autocomplete="off">
+                            <button onclick="checkTextAnswer()" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl hover:bg-purple-700 transition shadow-lg text-lg hover:shadow-xl transform active:scale-[0.98]">
+                                Svara
                             </button>
                         </div>
                     `;
                 }
                 
-                // Feedback container
-                html += `<div id="feedback" class="hidden mt-6 p-4 rounded-xl text-center font-bold"></div>`;
-                html += `<button id="next-btn" onclick="nextQuestion()" class="hidden w-full mt-4 bg-gray-800 text-white font-bold py-3 rounded-xl hover:bg-gray-900 transition">Nästa →</button>`;
+                // Feedback container (alltid renderad men osynlig för att hålla layouten)
+                html += `
+                    <div class="mt-6 h-[80px] relative">
+                         <div id="feedback" class="hidden absolute inset-0 flex items-center justify-center rounded-xl font-bold text-center"></div>
+                         <button id="next-btn" onclick="nextQuestion()" class="hidden absolute inset-0 w-full bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition shadow-lg z-10 flex items-center justify-center gap-2">
+                            Nästa fråga →
+                         </button>
+                    </div>
+                `;
                 
                 wrapper.innerHTML = html;
                 container.appendChild(wrapper);
                 
                 if (!isMc) {
                     const input = document.getElementById('text-input');
-                    input.focus();
+                    setTimeout(() => input.focus(), 100);
                     input.addEventListener('keypress', (e) => {
                         if (e.key === 'Enter') checkTextAnswer();
                     });
@@ -401,46 +429,59 @@ $page_title = $title_map[$variant] ?? 'Quiz';
         // --- EVENT HANDLERS ---
         
         window.nextCard = function(known) {
-            if (known) score++;
+            const item = gameData[currentIndex];
+            
+            if (known) {
+                score++; // Poäng bara om man kan den direkt (eller första gången den dyker upp)
+            } else {
+                // Lägg till kortet sist i listan igen för repetition!
+                // Vi klonar itemet och ger nytt ID för säkerhets skull
+                const newItem = {...item, id: Date.now()};
+                gameData.push(newItem);
+            }
+            
             currentIndex++;
             renderCard();
         };
         
-        window.checkAnswer = function(selected, btn) {
+        window.checkAnswer = function(btn, selected) {
             const item = gameData[currentIndex];
             const feedback = document.getElementById('feedback');
             const nextBtn = document.getElementById('next-btn');
-            const buttons = container.querySelectorAll('button');
+            const buttons = container.querySelectorAll('.options-grid button');
             
-            // Inaktivera knappar
+            // Inaktivera alla knappar
             buttons.forEach(b => b.disabled = true);
             
-            if (selected === item.correct) {
+            // Normalisera för jämförelse (trimma whitespace och lowercase)
+            if (selected.trim().toLowerCase() === item.correct.trim().toLowerCase()) {
                 // RÄTT
-                btn.classList.remove('border-gray-100', 'hover:border-purple-200');
-                btn.classList.add('bg-green-100', 'border-green-500', 'text-green-700');
-                feedback.className = 'mt-6 p-4 rounded-xl text-center font-bold bg-green-100 text-green-800 fade-enter-active';
-                feedback.innerHTML = '✨ Rätt svar!';
-                score++;
+                btn.classList.remove('border-gray-100', 'bg-white');
+                btn.classList.add('bg-green-100', 'border-green-500', 'text-green-800');
                 
-                // Auto-next efter kort tid om rätt
-                setTimeout(nextQuestion, 1000);
+                feedback.className = 'absolute inset-0 flex items-center justify-center rounded-xl font-bold text-center bg-green-100 text-green-700 border border-green-200 fade-enter-active';
+                feedback.innerHTML = '<span class="text-2xl mr-2">✨</span> Rätt svar!';
+                feedback.classList.remove('hidden');
+                
+                if (gameData.length === initialCount) score++; // Poäng om det inte är en "omgörning" (ej implementerat för quiz än, men bra att ha)
+                
+                setTimeout(nextQuestion, 1200);
             } else {
                 // FEL
-                btn.classList.remove('border-gray-100');
-                btn.classList.add('bg-red-100', 'border-red-500', 'text-red-700');
+                btn.classList.remove('border-gray-100', 'bg-white');
+                btn.classList.add('bg-red-50', 'border-red-500', 'text-red-800');
                 
-                // Hitta rätt knapp
+                // Visa rätta svaret på RÄTT knapp
                 buttons.forEach(b => {
-                    if (b.textContent.trim() === item.correct) {
-                        b.classList.add('bg-green-100', 'border-green-500', 'text-green-700');
+                    if (b.innerText.trim().toLowerCase() === item.correct.trim().toLowerCase()) {
+                        b.classList.remove('bg-white', 'border-gray-100');
+                        b.classList.add('bg-green-100', 'border-green-500', 'text-green-800', 'ring-2', 'ring-green-400');
                     }
                 });
                 
-                feedback.className = 'mt-6 p-4 rounded-xl text-center font-bold bg-red-100 text-red-800 fade-enter-active';
-                feedback.innerHTML = `😕 Fel svar.<br><span class="text-sm font-normal">Rätt var: ${item.correct}</span>`;
-                feedback.classList.remove('hidden');
+                // Visa Nästa-knappen direkt vid fel så man hinner se vad som var rätt
                 nextBtn.classList.remove('hidden');
+                nextBtn.focus();
             }
         };
         
@@ -453,20 +494,26 @@ $page_title = $title_map[$variant] ?? 'Quiz';
             if(!input.value.trim()) return;
             
             input.disabled = true;
-            document.querySelector('button').disabled = true; // Svara-knappen
+            document.querySelector('button[onclick="checkTextAnswer()"]').disabled = true;
             
             if (input.value.trim().toLowerCase() === item.correct.toLowerCase()) {
-                input.className = 'w-full p-4 text-lg border-2 border-green-500 bg-green-50 rounded-xl text-green-900 font-bold';
-                feedback.className = 'mt-6 p-4 rounded-xl text-center font-bold bg-green-100 text-green-800 fade-enter-active';
-                feedback.innerHTML = '✨ Helt rätt!';
+                input.classList.remove('border-gray-200');
+                input.classList.add('border-green-500', 'bg-green-50', 'text-green-800');
+                
+                feedback.className = 'absolute inset-0 flex items-center justify-center rounded-xl font-bold text-center bg-green-100 text-green-700 border border-green-200 fade-enter-active';
+                feedback.innerHTML = '<span class="text-2xl mr-2">✨</span> Rätt!';
                 feedback.classList.remove('hidden');
+                
                 score++;
                 setTimeout(nextQuestion, 1200);
             } else {
-                input.className = 'w-full p-4 text-lg border-2 border-red-500 bg-red-50 rounded-xl text-red-900';
-                feedback.className = 'mt-6 p-4 rounded-xl text-center font-bold bg-red-100 text-red-800 fade-enter-active';
-                feedback.innerHTML = `Obs! Rätt svar är: <span class="font-bold underline">${item.correct}</span>`;
+                input.classList.remove('border-gray-200');
+                input.classList.add('border-red-500', 'bg-red-50', 'text-red-900');
+                
+                feedback.className = 'absolute inset-0 flex flex-col items-center justify-center rounded-xl text-center bg-red-50 text-red-800 border border-red-200 fade-enter-active p-2';
+                feedback.innerHTML = `<span class="text-xs uppercase font-bold tracking-wider text-red-400 mb-1">Rätt svar var</span><span class="text-lg font-bold">${item.correct}</span>`;
                 feedback.classList.remove('hidden');
+                
                 nextBtn.classList.remove('hidden');
                 nextBtn.focus();
             }
