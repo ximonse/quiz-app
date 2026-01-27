@@ -19,6 +19,56 @@ $my_multi_quizzes = array_filter($multi_quizzes, function($mq) use ($teacher_id)
     return $mq['teacher_id'] === $teacher_id;
 });
 
+// Hämta filter från GET
+$filter_subject = $_GET['subject'] ?? '';
+$filter_grade = $_GET['grade'] ?? '';
+$filter_tag = $_GET['tag'] ?? '';
+
+// Applicera filter
+if ($filter_subject || $filter_grade || $filter_tag) {
+    $my_multi_quizzes = array_filter($my_multi_quizzes, function($mq) use ($filter_subject, $filter_grade, $filter_tag) {
+        $match = true;
+        
+        if ($filter_subject && (!isset($mq['subject']) || $mq['subject'] !== $filter_subject)) {
+            $match = false;
+        }
+        
+        if ($filter_grade && (!isset($mq['grade']) || $mq['grade'] !== $filter_grade)) {
+            $match = false;
+        }
+        
+        if ($filter_tag && (!isset($mq['tags']) || strpos($mq['tags'], $filter_tag) === false)) {
+            $match = false;
+        }
+        
+        return $match;
+    });
+}
+
+// Samla alla unika värden för filter-dropdowns
+$all_subjects = [];
+$all_grades = [];
+$all_tags = [];
+
+foreach ($multi_quizzes as $mq) {
+    if ($mq['teacher_id'] === $teacher_id) {
+        if (!empty($mq['subject'])) $all_subjects[] = $mq['subject'];
+        if (!empty($mq['grade'])) $all_grades[] = $mq['grade'];
+        if (!empty($mq['tags'])) {
+            foreach (explode(',', $mq['tags']) as $tag) {
+                $all_tags[] = trim($tag);
+            }
+        }
+    }
+}
+
+$all_subjects = array_unique($all_subjects);
+$all_grades = array_unique($all_grades);
+$all_tags = array_unique($all_tags);
+sort($all_subjects);
+sort($all_grades);
+sort($all_tags);
+
 // Sortera efter skapelsedatum (senaste först)
 usort($my_multi_quizzes, function($a, $b) {
     return strtotime($b['created']) - strtotime($a['created']);
@@ -439,6 +489,81 @@ Nu, invänta mitt material.
                 <h2 class="text-xl font-bold text-gray-800">📚 Mina Multi-Quizzes</h2>
                 <div class="text-sm text-gray-500">Sorterat: Senaste först</div>
             </div>
+
+            <!-- Filter -->
+            <?php if (!empty($all_subjects) || !empty($all_grades) || !empty($all_tags)): ?>
+                <div class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <form method="GET" class="flex flex-wrap gap-3 items-end">
+                        <div class="flex-1 min-w-[150px]">
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Ämne</label>
+                            <select name="subject" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500">
+                                <option value="">Alla ämnen</option>
+                                <?php foreach ($all_subjects as $subject): ?>
+                                    <option value="<?= htmlspecialchars($subject) ?>" <?= $filter_subject === $subject ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($subject) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        
+                        <div class="flex-1 min-w-[150px]">
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Årskurs</label>
+                            <select name="grade" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500">
+                                <option value="">Alla årskurser</option>
+                                <?php foreach ($all_grades as $grade): ?>
+                                    <option value="<?= htmlspecialchars($grade) ?>" <?= $filter_grade === $grade ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($grade) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        
+                        <div class="flex-1 min-w-[150px]">
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Tagg</label>
+                            <select name="tag" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500">
+                                <option value="">Alla taggar</option>
+                                <?php foreach ($all_tags as $tag): ?>
+                                    <option value="<?= htmlspecialchars($tag) ?>" <?= $filter_tag === $tag ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($tag) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                                🔍 Filtrera
+                            </button>
+                            <?php if ($filter_subject || $filter_grade || $filter_tag): ?>
+                                <a href="multi-quiz-admin.php" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition inline-flex items-center">
+                                    ✕ Rensa
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    </form>
+                    
+                    <?php if ($filter_subject || $filter_grade || $filter_tag): ?>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <span class="text-xs text-gray-600">Aktiva filter:</span>
+                            <?php if ($filter_subject): ?>
+                                <span class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                                    📖 <?= htmlspecialchars($filter_subject) ?>
+                                </span>
+                            <?php endif; ?>
+                            <?php if ($filter_grade): ?>
+                                <span class="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                                    🎓 <?= htmlspecialchars($filter_grade) ?>
+                                </span>
+                            <?php endif; ?>
+                            <?php if ($filter_tag): ?>
+                                <span class="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                                    🏷️ <?= htmlspecialchars($filter_tag) ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
 
             <?php if (empty($my_multi_quizzes)): ?>
                 <p class="text-gray-500 text-center py-12 text-sm">Inga multi-quizzes ännu. Skapa ditt första!</p>
