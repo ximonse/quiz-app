@@ -508,6 +508,10 @@ Nu, invänta mitt material.
                                             class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
                                         📋 Kopiera länk
                                     </button>
+                                    <a href="multi-quiz-edit.php?id=<?= $mq['id'] ?>" 
+                                       class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition">
+                                        ✏️ Redigera
+                                    </a>
                                     <form method="POST" class="inline" onsubmit="return confirm('Är du säker på att du vill radera detta multi-quiz?')">
                                         <?= $csrf_field ?>
                                         <input type="hidden" name="action" value="delete_multi_quiz">

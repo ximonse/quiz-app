@@ -94,13 +94,23 @@ if ($variant === 'flashcard') {
         if (!is_array($wrongs)) $wrongs = [];
         
         if ($variant === 'glossary') {
-            // Begrepp + Mening -> Översättning
+            // Fråga: Begrepp (+ ev exempelmening). Svar: Översättning (eller beskrivning)
             $q = $item['concept'];
-            if ($item['example_sentence']) $q .= "<br><span class='text-sm italic text-gray-500'>{$item['example_sentence']}</span>";
-            $correct = $item['translation'];
+            if (!empty($item['example_sentence'])) {
+                $q .= "<br><span class='text-sm italic text-gray-500'>{$item['example_sentence']}</span>";
+            }
+            // Använd översättning om finns, annars beskrivning
+            $correct = !empty($item['translation']) ? $item['translation'] : $item['description'];
         } else {
-            // Översättning -> Begrepp
-            $q = $item['translation'];
+            // REVERSE GLOSSARY
+            // Fråga: Översättning (eller beskrivning). Svar: Begrepp
+            
+            // Vad ska vi fråga om?
+            $q = !empty($item['translation']) ? $item['translation'] : $item['description'];
+            
+            // Om båda saknas, kan vi inte ställa frågan vettigt. Fallback till "Beskrivning saknas".
+            if (empty($q)) $q = "(Beskrivning saknas för: {$item['concept']})";
+            
             $correct = $item['concept'];
         }
         
@@ -131,10 +141,13 @@ if ($variant === 'flashcard') {
         
         if ($variant === 'glossary') {
             $q = $item['concept'];
-             if ($item['example_sentence']) $q .= "<br><span class='text-sm italic text-gray-500'>{$item['example_sentence']}</span>";
-            $correct = $item['translation'];
+             if (!empty($item['example_sentence'])) {
+                 $q .= "<br><span class='text-sm italic text-gray-500'>{$item['example_sentence']}</span>";
+             }
+            $correct = !empty($item['translation']) ? $item['translation'] : $item['description'];
         } else {
-            $q = $item['translation'];
+            $q = !empty($item['translation']) ? $item['translation'] : $item['description'];
+            if (empty($q)) $q = "(Beskrivning saknas för: {$item['concept']})";
             $correct = $item['concept'];
         }
         
