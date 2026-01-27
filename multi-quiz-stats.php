@@ -2,63 +2,142 @@
 require_once 'config.php';
 requireTeacher();
 
-$mq_id = $_GET['id'] ?? '';
+$teacher_id = getCurrentTeacherID();
+
+// Läs all data
 $multi_quizzes = readJSON(DATA_DIR . 'multi_quizzes.json');
-
-if (!isset($multi_quizzes[$mq_id])) {
-    die("Multi-quiz hittades inte");
-}
-
-$mq = $multi_quizzes[$mq_id];
-
-// Läs progress-data
 $progress_file = DATA_DIR . 'multi_quiz_progress.json';
 $all_progress = file_exists($progress_file) ? json_decode(file_get_contents($progress_file), true) : [];
-$quiz_progress = $all_progress[$mq_id] ?? [];
 
-// Räkna aktiva varianter
-$active_variants = array_filter($mq['variants'], function($v) { return $v !== null; });
-$total_variants = count($active_variants);
+// Filtrera lärarens quizzes
+$my_quizzes = array_filter($multi_quizzes, function($mq) use ($teacher_id) {
+    return $mq['teacher_id'] === $teacher_id;
+});
 
-// Beräkna statistik
-$students = [];
-$variant_stats = [
-    'glossary' => 0,
-    'reverse_glossary' => 0,
-    'flashcard' => 0,
-    'reverse_flashcard' => 0,
-    'quiz' => 0
-];
+// Hämta filter
+$filter_quiz = $_GET['quiz'] ?? '';
+$filter_subject = $_GET['subject'] ?? '';
+$filter_grade = $_GET['grade'] ?? '';
+$filter_tag = $_GET['tag'] ?? '';
+$filter_student = $_GET['student'] ?? '';
+$filter_date_from = $_GET['date_from'] ?? '';
+$filter_date_to = $_GET['date_to'] ?? '';
 
-foreach ($quiz_progress as $student_id => $variants_done) {
-    $completed_count = count($variants_done);
-    $students[$student_id] = [
-        'id' => $student_id,
-        'completed' => $completed_count,
-        'total' => $total_variants,
-        'percentage' => $total_variants > 0 ? round(($completed_count / $total_variants) * 100) : 0,
-        'variants' => $variants_done,
-        'finished_all' => $completed_count >= $total_variants
-    ];
+// Samla alla unika värden för dropdowns
+$all_subjects = [];
+$all_grades = [];
+$all_tags = [];
+$all_students = [];
+$all_quiz_titles = [];
+
+foreach ($my_quizzes as $mq_id => $mq) {
+    $all_quiz_titles[$mq_id] = $mq['title'];
+    if (!empty($mq['subject'])) $all_subjects[] = $mq['subject'];
+    if (!empty($mq['grade'])) $all_grades[] = $mq['grade'];
+    if (!empty($mq['tags'])) {
+        foreach (explode(',', $mq['tags']) as $tag) {
+            $all_tags[] = trim($tag);
+        }
+    }
     
-    // Räkna per variant
-    foreach ($variants_done as $variant => $timestamp) {
-        if (isset($variant_stats[$variant])) {
-            $variant_stats[$variant]++;
+    if (isset($all_progress[$mq_id])) {
+        foreach ($all_progress[$mq_id] as $student_id => $variants) {
+            $all_students[] = $student_id;
         }
     }
 }
 
-// Sortera elever efter progress (mest klara först)
-usort($students, function($a, $b) {
-    if ($a['completed'] === $b['completed']) {
-        return strcmp($a['id'], $b['id']);
+$all_subjects = array_unique($all_subjects);
+$all_grades = array_unique($all_grades);
+$all_tags = array_unique($all_tags);
+$all_students = array_unique($all_students);
+sort($all_subjects);
+sort($all_grades);
+sort($all_tags);
+sort($all_students);
+
+// Bygg dataset för export/visning
+$data_rows = [];
+
+foreach ($my_quizzes as $mq_id => $mq) {
+    // Applicera quiz-filter
+    if ($filter_quiz && $mq_id !== $filter_quiz) continue;
+    if ($filter_subject && $mq['subject'] !== $filter_subject) continue;
+    if ($filter_grade && $mq['grade'] !== $filter_grade) continue;
+    if ($filter_tag && strpos($mq['tags'], $filter_tag) === false) continue;
+    
+    $quiz_progress = $all_progress[$mq_id] ?? [];
+    
+    foreach ($quiz_progress as $student_id => $variants_done) {
+        // Applicera student-filter
+        if ($filter_student && $student_id !== $filter_student) continue;
+        
+        foreach ($variants_done as $variant => $timestamp) {
+            // Applicera datumfilter
+            if ($filter_date_from && $timestamp < $filter_date_from) continue;
+            if ($filter_date_to && $timestamp > $filter_date_to . ' 23:59:59') continue;
+            
+            $data_rows[] = [
+                'quiz_title' => $mq['title'],
+                'subject' => $mq['subject'] ?? '',
+                'grade' => $mq['grade'] ?? '',
+                'tags' => $mq['tags'] ?? '',
+                'student_id' => $student_id,
+                'variant' => $variant,
+                'timestamp' => $timestamp,
+                'date' => date('Y-m-d', strtotime($timestamp)),
+                'time' => date('H:i:s', strtotime($timestamp))
+            ];
+        }
     }
-    return $b['completed'] - $a['completed'];
+}
+
+// Sortera efter tidsstämpel (senaste först)
+usort($data_rows, function($a, $b) {
+    return strtotime($b['timestamp']) - strtotime($a['timestamp']);
 });
 
-$total_students = count($students);
-$students_finished_all = count(array_filter($students, function($s) { return $s['finished_all']; }));
+// Hantera CSV-export
+if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="multi-quiz-statistik-' . date('Y-m-d') . '.csv"');
+    
+    $output = fopen('php://output', 'w');
+    
+    // BOM för UTF-8 (så Excel öppnar svenska tecken rätt)
+    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+    
+    // Header
+    fputcsv($output, [
+        'Quiz-titel',
+        'Ämne',
+        'Årskurs',
+        'Taggar',
+        'Elev',
+        'Variant',
+        'Datum',
+        'Tid',
+        'Tidsstämpel'
+    ], ';');
+    
+    // Data
+    foreach ($data_rows as $row) {
+        fputcsv($output, [
+            $row['quiz_title'],
+            $row['subject'],
+            $row['grade'],
+            $row['tags'],
+            $row['student_id'],
+            $row['variant'],
+            $row['date'],
+            $row['time'],
+            $row['timestamp']
+        ], ';');
+    }
+    
+    fclose($output);
+    exit;
+}
 
 $variant_names = [
     'glossary' => '📚 Glosor',
@@ -73,17 +152,17 @@ $variant_names = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Statistik - <?= htmlspecialchars($mq['title']) ?></title>
+    <title>Multi-Quiz Statistik</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-4">
-    <div class="max-w-6xl mx-auto">
+    <div class="max-w-7xl mx-auto">
         <!-- Header -->
         <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
             <div class="flex justify-between items-center">
                 <div>
-                    <h1 class="text-3xl font-bold text-gray-800">📊 Statistik</h1>
-                    <p class="text-gray-600 mt-1"><?= htmlspecialchars($mq['title']) ?></p>
+                    <h1 class="text-3xl font-bold text-gray-800">📊 Multi-Quiz Statistik</h1>
+                    <p class="text-gray-600 mt-1">Översikt och export av alla aktiviteter</p>
                 </div>
                 <a href="multi-quiz-admin.php" class="text-gray-600 hover:text-gray-900 font-medium">
                     ← Tillbaka
@@ -91,100 +170,136 @@ $variant_names = [
             </div>
         </div>
 
-        <!-- Översikt -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white rounded-xl shadow-sm p-6">
-                <div class="text-sm text-gray-500 mb-1">Totalt elever</div>
-                <div class="text-3xl font-bold text-blue-600"><?= $total_students ?></div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm p-6">
-                <div class="text-sm text-gray-500 mb-1">Klarat alla</div>
-                <div class="text-3xl font-bold text-green-600"><?= $students_finished_all ?></div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm p-6">
-                <div class="text-sm text-gray-500 mb-1">Aktiva varianter</div>
-                <div class="text-3xl font-bold text-purple-600"><?= $total_variants ?></div>
-            </div>
-            <div class="bg-white rounded-xl shadow-sm p-6">
-                <div class="text-sm text-gray-500 mb-1">Genomsnittlig progress</div>
-                <div class="text-3xl font-bold text-orange-600">
-                    <?= $total_students > 0 ? round(array_sum(array_column($students, 'percentage')) / $total_students) : 0 ?>%
-                </div>
-            </div>
-        </div>
-
-        <!-- Variant-statistik -->
+        <!-- Filter & Export -->
         <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <h2 class="text-xl font-bold text-gray-800 mb-4">Varianter</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <?php foreach ($active_variants as $variant_key => $variant_settings): ?>
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="font-semibold text-gray-700"><?= $variant_names[$variant_key] ?? $variant_key ?></span>
-                            <span class="text-2xl font-bold text-purple-600"><?= $variant_stats[$variant_key] ?></span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div class="bg-purple-600 h-2 rounded-full" style="width: <?= $total_students > 0 ? round(($variant_stats[$variant_key] / $total_students) * 100) : 0 ?>%"></div>
-                        </div>
-                        <div class="text-xs text-gray-500 mt-1">
-                            <?= $total_students > 0 ? round(($variant_stats[$variant_key] / $total_students) * 100) : 0 ?>% klarat
-                        </div>
+            <h2 class="text-xl font-bold text-gray-800 mb-4">🔍 Filtrera & Exportera</h2>
+            
+            <form method="GET" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Quiz</label>
+                        <select name="quiz" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option value="">Alla quizzes</option>
+                            <?php foreach ($all_quiz_titles as $qid => $title): ?>
+                                <option value="<?= $qid ?>" <?= $filter_quiz === $qid ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($title) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
-                <?php endforeach; ?>
-            </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ämne</label>
+                        <select name="subject" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option value="">Alla ämnen</option>
+                            <?php foreach ($all_subjects as $subject): ?>
+                                <option value="<?= htmlspecialchars($subject) ?>" <?= $filter_subject === $subject ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($subject) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Årskurs</label>
+                        <select name="grade" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option value="">Alla årskurser</option>
+                            <?php foreach ($all_grades as $grade): ?>
+                                <option value="<?= htmlspecialchars($grade) ?>" <?= $filter_grade === $grade ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($grade) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tagg</label>
+                        <select name="tag" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option value="">Alla taggar</option>
+                            <?php foreach ($all_tags as $tag): ?>
+                                <option value="<?= htmlspecialchars($tag) ?>" <?= $filter_tag === $tag ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($tag) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Elev</label>
+                        <select name="student" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                            <option value="">Alla elever</option>
+                            <?php foreach ($all_students as $student): ?>
+                                <option value="<?= htmlspecialchars($student) ?>" <?= $filter_student === $student ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($student) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Från datum</label>
+                        <input type="date" name="date_from" value="<?= htmlspecialchars($filter_date_from) ?>" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Till datum</label>
+                        <input type="date" name="date_to" value="<?= htmlspecialchars($filter_date_to) ?>" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    </div>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium transition">
+                        🔍 Filtrera
+                    </button>
+                    <a href="multi-quiz-stats.php" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg font-medium transition inline-flex items-center">
+                        ✕ Rensa filter
+                    </a>
+                    <button type="submit" name="export" value="csv" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition ml-auto">
+                        📥 Exportera till CSV
+                    </button>
+                </div>
+            </form>
         </div>
 
-        <!-- Elevlista -->
+        <!-- Resultat -->
         <div class="bg-white rounded-xl shadow-sm p-6">
-            <h2 class="text-xl font-bold text-gray-800 mb-4">Elever (<?= $total_students ?>)</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Resultat (<?= count($data_rows) ?> aktiviteter)</h2>
+            </div>
             
-            <?php if (empty($students)): ?>
-                <p class="text-gray-500 text-center py-8">Inga elever har börjat detta multi-quiz än.</p>
+            <?php if (empty($data_rows)): ?>
+                <p class="text-gray-500 text-center py-8">Inga aktiviteter matchar filtren.</p>
             <?php else: ?>
                 <div class="overflow-x-auto">
-                    <table class="w-full">
+                    <table class="w-full text-sm">
                         <thead class="bg-gray-50 border-b">
                             <tr>
-                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Elev</th>
-                                <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">Progress</th>
-                                <?php foreach ($active_variants as $variant_key => $variant_settings): ?>
-                                    <th class="px-4 py-3 text-center text-sm font-semibold text-gray-700">
-                                        <?= $variant_names[$variant_key] ?? $variant_key ?>
-                                    </th>
-                                <?php endforeach; ?>
+                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Quiz</th>
+                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Ämne</th>
+                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Årskurs</th>
+                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Elev</th>
+                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Variant</th>
+                                <th class="px-4 py-3 text-left font-semibold text-gray-700">Datum & Tid</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
-                            <?php foreach ($students as $student): ?>
+                            <?php foreach ($data_rows as $row): ?>
                                 <tr class="hover:bg-gray-50">
+                                    <td class="px-4 py-3 font-medium text-gray-800"><?= htmlspecialchars($row['quiz_title']) ?></td>
+                                    <td class="px-4 py-3 text-gray-600"><?= htmlspecialchars($row['subject']) ?></td>
+                                    <td class="px-4 py-3 text-gray-600"><?= htmlspecialchars($row['grade']) ?></td>
+                                    <td class="px-4 py-3 font-medium text-gray-800"><?= htmlspecialchars($row['student_id']) ?></td>
                                     <td class="px-4 py-3">
-                                        <div class="font-medium text-gray-800"><?= htmlspecialchars($student['id']) ?></div>
+                                        <span class="inline-block px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                                            <?= $variant_names[$row['variant']] ?? $row['variant'] ?>
+                                        </span>
                                     </td>
-                                    <td class="px-4 py-3">
-                                        <div class="flex items-center gap-2">
-                                            <div class="flex-1 bg-gray-200 rounded-full h-2 max-w-[120px]">
-                                                <div class="<?= $student['finished_all'] ? 'bg-green-500' : 'bg-blue-500' ?> h-2 rounded-full" 
-                                                     style="width: <?= $student['percentage'] ?>%"></div>
-                                            </div>
-                                            <span class="text-sm font-medium text-gray-600">
-                                                <?= $student['completed'] ?>/<?= $student['total'] ?>
-                                            </span>
-                                        </div>
+                                    <td class="px-4 py-3 text-gray-600">
+                                        <?= $row['date'] ?> <span class="text-gray-400"><?= $row['time'] ?></span>
                                     </td>
-                                    <?php foreach ($active_variants as $variant_key => $variant_settings): ?>
-                                        <td class="px-4 py-3 text-center">
-                                            <?php if (isset($student['variants'][$variant_key])): ?>
-                                                <div class="inline-flex flex-col items-center">
-                                                    <span class="text-green-600 text-xl">✓</span>
-                                                    <span class="text-xs text-gray-500">
-                                                        <?= date('Y-m-d H:i', strtotime($student['variants'][$variant_key])) ?>
-                                                    </span>
-                                                </div>
-                                            <?php else: ?>
-                                                <span class="text-gray-300 text-xl">○</span>
-                                            <?php endif; ?>
-                                        </td>
-                                    <?php endforeach; ?>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
