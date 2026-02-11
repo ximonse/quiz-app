@@ -71,11 +71,25 @@ foreach ($question_errors as $q_index => $errors) {
 // Spara felstavningar för glosquiz
 if (!empty($misspellings)) {
     foreach ($misspellings as $correct => $misspelled) {
-        if (!isset($stats[$quiz_id]['misspellings'][$correct])) {
-            $stats[$quiz_id]['misspellings'][$correct] = [];
+        // Stödjer både nytt format [{correct, misspelled}, ...]
+        // och äldre key/value-format ['correct' => 'misspelled'].
+        if (is_array($misspelled) && isset($misspelled['correct']) && isset($misspelled['misspelled'])) {
+            $correct_word = trim((string)$misspelled['correct']);
+            $misspelled_word = trim((string)$misspelled['misspelled']);
+        } else {
+            $correct_word = is_string($correct) ? trim($correct) : '';
+            $misspelled_word = is_string($misspelled) ? trim($misspelled) : '';
         }
-        if (!in_array($misspelled, $stats[$quiz_id]['misspellings'][$correct])) {
-            $stats[$quiz_id]['misspellings'][$correct][] = $misspelled;
+
+        if ($correct_word === '' || $misspelled_word === '') {
+            continue;
+        }
+
+        if (!isset($stats[$quiz_id]['misspellings'][$correct_word])) {
+            $stats[$quiz_id]['misspellings'][$correct_word] = [];
+        }
+        if (!in_array($misspelled_word, $stats[$quiz_id]['misspellings'][$correct_word], true)) {
+            $stats[$quiz_id]['misspellings'][$correct_word][] = $misspelled_word;
         }
     }
 }
@@ -124,7 +138,7 @@ function updateExtendedStats($quiz_id, $completed) {
     }
     $teacher_stats[$teacher_id]['last_activity'] = date('Y-m-d H:i:s');
 
-    file_put_contents($teacher_stats_file, json_encode($teacher_stats, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    writeJSON($teacher_stats_file, $teacher_stats);
 
     // Uppdatera system_stats.json
     $system_stats_file = __DIR__ . '/../data/system_stats.json';
@@ -143,5 +157,5 @@ function updateExtendedStats($quiz_id, $completed) {
     }
     $system_stats['last_updated'] = date('Y-m-d H:i:s');
 
-    file_put_contents($system_stats_file, json_encode($system_stats, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    writeJSON($system_stats_file, $system_stats);
 }

@@ -1462,6 +1462,14 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
                             <input type="text" placeholder="Fel översättning 1" class="question-wrong w-full px-3 py-2 border rounded">
                         </div>
                         <button type="button" onclick="addWrongOption(${questionCount})" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm">+ Lägg till alternativ</button>
+                        <div class="mt-2 p-2 bg-gray-50 rounded border border-gray-200">
+                            <div class="text-sm font-medium text-gray-700 mb-1">Omvända felsvar (valfritt, för Ord → målspråk)</div>
+                            <div class="reverse-wrong-options-container space-y-2">
+                                <input type="text" placeholder="Fel ord 1" class="question-reverse-wrong w-full px-3 py-2 border rounded">
+                                <input type="text" placeholder="Fel ord 2" class="question-reverse-wrong w-full px-3 py-2 border rounded">
+                                <input type="text" placeholder="Fel ord 3" class="question-reverse-wrong w-full px-3 py-2 border rounded">
+                            </div>
+                        </div>
                     </div>
                 `;
             } else {
@@ -1547,13 +1555,24 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
                         if (val) wrongOptions.push(val);
                     });
 
+                    // Samla omvända felsvar (valfritt)
+                    const reverseWrongOptions = [];
+                    div.querySelectorAll('.question-reverse-wrong').forEach(input => {
+                        const val = input.value.trim();
+                        if (val) reverseWrongOptions.push(val);
+                    });
+
                     if (question && word && answer && wrongOptions.length > 0) {
-                        questions.push({
+                        const entry = {
                             question: question,
                             word: word,
                             answer: answer,
                             options: [answer, ...wrongOptions]
-                        });
+                        };
+                        if (reverseWrongOptions.length > 0) {
+                            entry.reverse_wrong_options = Array.from(new Set(reverseWrongOptions));
+                        }
+                        questions.push(entry);
                     }
                 } else {
                     const question = div.querySelector('.question-text').value.trim();

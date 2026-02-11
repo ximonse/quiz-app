@@ -110,8 +110,8 @@ Logga in som super admin:
    - Fyll i quiz-titel (t.ex. "Arters anpassningar")
    - Ladda upp CSV-fil i formatet:
      ```csv
-     Fråga,Rätt svar,Fel svar 1,Fel svar 2,Fel svar 3
-     Vad kallas djur som äter växter?,Växtätare,Köttätare,Allätare,Rovdjur
+     Fråga;Rätt svar;Fel svar 1;Fel svar 2;Fel svar 3
+     Vad kallas djur som äter växter?;Växtätare;Köttätare;Allätare;Rovdjur
      ```
    - Klicka "Skapa quiz från CSV"
 
@@ -222,8 +222,8 @@ chmod 666 quiz-app/data/*.json
 ### Problem: CSV-uppladdning fungerar inte
 **Lösning:**
 1. Kolla att filen är UTF-8 encoded
-2. Använd komma (`,`) som separator
-3. Se till att det finns exakt 5 kolumner per rad
+2. Använd semikolon (`;`) som separator
+3. Faktaquiz behöver minst 3 kolumner, glosquiz minst 4 kolumner
 
 ### Problem: Talsyntes fungerar inte
 **Lösning:**
@@ -243,17 +243,18 @@ Appen är helt optimerad för touchskärmar:
 ## 🎓 CSV-format exempel
 
 ```csv
-Fråga,Rätt svar,Fel svar 1,Fel svar 2,Fel svar 3
-Vad kallas djur som äter växter?,Växtätare,Köttätare,Allätare,Rovdjur
-Vad heter Sveriges huvudstad?,Stockholm,Göteborg,Malmö,Uppsala
-Hur många månader har ett år?,Tolv,Tio,Åtta,Fjorton
-Vad är H2O?,Vatten,Syre,Väte,Koldioxid
-Vilken planet är närmast solen?,Merkurius,Venus,Mars,Jorden
+Fråga;Rätt svar;Fel svar 1;Fel svar 2;Fel svar 3
+Vad kallas djur som äter växter?;Växtätare;Köttätare;Allätare;Rovdjur
+Vad heter Sveriges huvudstad?;Stockholm;Göteborg;Malmö;Uppsala
+Hur många månader har ett år?;Tolv;Tio;Åtta;Fjorton
+Vad är H2O?;Vatten;Syre;Väte;Koldioxid
+Vilken planet är närmast solen?;Merkurius;Venus;Mars;Jorden
 ```
 
 **Viktigt:**
 - Rad 1 = Header (hoppas över automatiskt)
-- Exakt 5 kolumner per rad
+- Faktaquiz: minst 3 kolumner (`Fråga;Rätt svar;Fel...`)
+- Glosquiz: minst 4 kolumner (`Mening;Ord;Rätt översättning;Fel...`)
 - UTF-8 encoding
 - Undvik synonymer i svarsalternativen
 
