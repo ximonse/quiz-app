@@ -19,17 +19,18 @@ En webbbaserad quiz-applikation för lärare och elever. Lärare skapar quiz (ku
 
 ### Kunskapsquiz (fact)
 - Fråga med 4 svarsalternativ (1 rätt, 3 fel)
-- Format: Fråga, Rätt svar, Fel 1, Fel 2, Fel 3
-- Exempel: "Vad är huvudstaden i Sverige?" → "Stockholm", "Göteborg", "Malmö", "Uppsala"
+- Format (CSV): `Fråga;Rätt svar;Fel 1;Fel 2;Fel 3;...`
+- Exempel: `Vad är huvudstaden i Sverige?;Stockholm;Göteborg;Malmö;Uppsala`
 
 ### Glosquiz (glossary)
 - Mening med markerat ord som ska översättas
-- Format: Mening, Ord, Rätt översättning, Fel 1, Fel 2, Fel 3
-- 6 kolumner totalt
-- Exempel: "The cat is sleeping", "cat", "katt", "hund", "mus", "fågel"
+- Format (CSV): `Mening;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord 1;Fel ord 2;Fel ord 3`
+- Minst 4 kolumner krävs, kolumn 7+ används för omvända felsvar
+- Exempel: `El gato duerme;gato;katt;hund;fågel;häst;perro;casa;libro`
 - Stöd för stavningslägen: Easy mode (förslag), Puritan mode (eget svar), Elevval
-- Språk: Svenska eller Spanska
+- Språk: språkneutralt (t.ex. svenska, spanska, engelska, ukrainska)
 - TTS (text-to-speech) med röstval för iPad
+- Omvänd glosträning stöds: översättning → glosord, med egna omvända felsvar
 
 ## Huvudfunktioner
 
@@ -144,7 +145,7 @@ En webbbaserad quiz-applikation för lärare och elever. Lärare skapar quiz (ku
     'spelling_mode' => 'easy', 'puritan' eller 'student_choice',
     'subject' => 'Matematik',
     'grade' => 'År 6',
-    'tags' => ['algebra', 'grunder'],
+    'tags' => 'algebra, grunder',
     'teacher_id' => 'teacher_id',
     'teacher_name' => 'Lärarens namn',
     'created' => '2025-10-05 12:00:00',
@@ -194,32 +195,32 @@ En webbbaserad quiz-applikation för lärare och elever. Lärare skapar quiz (ku
 **Kunskapsquiz CSV**:
 ```
 Titel på quiz 1
-Fråga 1,Rätt svar,Fel 1,Fel 2,Fel 3
-Fråga 2,Rätt svar,Fel 1,Fel 2,Fel 3
+Fråga 1;Rätt svar;Fel 1;Fel 2;Fel 3
+Fråga 2;Rätt svar;Fel 1;Fel 2;Fel 3
 
 Titel på quiz 2
-Fråga 1,Rätt svar,Fel 1,Fel 2,Fel 3
+Fråga 1;Rätt svar;Fel 1;Fel 2;Fel 3
 ```
 
 **Glosquiz CSV**:
 ```
 Titel på quiz 1
-Mening 1,Ord,Rätt översättning,Fel 1,Fel 2,Fel 3
-Mening 2,Ord,Rätt översättning,Fel 1,Fel 2,Fel 3
+Mening 1;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord 1;Fel ord 2;Fel ord 3
+Mening 2;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord 1;Fel ord 2;Fel ord 3
 
 Titel på quiz 2
-Mening 1,Ord,Rätt översättning,Fel 1,Fel 2,Fel 3
+Mening 1;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord 1;Fel ord 2;Fel ord 3
 ```
 
 ## Utvecklingshistorik
 
-### Senaste uppdateringar
-1. **Statistiksystem**: Omarbetning med flik-baserad vy, per-elev statistik, filtrering och visualisering
-2. **Tagging-system**: Ämne, årskurs och anpassade taggar för bättre organisation
-3. **Batch-import**: Möjlighet att ladda upp flera quiz samtidigt
-4. **AI-integration**: Dynamiska AI-prompter baserat på quiz-typ
-5. **iPad-förbättringar**: Röstval och textmarkering
-6. **UI-förbättring**: Tydlig quiz-typväljare och visuell feedback
+### Senaste uppdateringar (2026-02-11)
+1. **Omvänd glosträning**: Glosquiz kör nu både framåt och bakåt med separata inställningar för svarsläge och antal korrekta svar per fas.
+2. **Glosformat utökat**: CSV/Excel/AI-prompt stödjer omvända felsvar (`Fel ord 1..3`) för riktning ord ↔ översättning.
+3. **Semikolon standardiserat**: Import använder enbart `;` som separator, utan fallback till `,`.
+4. **Importflöden synkade**: CSV-fil, klistra-in CSV, manuell inmatning och batch-import stödjer samma kärninställningar.
+5. **Metadata konsekvent**: Ämne, årskurs och taggar finns nu även för klistra-in CSV och batch-import.
+6. **Statistikkompatibilitet**: Felstavningar i glosquiz hanteras för både nytt och äldre format vid sparning.
 
 ## Säkerhet
 - Lärar-autentisering via PHP-sessioner

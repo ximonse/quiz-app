@@ -121,6 +121,15 @@ Logga in som super admin:
    - Fyll i fråga, rätt svar och 3 felaktiga svar
    - Klicka "Skapa quiz"
 
+   **Alternativ C: Klistra in CSV**
+   - Klistra in CSV-text direkt i formuläret (semikolonseparerat)
+   - Samma inställningar som CSV-uppladdning, inklusive ämne/årskurs/taggar
+
+   **Alternativ D: Batch-import**
+   - Ladda upp en CSV med flera quiz i samma fil
+   - Rubrikrad per quiz + tom rad mellan quizen
+   - Stöd för metadata (ämne/årskurs/taggar)
+
 3. **Dela quiz:**
    - Kopiera länken (t.ex. `yoursite.com/quiz-app/q/abc123.html`)
    - Dela med elever via e-post, LMS, etc.
@@ -242,6 +251,7 @@ Appen är helt optimerad för touchskärmar:
 
 ## 🎓 CSV-format exempel
 
+**Faktaquiz:**
 ```csv
 Fråga;Rätt svar;Fel svar 1;Fel svar 2;Fel svar 3
 Vad kallas djur som äter växter?;Växtätare;Köttätare;Allätare;Rovdjur
@@ -251,10 +261,18 @@ Vad är H2O?;Vatten;Syre;Väte;Koldioxid
 Vilken planet är närmast solen?;Merkurius;Venus;Mars;Jorden
 ```
 
+**Glosquiz (med omvända felsvar):**
+```csv
+Mening;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord 1;Fel ord 2;Fel ord 3
+El gato duerme;gato;katt;hund;fågel;häst;perro;casa;libro
+Me gusta leer libros;leer;läsa;skriva;dricka;sova;hablar;comer;jugar
+```
+
 **Viktigt:**
 - Rad 1 = Header (hoppas över automatiskt)
 - Faktaquiz: minst 3 kolumner (`Fråga;Rätt svar;Fel...`)
 - Glosquiz: minst 4 kolumner (`Mening;Ord;Rätt översättning;Fel...`)
+- Kolumn 7+ i glosquiz används för omvända felsvar (`Fel ord ...`)
 - UTF-8 encoding
 - Undvik synonymer i svarsalternativen
 
@@ -309,11 +327,21 @@ Om något inte fungerar:
 4. Kolla att .htaccess-filer finns
 5. Testa i en annan webbläsare
 
+## 🧾 Ändringslogg
+
+### 2026-02-11
+- Glosquiz stödjer nu omvänd träningsriktning med egna inställningar per riktning.
+- CSV/AI/import stödjer utökat glosformat med omvända felsvar (`Fel ord 1..3`).
+- Import använder nu enbart semikolon (`;`) som separator.
+- Misspellings i statistik accepterar både nytt och äldre format.
+- Ämne, årskurs och taggar är nu konsekvent tillgängliga i alla importflöden (inklusive klistra-in och batch).
+
 ## 🎉 Lycka till!
 
 Nu är du redo att använda quiz-appen! Skapa lärarkonton, ladda upp frågor och börja träna!
 
 ---
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Skapad:** 2025-10-01
+**Senast uppdaterad:** 2026-02-11
