@@ -13,21 +13,12 @@ $teacher_name = $_SESSION['teacher_name'] ?? 'Lärare';
 
 $action = $_POST['action'] ?? '';
 
-if (!function_exists('readBatchCsvRow')) {
-    function readBatchCsvRow($handle) {
+if (!function_exists('readBatchSemicolonCsvRow')) {
+    function readBatchSemicolonCsvRow($handle) {
         $data = fgetcsv($handle, 0, ';');
         if ($data === false) {
             return false;
         }
-
-        // Bakåtkompatibilitet för äldre komma-separerade filer.
-        if (count($data) === 1 && strpos($data[0], ',') !== false) {
-            $fallback = str_getcsv($data[0], ',');
-            if (count($fallback) > 1) {
-                return $fallback;
-            }
-        }
-
         return $data;
     }
 }
@@ -58,7 +49,7 @@ if ($action === 'batch_import_fact') {
     $current_title = null;
     $current_questions = [];
 
-    while (($data = readBatchCsvRow($file)) !== false) {
+    while (($data = readBatchSemicolonCsvRow($file)) !== false) {
         // Kolla om raden är tom (separator mellan quiz)
         if (empty(array_filter($data, 'trim'))) {
             // Tom rad - skapa quiz om vi har data
@@ -216,7 +207,7 @@ elseif ($action === 'batch_import_gloss') {
     $current_title = null;
     $current_questions = [];
 
-    while (($data = readBatchCsvRow($file)) !== false) {
+    while (($data = readBatchSemicolonCsvRow($file)) !== false) {
         // Kolla om raden är tom (separator mellan quiz)
         if (empty(array_filter($data, 'trim'))) {
             // Tom rad - skapa quiz om vi har data
@@ -268,13 +259,13 @@ elseif ($action === 'batch_import_gloss') {
             continue;
         }
 
-        // Annars är det en glosfråga (minst 4 kolumner: Mening,Ord,Rätt svar,Fel sv 1,...)
+        // Annars är det en glosfråga (minst 4 kolumner: Mening,Ord,Rätt svar,Fel övers 1,...)
         if (count($data) >= 4) {
             $sentence = trim($data[0]);
             $word = trim($data[1]);
             $answer = trim($data[2]);
 
-            // Kolumn 3-5: fel svenska alternativ (framåt)
+            // Kolumn 3-5: fel översättningsalternativ (framåt)
             $wrongOptions = [];
             for ($i = 3; $i < min(count($data), 6); $i++) {
                 $wrong = trim($data[$i]);

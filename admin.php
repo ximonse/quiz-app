@@ -15,21 +15,12 @@ $teachers = readJSON(TEACHERS_FILE);
 $quizzes = readJSON(QUIZZES_FILE);
 $stats = readJSON(STATS_FILE);
 
-if (!function_exists('readCsvRowWithFallbackDelimiter')) {
-    function readCsvRowWithFallbackDelimiter($handle) {
+if (!function_exists('readSemicolonCsvRow')) {
+    function readSemicolonCsvRow($handle) {
         $data = fgetcsv($handle, 0, ';');
         if ($data === false) {
             return false;
         }
-
-        // Bakåtkompatibilitet: om filen råkar vara komma-separerad.
-        if (count($data) === 1 && strpos($data[0], ',') !== false) {
-            $fallback = str_getcsv($data[0], ',');
-            if (count($fallback) > 1) {
-                return $fallback;
-            }
-        }
-
         return $data;
     }
 }
@@ -192,7 +183,7 @@ if ((isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_O
 
         if ($file) {
             $row = 0;
-            while (($data = readCsvRowWithFallbackDelimiter($file)) !== false) {
+            while (($data = readSemicolonCsvRow($file)) !== false) {
                 $row++;
                 if (empty(array_filter($data, 'strlen'))) {
                     continue;
@@ -207,14 +198,14 @@ if ((isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_O
                     }
                 }
 
-                // För glosquiz: minst 4 kolumner (Mening,Ord,Översättning,Fel sv 1,...)
+                // För glosquiz: minst 4 kolumner (Mening,Ord,Översättning,Fel övers 1,...)
                 // För faktaquiz: minst 3 kolumner (Fråga,Rätt svar,Fel1,...)
                 if ($quiz_type === 'glossary' && count($data) >= 4) {
                     $sentence = trim($data[0]);
                     $word = trim($data[1]);
                     $translation = trim($data[2]);
 
-                    // Kolumn 3-5: fel svenska alternativ (framåt)
+                    // Kolumn 3-5: fel översättningsalternativ (framåt)
                     $wrongOptions = [];
                     for ($i = 3; $i < min(count($data), 6); $i++) {
                         $wrong = trim($data[$i]);
@@ -581,7 +572,7 @@ foreach ($my_quizzes as $qid => $quiz) {
                                class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                         <p id="csv_format_hint" class="text-sm text-gray-500 mt-2">
                             <strong>Fakta-quiz format:</strong> Fråga;Rätt svar;Fel alternativ 1;Fel alternativ 2;...<br>
-                            <strong>Glosquiz format:</strong> Mening;Ord;Rätt översättning;Fel sv 1;Fel sv 2;Fel sv 3;Fel ord 1;Fel ord 2;Fel ord 3
+                            <strong>Glosquiz format:</strong> Mening;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord 1;Fel ord 2;Fel ord 3
                         </p>
                         <div class="mt-3">
                             <a href="templates/glossary-template.csv" download class="inline-flex items-center bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm">
@@ -994,7 +985,7 @@ foreach ($my_quizzes as $qid => $quiz) {
                             <div class="bg-gray-50 p-3 rounded text-xs">
                                 <strong>Format per quiz:</strong><br>
                                 Quiz rubrik<br>
-                                Mening;Ord;Rätt översättning;Fel sv 1;Fel sv 2;Fel sv 3;Fel ord 1;Fel ord 2;Fel ord 3<br>
+                                Mening;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord 1;Fel ord 2;Fel ord 3<br>
                                 [Tom rad]<br>
                                 Nästa quiz rubrik<br>
                                 ...
@@ -1050,25 +1041,25 @@ Skapa 15 frågor om: [BESKRIV ÄMNET HÄR]
 VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-rader." data-glossary-prompt="Skapa glosor i CSV-format för mina elever.
 
 FORMAT (använd semikolon):
-Exempelmening;Ord att lära;Rätt översättning till svenska;Fel sv 1;Fel sv 2;Fel sv 3;Fel ord 1;Fel ord 2;Fel ord 3
+Exempelmening;Ord att lära;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord 1;Fel ord 2;Fel ord 3
 
 REGLER:
 - Varje rad = 1 glos
 - Meningen ska vara på målspråket (det språk eleven tränar)
 - &quot;Ord att lära&quot; ska finnas i meningen
-- Lägg alltid 3 felaktiga svenska alternativ (Fel sv 1-3)
+- Lägg alltid 3 felaktiga översättningsalternativ (Fel övers 1-3)
 - Lägg alltid 3 felaktiga ord på målspråket (Fel ord 1-3) för omvänd träning
 - Felalternativen ska vara trovärdiga men inte för lika rätt svar
 - Återanvänd gärna andra ord från listan som felaktiga alternativ när det passar
 - Inga citattecken, inga radbrytningar
 
-EXEMPEL (Spanska → Svenska):
+EXEMPEL (Spanska → Svenska, men välj själv översättningsspråk):
 Hola, me llamo Roberto;llamo;heter;bor;springer;läser;vive;toma;mira
 El gato duerme;gato;katt;hund;fågel;häst;perro;casa;libro
 Me gusta leer libros;leer;läsa;skriva;dricka;sova;hablar;comer;jugar
 
 UPPGIFT:
-Skapa 15 glosor från [SPRÅK] till svenska med dessa ord:
+Skapa 15 glosor från [SPRÅK FÖR MENING/ORD] till [ÖVERSÄTTNINGSSPRÅK] med dessa ord:
 [LISTA ORD HÄR]
 
 VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar.">Skapa ett kunskapsquiz i CSV-format för mina elever.
@@ -1697,7 +1688,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
 
             if (quizType === 'glossary') {
                 hint.innerHTML = `
-                    <strong class="text-green-800">📚 Glosquiz format:</strong> Mening;Ord;Rätt översättning;Fel sv 1;Fel sv 2;Fel sv 3;Fel ord 1;Fel ord 2;Fel ord 3<br>
+                    <strong class="text-green-800">📚 Glosquiz format:</strong> Mening;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord 1;Fel ord 2;Fel ord 3<br>
                     <span class="text-xs text-gray-500 mt-1 block">Exempel: el gato duerme;gato;katt;hund;fågel;häst;perro;casa;libro</span>
                 `;
             } else {
@@ -1716,11 +1707,11 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
             if (quizType === 'glossary') {
                 hint.innerHTML = `
                     <strong class="text-green-800">📚 Glosquiz format:</strong><br>
-                    <code class="bg-white px-2 py-1 rounded">Mening;Ord;Rätt översättning;Fel sv 1;Fel sv 2;Fel sv 3;Fel ord 1;Fel ord 2;Fel ord 3</code><br>
+                    <code class="bg-white px-2 py-1 rounded">Mening;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord 1;Fel ord 2;Fel ord 3</code><br>
                     <span class="text-xs text-gray-500 mt-1 block">Exempel: el gato duerme;gato;katt;hund;fågel;häst;perro;casa;libro</span>
                 `;
                 hint.className = 'text-sm text-gray-600 mt-2 p-3 bg-green-50 border border-green-200 rounded';
-                textarea.placeholder = 'Mening;Ord;Rätt översättning;Fel sv 1;Fel sv 2;Fel sv 3;Fel ord 1;Fel ord 2;Fel ord 3\nel gato duerme;gato;katt;hund;fågel;häst;perro;casa;libro';
+                textarea.placeholder = 'Mening;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord 1;Fel ord 2;Fel ord 3\nel gato duerme;gato;katt;hund;fågel;häst;perro;casa;libro';
             } else {
                 hint.innerHTML = `
                     <strong class="text-blue-800">📝 Fakta-quiz format:</strong><br>

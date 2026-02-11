@@ -1201,7 +1201,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const currentCorrectAnswer = getCorrectAnswerForQuestion(currentQ);
             const currentOptions = getOptionsForQuestion(currentQ);
             const directionLabel = isGlossary
-                ? (isReverseDirection ? '🔄 Svenska → Målspråk' : '📚 Målspråk → Svenska')
+                ? (isReverseDirection ? '🔄 Översättning → Glosord' : '📚 Glosord → Översättning')
                 : '';
 
             return (
@@ -1285,7 +1285,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                                 isReverseDirection ? (
                                     <div className="mb-6">
                                         <p className="text-sm mb-2" style={{color: 'var(--text-secondary)'}}>
-                                            Svenska ordet:
+                                            Översättning:
                                         </p>
                                         <p className="text-3xl font-bold mt-2" style={{color: 'var(--text-primary)'}}>
                                             {currentQ.answer}
