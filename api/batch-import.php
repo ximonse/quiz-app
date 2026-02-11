@@ -3,6 +3,7 @@ require_once '../config.php';
 requireTeacher();
 
 header('Content-Type: application/json');
+requireValidCsrf(true);
 
 // Debugging
 error_log('Batch import called - action: ' . ($_POST['action'] ?? 'none'));
@@ -11,6 +12,25 @@ $teacher_id = getCurrentTeacherID();
 $teacher_name = $_SESSION['teacher_name'] ?? 'Lärare';
 
 $action = $_POST['action'] ?? '';
+
+if (!function_exists('readBatchCsvRow')) {
+    function readBatchCsvRow($handle) {
+        $data = fgetcsv($handle, 0, ';');
+        if ($data === false) {
+            return false;
+        }
+
+        // Bakåtkompatibilitet för äldre komma-separerade filer.
+        if (count($data) === 1 && strpos($data[0], ',') !== false) {
+            $fallback = str_getcsv($data[0], ',');
+            if (count($fallback) > 1) {
+                return $fallback;
+            }
+        }
+
+        return $data;
+    }
+}
 
 error_log('Teacher ID: ' . $teacher_id . ', Action: ' . $action);
 
@@ -23,7 +43,7 @@ if ($action === 'batch_import_fact') {
 
     $answer_mode = $_POST['answer_mode'] ?? 'hybrid';
     $required_phase1 = intval($_POST['required_phase1'] ?? 2);
-    $required_phase2 = intval($_POST['required_phase2'] ?? 4);
+    $required_phase2 = intval($_POST['required_phase2'] ?? 2);
 
     $file = fopen($_FILES['batch_fact_file']['tmp_name'], 'r');
     if (!$file) {
@@ -38,7 +58,7 @@ if ($action === 'batch_import_fact') {
     $current_title = null;
     $current_questions = [];
 
-    while (($data = fgetcsv($file, 1000, ',')) !== FALSE) {
+    while (($data = readBatchCsvRow($file)) !== false) {
         // Kolla om raden är tom (separator mellan quiz)
         if (empty(array_filter($data, 'trim'))) {
             // Tom rad - skapa quiz om vi har data
@@ -53,6 +73,10 @@ if ($action === 'batch_import_fact') {
                     'answer_mode' => $answer_mode,
                     'required_correct_phase1' => $required_phase1,
                     'required_correct_phase2' => $required_phase2,
+                    'reverse_enabled' => false,
+                    'reverse_answer_mode' => 'hybrid',
+                    'reverse_required_correct_phase1' => 2,
+                    'reverse_required_correct_phase2' => 2,
                     'teacher_id' => $teacher_id,
                     'teacher_name' => $teacher_name,
                     'created' => date('Y-m-d H:i:s'),
@@ -122,6 +146,10 @@ if ($action === 'batch_import_fact') {
             'answer_mode' => $answer_mode,
             'required_correct_phase1' => $required_phase1,
             'required_correct_phase2' => $required_phase2,
+            'reverse_enabled' => false,
+            'reverse_answer_mode' => 'hybrid',
+            'reverse_required_correct_phase1' => 2,
+            'reverse_required_correct_phase2' => 2,
             'teacher_id' => $teacher_id,
             'teacher_name' => $teacher_name,
             'created' => date('Y-m-d H:i:s'),
@@ -169,7 +197,11 @@ elseif ($action === 'batch_import_gloss') {
     $spelling_mode = $_POST['spelling_mode'] ?? 'student_choice';
     $answer_mode = $_POST['answer_mode'] ?? 'hybrid';
     $required_phase1 = intval($_POST['required_phase1'] ?? 2);
-    $required_phase2 = intval($_POST['required_phase2'] ?? 4);
+    $required_phase2 = intval($_POST['required_phase2'] ?? 2);
+    $reverse_enabled = (($_POST['reverse_enabled'] ?? '1') === '1');
+    $reverse_answer_mode = $_POST['reverse_answer_mode'] ?? 'hybrid';
+    $reverse_required_phase1 = intval($_POST['reverse_required_phase1'] ?? 2);
+    $reverse_required_phase2 = intval($_POST['reverse_required_phase2'] ?? 2);
 
     $file = fopen($_FILES['batch_gloss_file']['tmp_name'], 'r');
     if (!$file) {
@@ -184,7 +216,7 @@ elseif ($action === 'batch_import_gloss') {
     $current_title = null;
     $current_questions = [];
 
-    while (($data = fgetcsv($file, 1000, ',')) !== FALSE) {
+    while (($data = readBatchCsvRow($file)) !== false) {
         // Kolla om raden är tom (separator mellan quiz)
         if (empty(array_filter($data, 'trim'))) {
             // Tom rad - skapa quiz om vi har data
@@ -199,6 +231,10 @@ elseif ($action === 'batch_import_gloss') {
                     'answer_mode' => $answer_mode,
                     'required_correct_phase1' => $required_phase1,
                     'required_correct_phase2' => $required_phase2,
+                    'reverse_enabled' => $reverse_enabled,
+                    'reverse_answer_mode' => $reverse_answer_mode,
+                    'reverse_required_correct_phase1' => $reverse_required_phase1,
+                    'reverse_required_correct_phase2' => $reverse_required_phase2,
                     'teacher_id' => $teacher_id,
                     'teacher_name' => $teacher_name,
                     'created' => date('Y-m-d H:i:s'),
@@ -270,6 +306,10 @@ elseif ($action === 'batch_import_gloss') {
             'answer_mode' => $answer_mode,
             'required_correct_phase1' => $required_phase1,
             'required_correct_phase2' => $required_phase2,
+            'reverse_enabled' => $reverse_enabled,
+            'reverse_answer_mode' => $reverse_answer_mode,
+            'reverse_required_correct_phase1' => $reverse_required_phase1,
+            'reverse_required_correct_phase2' => $reverse_required_phase2,
             'teacher_id' => $teacher_id,
             'teacher_name' => $teacher_name,
             'created' => date('Y-m-d H:i:s'),

@@ -210,11 +210,29 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const [availableVoices, setAvailableVoices] = useState([]); // Tillgängliga röster
             const isGlossary = quizData.type === 'glossary';
             const quizLanguage = quizData.language || 'sv';
+            const [direction, setDirection] = useState('forward'); // forward | reverse
 
-            // Nya fält för quiz-typer och repetitionskrav
-            const answerMode = quizData.answer_mode || 'hybrid'; // hybrid, multiple_choice, text_only
-            const requiredPhase1 = quizData.required_correct_phase1 || 2;
-            const requiredPhase2 = quizData.required_correct_phase2 || 4;
+            // Inställningar per riktning
+            const reverseEnabled = isGlossary && (
+                quizData.reverse_enabled === true ||
+                quizData.reverse_enabled === 1 ||
+                quizData.reverse_enabled === '1'
+            );
+            const forwardSettings = {
+                answerMode: quizData.answer_mode || 'hybrid',
+                requiredPhase1: quizData.required_correct_phase1 || 2,
+                requiredPhase2: quizData.required_correct_phase2 || 2
+            };
+            const reverseSettings = {
+                answerMode: quizData.reverse_answer_mode || 'hybrid',
+                requiredPhase1: quizData.reverse_required_correct_phase1 || 2,
+                requiredPhase2: quizData.reverse_required_correct_phase2 || 2
+            };
+            const currentSettings = direction === 'reverse' ? reverseSettings : forwardSettings;
+            const answerMode = currentSettings.answerMode;
+            const requiredPhase1 = currentSettings.requiredPhase1;
+            const requiredPhase2 = currentSettings.requiredPhase2;
+            const isReverseDirection = direction === 'reverse';
 
             // Fisher-Yates shuffle
             function shuffleArray(array) {
@@ -375,10 +393,24 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             // Initiera quiz
             useEffect(() => {
                 if (hasStarted && questions.length === 0) {
+                    const allGlossaryWords = quizData.questions
+                        .map(q => (q.word || '').trim())
+                        .filter(Boolean);
+
                     const qs = quizData.questions.map((q, i) => ({
                         ...q,
                         index: i,
-                        shuffledOptions: shuffleArray(q.options)
+                        shuffledOptions: shuffleArray(q.options || []),
+                        reverseOptions: (() => {
+                            if (!isGlossary || !q.word) {
+                                return [];
+                            }
+                            const normalizedWord = q.word.toLowerCase().trim();
+                            const wrongReverse = allGlossaryWords.filter(w => w.toLowerCase().trim() !== normalizedWord);
+                            const pickedWrong = shuffleArray(wrongReverse).slice(0, 3);
+                            const candidate = [q.word, ...pickedWrong];
+                            return shuffleArray(Array.from(new Set(candidate)));
+                        })()
                     }));
                     setQuestions(qs);
                     setCurrentQueue(qs.map((_, i) => i));
@@ -410,7 +442,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
 
             // Autouppläsning för glosquiz vid ny fråga
             useEffect(() => {
-                if (hasStarted && isGlossary && currentQueue.length > 0 && !isComplete && !isMuted) {
+                if (hasStarted && isGlossary && !isReverseDirection && currentQueue.length > 0 && !isComplete && !isMuted) {
                     const currentQ = questions[currentQueue[currentQuestionIndex]];
                     if (currentQ && currentQ.word) {
                         setTimeout(() => {
@@ -418,7 +450,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                         }, 500);
                     }
                 }
-            }, [currentQuestionIndex, hasStarted, currentQueue.length]);
+            }, [currentQuestionIndex, hasStarted, currentQueue.length, isReverseDirection, isMuted, isComplete, questions]);
 
             // Autofokusera textinput i fas 2 när fråga ändras
             useEffect(() => {
@@ -616,6 +648,52 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 speakText(text);
             }
 
+            function getCorrectAnswerForQuestion(q) {
+                if (isGlossary && isReverseDirection) {
+                    return q.word || '';
+                }
+                return q.answer || '';
+            }
+
+            function getOptionsForQuestion(q) {
+                if (isGlossary && isReverseDirection) {
+                    return q.reverseOptions || [];
+                }
+                return q.shuffledOptions || [];
+            }
+
+            function startDirectionRound(nextDirection) {
+                const nextMode = nextDirection === 'reverse'
+                    ? reverseSettings.answerMode
+                    : forwardSettings.answerMode;
+                const freshQueue = questions.map((_, i) => i);
+                const freshProgress = {};
+                questions.forEach((_, i) => {
+                    freshProgress[i] = 0;
+                });
+
+                setDirection(nextDirection);
+                setPhase(nextMode === 'text_only' ? 2 : 1);
+                setCurrentQueue(freshQueue);
+                setCurrentQuestionIndex(0);
+                setProgress(freshProgress);
+                setMilestonesReached([false, false, false, false]);
+                setShowFeedback(false);
+                setSelectedAnswer(null);
+                setTextAnswer('');
+            }
+
+            function finishDirectionOrQuiz() {
+                if (isGlossary && reverseEnabled && !isReverseDirection) {
+                    startDirectionRound('reverse');
+                    return;
+                }
+
+                setIsComplete(true);
+                setTimerRunning(false);
+                saveStats();
+            }
+
             function handleStart() {
                 if (studentName.trim()) {
                     // För text_only mode: starta direkt i fas 2
@@ -623,7 +701,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                         setPhase(2);
                     }
                     // För glosquiz: kolla localStorage för senaste session
-                    else if (isGlossary) {
+                    else if (isGlossary && answerMode === 'hybrid') {
                         const storageKey = `glossary_${quizData.id}`;
                         const lastSessionData = localStorage.getItem(storageKey);
 
@@ -656,8 +734,10 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 if (showFeedback) return;
 
                 const currentQ = questions[currentQueue[currentQuestionIndex]];
-                const selectedOption = currentQ.shuffledOptions[optionIndex];
-                const correct = selectedOption === currentQ.answer;
+                const currentOptions = getOptionsForQuestion(currentQ);
+                const correctAnswer = getCorrectAnswerForQuestion(currentQ);
+                const selectedOption = currentOptions[optionIndex];
+                const correct = selectedOption === correctAnswer;
 
                 setSelectedAnswer(optionIndex);
                 setIsCorrect(correct);
@@ -686,10 +766,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                             if (newQueue.length === 0) {
                                 // Fas 1 klar!
                                 if (answerMode === 'multiple_choice') {
-                                    // multiple_choice mode: vi är klara!
-                                    setIsComplete(true);
-                                    setTimerRunning(false);
-                                    saveStats();
+                                    finishDirectionOrQuiz();
                                 } else {
                                     // hybrid mode: gå till fas 2
                                     setPhase(2);
@@ -734,15 +811,16 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 if (showFeedback || !textAnswer.trim()) return;
 
                 const currentQ = questions[currentQueue[currentQuestionIndex]];
-                const result = isAnswerCorrect(textAnswer, currentQ.answer, spellingMode);
+                const correctAnswer = getCorrectAnswerForQuestion(currentQ);
+                const result = isAnswerCorrect(textAnswer, correctAnswer, spellingMode);
 
                 setIsCorrect(result.correct);
                 setShowFeedback(true);
 
                 // För glosquiz: spara felstavningar
-                if (isGlossary && !result.correct && result.type === 'wrong') {
+                if (isGlossary && !isReverseDirection && !result.correct && result.type === 'wrong') {
                     setMisspellings(prev => [...prev, {
-                        correct: currentQ.answer,
+                        correct: correctAnswer,
                         misspelled: textAnswer.trim()
                     }]);
                 }
@@ -758,7 +836,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     }
 
                     // För glosquiz fas 2 (efter 25h - dag 2): 1 färre rätt krävs (minimum 1)
-                    const requiredCorrect = (isGlossary && phase === 2 && currentQueue.length === questions.length)
+                    const requiredCorrect = (isGlossary && !isReverseDirection && phase === 2 && currentQueue.length === questions.length)
                         ? Math.max(1, requiredPhase2 - 1)
                         : requiredPhase2;
 
@@ -769,10 +847,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                             setCurrentQueue(newQueue);
 
                             if (newQueue.length === 0) {
-                                // Allt klart!
-                                setIsComplete(true);
-                                setTimerRunning(false);
-                                saveStats();
+                                finishDirectionOrQuiz();
                             } else {
                                 setCurrentQuestionIndex(Math.min(currentQuestionIndex, newQueue.length - 1));
                             }
@@ -866,7 +941,9 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                             </div>
                             <h1 className="text-3xl font-bold mb-2 text-center" style={{color: 'var(--text-primary)'}}>{quizData.title}</h1>
                             <p className="text-center mb-4" style={{color: 'var(--text-secondary)'}}>
-                                {isGlossary ? '📚 Glosquiz' : '📝 Fakta-quiz'} • {questions.length || quizData.questions.length} frågor
+                                {isGlossary
+                                    ? (reverseEnabled ? '📚 Glosquiz (framåt + omvänt)' : '📚 Glosquiz')
+                                    : '📝 Fakta-quiz'} • {questions.length || quizData.questions.length} frågor
                             </p>
                             <div className="space-y-4">
                                 <div>
@@ -1114,6 +1191,11 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             }
 
             const currentQ = questions[currentQueue[currentQuestionIndex]];
+            const currentCorrectAnswer = getCorrectAnswerForQuestion(currentQ);
+            const currentOptions = getOptionsForQuestion(currentQ);
+            const directionLabel = isGlossary
+                ? (isReverseDirection ? '🔄 Svenska → Målspråk' : '📚 Målspråk → Svenska')
+                : '';
 
             return (
                 <div className="min-h-screen p-4" style={{background: `linear-gradient(to bottom right, var(--bg-from), var(--bg-to))`}}>
@@ -1123,7 +1205,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                             <div className="flex justify-between items-center mb-2">
                                 <h1 className="text-2xl font-bold text-gray-800" style={{color: 'var(--text-primary)'}}>{quizData.title}</h1>
                                 <div className="flex items-center gap-3">
-                                    {isGlossary && (
+                                    {isGlossary && !isReverseDirection && (
                                         <button
                                             onClick={() => setIsMuted(!isMuted)}
                                             className="px-3 py-2 rounded-lg text-sm font-medium transition"
@@ -1157,6 +1239,9 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                                 </div>
                             </div>
                             <div className="text-sm" style={{color: 'var(--text-secondary)'}}>Hej {studentName}!</div>
+                            {directionLabel && (
+                                <div className="text-xs mt-1" style={{color: 'var(--text-secondary)'}}>{directionLabel}</div>
+                            )}
                         </div>
 
                         {/* Progress bars */}
@@ -1190,25 +1275,36 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                                 </div>
                             )}
                             {isGlossary ? (
-                                <div className="mb-6">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="flex-1">
-                                            <p className="text-lg mb-2" style={{color: 'var(--text-secondary)'}}>
-                                                {currentQ.question}
-                                            </p>
-                                            <p className="text-3xl font-bold mt-4" style={{color: 'var(--text-primary)'}}>
-                                                {currentQ.word}
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={() => speakGlossary(currentQ.question, currentQ.word)}
-                                            className="ml-4 bg-blue-100 hover:bg-blue-200 text-blue-600 p-3 rounded-lg transition"
-                                            title="Lyssna på mening + ord"
-                                        >
-                                            🔊
-                                        </button>
+                                isReverseDirection ? (
+                                    <div className="mb-6">
+                                        <p className="text-sm mb-2" style={{color: 'var(--text-secondary)'}}>
+                                            Svenska ordet:
+                                        </p>
+                                        <p className="text-3xl font-bold mt-2" style={{color: 'var(--text-primary)'}}>
+                                            {currentQ.answer}
+                                        </p>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className="mb-6">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex-1">
+                                                <p className="text-lg mb-2" style={{color: 'var(--text-secondary)'}}>
+                                                    {currentQ.question}
+                                                </p>
+                                                <p className="text-3xl font-bold mt-4" style={{color: 'var(--text-primary)'}}>
+                                                    {currentQ.word}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => speakGlossary(currentQ.question, currentQ.word)}
+                                                className="ml-4 bg-blue-100 hover:bg-blue-200 text-blue-600 p-3 rounded-lg transition"
+                                                title="Lyssna på mening + ord"
+                                            >
+                                                🔊
+                                            </button>
+                                        </div>
+                                    </div>
+                                )
                             ) : (
                                 <div className="flex justify-between items-start mb-4">
                                     <h2 className="text-2xl font-bold flex-1" style={{color: 'var(--text-primary)'}}>{currentQ.question}</h2>
@@ -1224,7 +1320,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
 
                             {(phase === 1 && answerMode !== 'text_only') ? (
                                 <div className="space-y-3 mt-6">
-                                    {currentQ.shuffledOptions.map((option, i) => {
+                                    {currentOptions.map((option, i) => {
                                         let className = "w-full text-left p-4 border-2 rounded-lg transition ";
                                         let buttonStyle = {};
 
@@ -1234,7 +1330,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                                                     ? "border-green-500 bg-green-100 soft-blink"
                                                     : "border-red-500 bg-red-100";
                                                 buttonStyle.color = '#166534'; // Grön text för rätt svar
-                                            } else if (option === currentQ.answer && !isCorrect) {
+                                            } else if (option === currentCorrectAnswer && !isCorrect) {
                                                 className += "border-green-500 bg-green-100 font-bold";
                                                 buttonStyle.color = '#166534';
                                             } else {
@@ -1282,7 +1378,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                                     />
                                     {showFeedback && !isCorrect && (
                                         <div className="text-red-600 font-medium">
-                                            Rätt svar: {currentQ.answer}
+                                            Rätt svar: {currentCorrectAnswer}
                                         </div>
                                     )}
                                     {!showFeedback && (

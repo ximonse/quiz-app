@@ -1,8 +1,16 @@
 <?php
 require_once 'config.php';
-requireTeacher();
+$is_super_admin = isLoggedInAsSuperAdmin();
+if (!$is_super_admin) {
+    requireTeacher();
+}
 
-$teacher_id = getCurrentTeacherID();
+$teacher_id = $is_super_admin ? null : getCurrentTeacherID();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $expects_json = isset($_POST['action']) && in_array($_POST['action'], ['upload_image', 'delete_image'], true);
+    requireValidCsrf($expects_json);
+}
 
 // Hantera AJAX-anrop FÖRST, innan någon data laddas
 // Detta förhindrar att något outputtas före JSON-responsen
@@ -47,8 +55,8 @@ $quiz_id = $_GET['quiz_id'] ?? '';
 $quizzes = readJSON(QUIZZES_FILE);
 
 // Kolla att quizet finns och tillhör läraren
-if (!isset($quizzes[$quiz_id]) || $quizzes[$quiz_id]['teacher_id'] !== $teacher_id) {
-    header('Location: admin.php');
+if (!isset($quizzes[$quiz_id]) || (!$is_super_admin && $quizzes[$quiz_id]['teacher_id'] !== $teacher_id)) {
+    header('Location: ' . ($is_super_admin ? 'super-admin.php' : 'admin.php'));
     exit;
 }
 
@@ -68,16 +76,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $quizzes[$quiz_id]['answer_mode'] = $_POST['answer_mode'] ?? $quiz['answer_mode'];
     $quizzes[$quiz_id]['required_correct_phase1'] = intval($_POST['required_phase1'] ?? $quiz['required_correct_phase1']);
     $quizzes[$quiz_id]['required_correct_phase2'] = intval($_POST['required_phase2'] ?? $quiz['required_correct_phase2']);
+    if (isset($quiz['type']) && $quiz['type'] === 'glossary') {
+        $quizzes[$quiz_id]['reverse_enabled'] = (($_POST['reverse_enabled'] ?? (($quiz['reverse_enabled'] ?? false) ? '1' : '0')) === '1');
+        $quizzes[$quiz_id]['reverse_answer_mode'] = $_POST['reverse_answer_mode'] ?? ($quiz['reverse_answer_mode'] ?? 'hybrid');
+        $quizzes[$quiz_id]['reverse_required_correct_phase1'] = intval($_POST['reverse_required_phase1'] ?? ($quiz['reverse_required_correct_phase1'] ?? 2));
+        $quizzes[$quiz_id]['reverse_required_correct_phase2'] = intval($_POST['reverse_required_phase2'] ?? ($quiz['reverse_required_correct_phase2'] ?? 2));
+    } else {
+        $quizzes[$quiz_id]['reverse_enabled'] = false;
+        $quizzes[$quiz_id]['reverse_answer_mode'] = 'hybrid';
+        $quizzes[$quiz_id]['reverse_required_correct_phase1'] = 2;
+        $quizzes[$quiz_id]['reverse_required_correct_phase2'] = 2;
+    }
 
     if ($updated_questions && count($updated_questions) > 0) {
         $quizzes[$quiz_id]['questions'] = $updated_questions;
         writeJSON(QUIZZES_FILE, $quizzes);
-        header('Location: admin.php?updated=1');
+        $return_url = $is_super_admin ? 'super-admin.php?updated=1' : 'admin.php?updated=1';
+        header('Location: ' . $return_url);
         exit;
     }
 }
 
 $is_glossary = isset($quiz['type']) && $quiz['type'] === 'glossary';
+$return_url = $is_super_admin ? 'super-admin.php' : 'admin.php';
 ?>
 <!DOCTYPE html>
 <html lang="sv">
@@ -96,7 +117,7 @@ $is_glossary = isset($quiz['type']) && $quiz['type'] === 'glossary';
                     <h1 class="text-3xl font-bold text-gray-800">✏️ Redigera quiz</h1>
                     <p class="text-gray-500"><?= htmlspecialchars($quiz['title']) ?></p>
                 </div>
-                <a href="admin.php" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                <a href="<?= $return_url ?>" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
                     Avbryt
                 </a>
             </div>
@@ -175,6 +196,36 @@ $is_glossary = isset($quiz['type']) && $quiz['type'] === 'glossary';
                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
+
+                <?php if ($is_glossary): ?>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Omvänd glosträning</label>
+                        <select id="quiz_reverse_enabled" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="1" <?= ($quiz['reverse_enabled'] ?? false) ? 'selected' : '' ?>>Ja</option>
+                            <option value="0" <?= !($quiz['reverse_enabled'] ?? false) ? 'selected' : '' ?>>Nej</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Omvänt svarsläge</label>
+                        <select id="quiz_reverse_answer_mode" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="hybrid" <?= ($quiz['reverse_answer_mode'] ?? 'hybrid') === 'hybrid' ? 'selected' : '' ?>>Hybrid (Flerval → Fritext)</option>
+                            <option value="multiple_choice" <?= ($quiz['reverse_answer_mode'] ?? '') === 'multiple_choice' ? 'selected' : '' ?>>Bara flerval</option>
+                            <option value="text_only" <?= ($quiz['reverse_answer_mode'] ?? '') === 'text_only' ? 'selected' : '' ?>>Bara fritext</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Omvänt fas 1</label>
+                        <input type="number" id="quiz_reverse_required_phase1" value="<?= $quiz['reverse_required_correct_phase1'] ?? 2 ?>" min="1" max="10"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Omvänt fas 2</label>
+                        <input type="number" id="quiz_reverse_required_phase2" value="<?= $quiz['reverse_required_correct_phase2'] ?? 2 ?>" min="1" max="10"
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -194,7 +245,7 @@ $is_glossary = isset($quiz['type']) && $quiz['type'] === 'glossary';
                 <button onclick="saveQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-bold">
                     Spara ändringar
                 </button>
-                <a href="admin.php" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg inline-block">
+                <a href="<?= $return_url ?>" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg inline-block">
                     Avbryt
                 </a>
             </div>
@@ -202,6 +253,7 @@ $is_glossary = isset($quiz['type']) && $quiz['type'] === 'glossary';
     </div>
 
     <script>
+        const csrfToken = <?= json_encode(getCsrfToken()) ?>;
         const isGlossary = <?= $is_glossary ? 'true' : 'false' ?>;
         let questions = <?= json_encode($quiz['questions'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
@@ -386,6 +438,7 @@ $is_glossary = isset($quiz['type']) && $quiz['type'] === 'glossary';
             const formData = new FormData();
             formData.append('image', file);
             formData.append('action', 'upload_image');
+            formData.append('csrf_token', csrfToken);
 
             try {
                 const response = await fetch('', {
@@ -415,6 +468,7 @@ $is_glossary = isset($quiz['type']) && $quiz['type'] === 'glossary';
             const formData = new FormData();
             formData.append('action', 'delete_image');
             formData.append('filename', filename);
+            formData.append('csrf_token', csrfToken);
 
             try {
                 const response = await fetch('', {
@@ -466,6 +520,7 @@ $is_glossary = isset($quiz['type']) && $quiz['type'] === 'glossary';
             form.method = 'POST';
             form.innerHTML = `
                 <input type="hidden" name="action" value="update_quiz">
+                <input type="hidden" name="csrf_token" value="${csrfToken}">
                 <input type="hidden" name="title" value="${escapeHtml(title)}">
                 <input type="hidden" name="subject" value="${escapeHtml(document.getElementById('quiz_subject').value.trim())}">
                 <input type="hidden" name="grade" value="${escapeHtml(document.getElementById('quiz_grade').value.trim())}">
@@ -475,6 +530,10 @@ $is_glossary = isset($quiz['type']) && $quiz['type'] === 'glossary';
                 <input type="hidden" name="answer_mode" value="${document.getElementById('quiz_answer_mode').value}">
                 <input type="hidden" name="required_phase1" value="${document.getElementById('quiz_required_phase1').value}">
                 <input type="hidden" name="required_phase2" value="${document.getElementById('quiz_required_phase2').value}">
+                <input type="hidden" name="reverse_enabled" value="${document.getElementById('quiz_reverse_enabled') ? document.getElementById('quiz_reverse_enabled').value : '0'}">
+                <input type="hidden" name="reverse_answer_mode" value="${document.getElementById('quiz_reverse_answer_mode') ? document.getElementById('quiz_reverse_answer_mode').value : 'hybrid'}">
+                <input type="hidden" name="reverse_required_phase1" value="${document.getElementById('quiz_reverse_required_phase1') ? document.getElementById('quiz_reverse_required_phase1').value : '2'}">
+                <input type="hidden" name="reverse_required_phase2" value="${document.getElementById('quiz_reverse_required_phase2') ? document.getElementById('quiz_reverse_required_phase2').value : '2'}">
                 <input type="hidden" name="questions" value='${JSON.stringify(questions)}'>
             `;
             document.body.appendChild(form);

@@ -15,6 +15,25 @@ $teachers = readJSON(TEACHERS_FILE);
 $quizzes = readJSON(QUIZZES_FILE);
 $stats = readJSON(STATS_FILE);
 
+if (!function_exists('readCsvRowWithFallbackDelimiter')) {
+    function readCsvRowWithFallbackDelimiter($handle) {
+        $data = fgetcsv($handle, 0, ';');
+        if ($data === false) {
+            return false;
+        }
+
+        // Bakåtkompatibilitet: om filen råkar vara komma-separerad.
+        if (count($data) === 1 && strpos($data[0], ',') !== false) {
+            $fallback = str_getcsv($data[0], ',');
+            if (count($fallback) > 1) {
+                return $fallback;
+            }
+        }
+
+        return $data;
+    }
+}
+
 // Filtrera bara denna lärarens quizzes
 $my_quizzes = array_filter($quizzes, function($q) use ($teacher_id) {
     return $q['teacher_id'] === $teacher_id;
@@ -30,12 +49,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $quiz_type = $_POST['quiz_type'] ?? 'fact';
         $language = $_POST['language'] ?? 'sv';
         $spelling_mode = $_POST['spelling_mode'] ?? 'student_choice';
+        $reverse_enabled = (($_POST['reverse_enabled'] ?? '1') === '1');
+        $reverse_answer_mode = $_POST['reverse_answer_mode'] ?? 'hybrid';
+        $reverse_required_phase1 = intval($_POST['reverse_required_phase1'] ?? 2);
+        $reverse_required_phase2 = intval($_POST['reverse_required_phase2'] ?? 2);
         $subject = trim($_POST['subject'] ?? '');
         $grade = trim($_POST['grade'] ?? '');
         $tags = trim($_POST['tags'] ?? '');
         $answer_mode = $_POST['answer_mode'] ?? 'hybrid';
         $required_phase1 = intval($_POST['required_phase1'] ?? 2);
-        $required_phase2 = intval($_POST['required_phase2'] ?? 4);
+        $required_phase2 = intval($_POST['required_phase2'] ?? 2);
+
+        if ($quiz_type !== 'glossary') {
+            $reverse_enabled = false;
+            $reverse_answer_mode = 'hybrid';
+            $reverse_required_phase1 = 2;
+            $reverse_required_phase2 = 2;
+        }
 
         if ($title && $questions_json) {
             $questions = json_decode($questions_json, true);
@@ -50,6 +80,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'answer_mode' => $answer_mode,
                     'required_correct_phase1' => $required_phase1,
                     'required_correct_phase2' => $required_phase2,
+                    'reverse_enabled' => $reverse_enabled,
+                    'reverse_answer_mode' => $reverse_answer_mode,
+                    'reverse_required_correct_phase1' => $reverse_required_phase1,
+                    'reverse_required_correct_phase2' => $reverse_required_phase2,
                     'subject' => $subject,
                     'grade' => $grade,
                     'tags' => $tags,
@@ -125,10 +159,21 @@ if ((isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_O
     $spelling_mode = $_POST['csv_spelling_mode'] ?? 'student_choice';
     $answer_mode = $_POST['csv_answer_mode'] ?? 'hybrid';
     $required_phase1 = intval($_POST['csv_required_phase1'] ?? 2);
-    $required_phase2 = intval($_POST['csv_required_phase2'] ?? 4);
+    $required_phase2 = intval($_POST['csv_required_phase2'] ?? 2);
+    $reverse_enabled = (($_POST['csv_reverse_enabled'] ?? '1') === '1');
+    $reverse_answer_mode = $_POST['csv_reverse_answer_mode'] ?? 'hybrid';
+    $reverse_required_phase1 = intval($_POST['csv_reverse_required_phase1'] ?? 2);
+    $reverse_required_phase2 = intval($_POST['csv_reverse_required_phase2'] ?? 2);
     $subject = trim($_POST['csv_subject'] ?? '');
     $grade = trim($_POST['csv_grade'] ?? '');
     $tags = trim($_POST['csv_tags'] ?? '');
+
+    if ($quiz_type !== 'glossary') {
+        $reverse_enabled = false;
+        $reverse_answer_mode = 'hybrid';
+        $reverse_required_phase1 = 2;
+        $reverse_required_phase2 = 2;
+    }
 
     if (!$title) {
         $error = "Du måste ange en titel för quizet";
@@ -147,9 +192,20 @@ if ((isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_O
 
         if ($file) {
             $row = 0;
-            while (($data = fgetcsv($file, 1000, ',')) !== FALSE) {
+            while (($data = readCsvRowWithFallbackDelimiter($file)) !== false) {
                 $row++;
-                if ($row === 1) continue; // Skippa header
+                if (empty(array_filter($data, 'strlen'))) {
+                    continue;
+                }
+
+                // Skippa header-rad om den finns (men kräv inte header).
+                if ($row === 1) {
+                    $first_col = strtolower(trim($data[0] ?? ''));
+                    $header_candidates = ['fråga', 'question', 'mening', 'sentence', 'exempelmening'];
+                    if (in_array($first_col, $header_candidates, true)) {
+                        continue;
+                    }
+                }
 
                 // För glosquiz: minst 4 kolumner (Mening,Ord,Översättning,Fel1,...)
                 // För faktaquiz: minst 3 kolumner (Fråga,Rätt svar,Fel1,...)
@@ -210,6 +266,10 @@ if ((isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_O
                     'answer_mode' => $answer_mode,
                     'required_correct_phase1' => $required_phase1,
                     'required_correct_phase2' => $required_phase2,
+                    'reverse_enabled' => $reverse_enabled,
+                    'reverse_answer_mode' => $reverse_answer_mode,
+                    'reverse_required_correct_phase1' => $reverse_required_phase1,
+                    'reverse_required_correct_phase2' => $reverse_required_phase2,
                     'subject' => $subject,
                     'grade' => $grade,
                     'tags' => $tags,
@@ -382,19 +442,19 @@ foreach ($my_quizzes as $qid => $quiz) {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Ämne</label>
-                            <input type="text" name="csv_subject"
+                            <input type="text" name="csv_subject" id="csv_subject"
                                    placeholder="t.ex. Biologi, Engelska"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Årskurs</label>
-                            <input type="text" name="csv_grade"
+                            <input type="text" name="csv_grade" id="csv_grade"
                                    placeholder="t.ex. åk 6, åk 9"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Egna taggar</label>
-                            <input type="text" name="csv_tags"
+                            <input type="text" name="csv_tags" id="csv_tags"
                                    placeholder="Komma-separerade"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
@@ -411,7 +471,7 @@ foreach ($my_quizzes as $qid => $quiz) {
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Språk</label>
-                            <select name="csv_language" onchange="showUkrainianHelp(this.value)"
+                            <select name="csv_language" id="csv_language" onchange="showUkrainianHelp(this.value)"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                                 <option value="sv">Svenska</option>
                                 <option value="en">Engelska</option>
@@ -441,7 +501,7 @@ foreach ($my_quizzes as $qid => $quiz) {
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Stavningsläge</label>
-                            <select name="csv_spelling_mode"
+                            <select name="csv_spelling_mode" id="csv_spelling_mode"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                                 <option value="student_choice">Eleven väljer</option>
                                 <option value="easy">Easy mode</option>
@@ -462,12 +522,42 @@ foreach ($my_quizzes as $qid => $quiz) {
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Rätt svar fas 1 (flerval)</label>
-                            <input type="number" name="csv_required_phase1" value="2" min="1" max="10"
+                            <input type="number" name="csv_required_phase1" id="csv_required_phase1" value="2" min="1" max="10"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Rätt svar fas 2 (fritext)</label>
-                            <input type="number" name="csv_required_phase2" value="2" min="1" max="10"
+                            <input type="number" name="csv_required_phase2" id="csv_required_phase2" value="2" min="1" max="10"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Omvänd glosträning</label>
+                            <select name="csv_reverse_enabled" id="csv_reverse_enabled"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="1" selected>Ja (standard)</option>
+                                <option value="0">Nej</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Omvänt svarsläge</label>
+                            <select name="csv_reverse_answer_mode" id="csv_reverse_answer_mode"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="hybrid" selected>Hybrid (Flerval → Fritext)</option>
+                                <option value="multiple_choice">Bara flerval</option>
+                                <option value="text_only">Bara fritext</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Omvänt fas 1</label>
+                            <input type="number" name="csv_reverse_required_phase1" id="csv_reverse_required_phase1" value="2" min="1" max="10"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Omvänt fas 2</label>
+                            <input type="number" name="csv_reverse_required_phase2" id="csv_reverse_required_phase2" value="2" min="1" max="10"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
@@ -477,8 +567,8 @@ foreach ($my_quizzes as $qid => $quiz) {
                         <input type="file" name="csv_file" accept=".csv" required
                                class="w-full px-4 py-2 border border-gray-300 rounded-lg">
                         <p id="csv_format_hint" class="text-sm text-gray-500 mt-2">
-                            <strong>Fakta-quiz format:</strong> Fråga,Rätt svar,Fel alternativ 1,Fel alternativ 2,...<br>
-                            <strong>Glosquiz format:</strong> Mening,Ord,Rätt översättning,Fel översättning 1,Fel översättning 2,...
+                            <strong>Fakta-quiz format:</strong> Fråga;Rätt svar;Fel alternativ 1;Fel alternativ 2;...<br>
+                            <strong>Glosquiz format:</strong> Mening;Ord;Rätt översättning;Fel översättning 1;Fel översättning 2;...
                         </p>
                         <div class="mt-3">
                             <a href="templates/glossary-template.csv" download class="inline-flex items-center bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm">
@@ -514,7 +604,7 @@ foreach ($my_quizzes as $qid => $quiz) {
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Språk</label>
-                            <select name="csv_language" onchange="showUkrainianHelp(this.value)"
+                            <select name="csv_language" id="paste_language" onchange="showUkrainianHelp(this.value)"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                                 <option value="sv">Svenska</option>
                                 <option value="en">Engelska</option>
@@ -544,7 +634,7 @@ foreach ($my_quizzes as $qid => $quiz) {
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Stavningsläge</label>
-                            <select name="csv_spelling_mode"
+                            <select name="csv_spelling_mode" id="paste_spelling_mode"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                                 <option value="student_choice">Eleven väljer</option>
                                 <option value="easy">Easy mode</option>
@@ -565,12 +655,42 @@ foreach ($my_quizzes as $qid => $quiz) {
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Rätt svar fas 1 (flerval)</label>
-                            <input type="number" name="csv_required_phase1" value="2" min="1" max="10"
+                            <input type="number" name="csv_required_phase1" id="paste_required_phase1" value="2" min="1" max="10"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Rätt svar fas 2 (fritext)</label>
-                            <input type="number" name="csv_required_phase2" value="2" min="1" max="10"
+                            <input type="number" name="csv_required_phase2" id="paste_required_phase2" value="2" min="1" max="10"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Omvänd glosträning</label>
+                            <select name="csv_reverse_enabled" id="paste_reverse_enabled"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="1" selected>Ja (standard)</option>
+                                <option value="0">Nej</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Omvänt svarsläge</label>
+                            <select name="csv_reverse_answer_mode" id="paste_reverse_answer_mode"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="hybrid" selected>Hybrid (Flerval → Fritext)</option>
+                                <option value="multiple_choice">Bara flerval</option>
+                                <option value="text_only">Bara fritext</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Omvänt fas 1</label>
+                            <input type="number" name="csv_reverse_required_phase1" id="paste_reverse_required_phase1" value="2" min="1" max="10"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Omvänt fas 2</label>
+                            <input type="number" name="csv_reverse_required_phase2" id="paste_reverse_required_phase2" value="2" min="1" max="10"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
@@ -578,12 +698,12 @@ foreach ($my_quizzes as $qid => $quiz) {
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Klistra in CSV-data</label>
                         <textarea name="csv_paste" rows="10" required id="paste_textarea"
-                                  placeholder="Fråga,Rätt svar,Fel alternativ 1,Fel alternativ 2,...&#10;Vad kallas djur som äter växter?,Växtätare,Köttätare,Allätare,Rovdjur"
+                                  placeholder="Fråga;Rätt svar;Fel alternativ 1;Fel alternativ 2;...&#10;Vad kallas djur som äter växter?;Växtätare;Köttätare;Allätare;Rovdjur"
                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-mono text-sm"></textarea>
                         <div id="paste_format_hint" class="text-sm text-gray-600 mt-2 p-3 bg-blue-50 border border-blue-200 rounded">
                             <strong class="text-blue-800">📝 Fakta-quiz format:</strong><br>
-                            <code class="bg-white px-2 py-1 rounded">Fråga,Rätt svar,Fel alternativ 1,Fel alternativ 2,...</code><br>
-                            <span class="text-xs text-gray-500 mt-1 block">Exempel: Vad kallas djur som äter växter?,Växtätare,Köttätare,Allätare,Rovdjur</span>
+                            <code class="bg-white px-2 py-1 rounded">Fråga;Rätt svar;Fel alternativ 1;Fel alternativ 2;...</code><br>
+                            <span class="text-xs text-gray-500 mt-1 block">Exempel: Vad kallas djur som äter växter?;Växtätare;Köttätare;Allätare;Rovdjur</span>
                         </div>
                     </div>
 
@@ -678,6 +798,36 @@ foreach ($my_quizzes as $qid => $quiz) {
                         </div>
                     </div>
 
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Omvänd glosträning</label>
+                            <select id="manual_reverse_enabled"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="1" selected>Ja (standard)</option>
+                                <option value="0">Nej</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Omvänt svarsläge</label>
+                            <select id="manual_reverse_answer_mode"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="hybrid" selected>Hybrid (Flerval → Fritext)</option>
+                                <option value="multiple_choice">Bara flerval</option>
+                                <option value="text_only">Bara fritext</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Omvänt fas 1</label>
+                            <input type="number" id="manual_reverse_required_phase1" value="2" min="1" max="10"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Omvänt fas 2</label>
+                            <input type="number" id="manual_reverse_required_phase2" value="2" min="1" max="10"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
                     <div id="questions-container" class="space-y-4">
                         <!-- Frågor läggs till här -->
                     </div>
@@ -736,7 +886,7 @@ foreach ($my_quizzes as $qid => $quiz) {
                             <div class="bg-gray-50 p-3 rounded text-xs">
                                 <strong>Format per quiz:</strong><br>
                                 Quiz rubrik<br>
-                                Fråga,Rätt svar,Fel alternativ 1,Fel alternativ 2,...<br>
+                                Fråga;Rätt svar;Fel alternativ 1;Fel alternativ 2;...<br>
                                 [Tom rad]<br>
                                 Nästa quiz rubrik<br>
                                 ...
@@ -799,10 +949,39 @@ foreach ($my_quizzes as $qid => $quiz) {
                                            class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
                                 </div>
                             </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Omvänd glosträning</label>
+                                    <select id="batch_gloss_reverse_enabled" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                                        <option value="1" selected>Ja (standard)</option>
+                                        <option value="0">Nej</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Omvänt svarsläge</label>
+                                    <select id="batch_gloss_reverse_answer_mode" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                                        <option value="hybrid" selected>Hybrid</option>
+                                        <option value="multiple_choice">Bara flerval</option>
+                                        <option value="text_only">Bara fritext</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Omvänt fas 1</label>
+                                    <input type="number" id="batch_gloss_reverse_required_phase1" value="2" min="1" max="10"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Omvänt fas 2</label>
+                                    <input type="number" id="batch_gloss_reverse_required_phase2" value="2" min="1" max="10"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                                </div>
+                            </div>
                             <div class="bg-gray-50 p-3 rounded text-xs">
                                 <strong>Format per quiz:</strong><br>
                                 Quiz rubrik<br>
-                                Mening,Ord,Rätt översättning,Fel översättning 1,Fel översättning 2,...<br>
+                                Mening;Ord;Rätt översättning;Fel översättning 1;Fel översättning 2;...<br>
                                 [Tom rad]<br>
                                 Nästa quiz rubrik<br>
                                 ...
@@ -836,8 +1015,8 @@ foreach ($my_quizzes as $qid => $quiz) {
                 </div>
                 <pre id="ai_prompt" class="text-sm bg-gray-50 p-3 rounded border border-gray-200 overflow-x-auto whitespace-pre-wrap" data-fact-prompt="Skapa ett kunskapsquiz i CSV-format för mina elever.
 
-FORMAT:
-Fråga,Rätt svar,Fel alternativ 1,Fel alternativ 2,Fel alternativ 3,...
+FORMAT (använd semikolon):
+Fråga;Rätt svar;Fel alternativ 1;Fel alternativ 2;Fel alternativ 3;...
 
 REGLER:
 - Varje rad = 1 fråga
@@ -848,39 +1027,40 @@ REGLER:
 - Inga radbrytningar i frågor/svar
 
 EXEMPEL:
-Vad kallas djur som äter växter?,Växtätare,Köttätare,Allätare,Rovdjur
-Vilket organ pumpar blod?,Hjärtat,Lungorna,Levern,Njurarna
-Vad heter Sveriges huvudstad?,Stockholm,Göteborg,Malmö,Uppsala
+Vad kallas djur som äter växter?;Växtätare;Köttätare;Allätare;Rovdjur
+Vilket organ pumpar blod?;Hjärtat;Lungorna;Levern;Njurarna
+Vad heter Sveriges huvudstad?;Stockholm;Göteborg;Malmö;Uppsala
 
 UPPGIFT:
-Skapa 15 frågor om: [BESKRIV ÄMNET HÄR - t.ex. &quot;Sveriges kungar&quot;, &quot;Fotosyntesen&quot;, &quot;Andra världskriget&quot;]
+Skapa 15 frågor om: [BESKRIV ÄMNET HÄR]
 
 VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-rader." data-glossary-prompt="Skapa glosor i CSV-format för mina elever.
 
-FORMAT:
-Exempelmening,Ord att lära,Rätt översättning,Fel översättning 1,Fel översättning 2,...
+FORMAT (använd semikolon):
+Exempelmening;Ord att lära;Rätt översättning till svenska;Fel översättning 1;Fel översättning 2;Fel översättning 3
 
 REGLER:
 - Varje rad = 1 glos
 - Meningen ska vara på målspråket (det språk eleven tränar)
 - &quot;Ord att lära&quot; ska finnas i meningen
-- Minst 2 översättningar (1 rätt + 1 fel)
-- Felaktiga översättningar ska vara trovärdiga
+- Lägg alltid minst 3 felaktiga översättningar
+- Felaktiga översättningar ska vara trovärdiga men inte för lika rätt svar
+- Återanvänd gärna andra ord från listan som felaktiga alternativ när det passar
 - Inga citattecken, inga radbrytningar
 
-EXEMPEL (Engelska → Svenska):
-hello my name is Robert,name,namn,hej,Robert
-the cat is sleeping,cat,katt,hund,sover
-I like to read books,read,läsa,bok,gilla
+EXEMPEL (Spanska → Svenska):
+Hola, me llamo Roberto;llamo;heter;bor;springer;läser
+El gato duerme;gato;katt;hund;fågel;häst
+Me gusta leer libros;leer;läsa;skriva;dricka;sova
 
 UPPGIFT:
 Skapa 15 glosor från [SPRÅK] till svenska med dessa ord:
-[LISTA ORD HÄR - t.ex. &quot;cat, dog, house, tree, water, book, car, sun&quot;]
+[LISTA ORD HÄR]
 
 VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar.">Skapa ett kunskapsquiz i CSV-format för mina elever.
 
-FORMAT:
-Fråga,Rätt svar,Fel alternativ 1,Fel alternativ 2,Fel alternativ 3,...
+FORMAT (använd semikolon):
+Fråga;Rätt svar;Fel alternativ 1;Fel alternativ 2;Fel alternativ 3;...
 
 REGLER:
 - Varje rad = 1 fråga
@@ -891,12 +1071,12 @@ REGLER:
 - Inga radbrytningar i frågor/svar
 
 EXEMPEL:
-Vad kallas djur som äter växter?,Växtätare,Köttätare,Allätare,Rovdjur
-Vilket organ pumpar blod?,Hjärtat,Lungorna,Levern,Njurarna
-Vad heter Sveriges huvudstad?,Stockholm,Göteborg,Malmö,Uppsala
+Vad kallas djur som äter växter?;Växtätare;Köttätare;Allätare;Rovdjur
+Vilket organ pumpar blod?;Hjärtat;Lungorna;Levern;Njurarna
+Vad heter Sveriges huvudstad?;Stockholm;Göteborg;Malmö;Uppsala
 
 UPPGIFT:
-Skapa 15 frågor om: [BESKRIV ÄMNET HÄR - t.ex. "Sveriges kungar", "Fotosyntesen", "Andra världskriget"]
+Skapa 15 frågor om: [BESKRIV ÄMNET HÄR]
 
 VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-rader.</pre>
             </div>
@@ -1089,7 +1269,11 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
                 grade: document.getElementById('csv_grade')?.value || '',
                 tags: document.getElementById('csv_tags')?.value || '',
                 requiredPhase1: document.getElementById('csv_required_phase1')?.value || '2',
-                requiredPhase2: document.getElementById('csv_required_phase2')?.value || '2'
+                requiredPhase2: document.getElementById('csv_required_phase2')?.value || '2',
+                reverseEnabled: document.getElementById('csv_reverse_enabled')?.value || '1',
+                reverseAnswerMode: document.getElementById('csv_reverse_answer_mode')?.value || 'hybrid',
+                reverseRequiredPhase1: document.getElementById('csv_reverse_required_phase1')?.value || '2',
+                reverseRequiredPhase2: document.getElementById('csv_reverse_required_phase2')?.value || '2'
             };
             localStorage.setItem('quizSettings', JSON.stringify(settings));
         }
@@ -1116,6 +1300,10 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
                 if (document.getElementById('csv_tags')) document.getElementById('csv_tags').value = settings.tags;
                 if (document.getElementById('csv_required_phase1')) document.getElementById('csv_required_phase1').value = settings.requiredPhase1;
                 if (document.getElementById('csv_required_phase2')) document.getElementById('csv_required_phase2').value = settings.requiredPhase2;
+                if (document.getElementById('csv_reverse_enabled')) document.getElementById('csv_reverse_enabled').value = settings.reverseEnabled || '1';
+                if (document.getElementById('csv_reverse_answer_mode')) document.getElementById('csv_reverse_answer_mode').value = settings.reverseAnswerMode || 'hybrid';
+                if (document.getElementById('csv_reverse_required_phase1')) document.getElementById('csv_reverse_required_phase1').value = settings.reverseRequiredPhase1 || '2';
+                if (document.getElementById('csv_reverse_required_phase2')) document.getElementById('csv_reverse_required_phase2').value = settings.reverseRequiredPhase2 || '2';
 
                 // Paste-fliken (samma fält)
                 const pasteFields = document.querySelectorAll('[id^="paste_"]');
@@ -1135,6 +1323,10 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
                 if (document.getElementById('manual_tags')) document.getElementById('manual_tags').value = settings.tags;
                 if (document.getElementById('manual_required_phase1')) document.getElementById('manual_required_phase1').value = settings.requiredPhase1;
                 if (document.getElementById('manual_required_phase2')) document.getElementById('manual_required_phase2').value = settings.requiredPhase2;
+                if (document.getElementById('manual_reverse_enabled')) document.getElementById('manual_reverse_enabled').value = settings.reverseEnabled || '1';
+                if (document.getElementById('manual_reverse_answer_mode')) document.getElementById('manual_reverse_answer_mode').value = settings.reverseAnswerMode || 'hybrid';
+                if (document.getElementById('manual_reverse_required_phase1')) document.getElementById('manual_reverse_required_phase1').value = settings.reverseRequiredPhase1 || '2';
+                if (document.getElementById('manual_reverse_required_phase2')) document.getElementById('manual_reverse_required_phase2').value = settings.reverseRequiredPhase2 || '2';
 
             } catch (e) {
                 console.error('Kunde inte ladda sparade inställningar:', e);
@@ -1323,6 +1515,10 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
             const answerMode = document.getElementById('manual_answer_mode').value;
             const requiredPhase1 = document.getElementById('manual_required_phase1').value;
             const requiredPhase2 = document.getElementById('manual_required_phase2').value;
+            const reverseEnabled = document.getElementById('manual_reverse_enabled').value;
+            const reverseAnswerMode = document.getElementById('manual_reverse_answer_mode').value;
+            const reverseRequiredPhase1 = document.getElementById('manual_reverse_required_phase1').value;
+            const reverseRequiredPhase2 = document.getElementById('manual_reverse_required_phase2').value;
             const subject = document.getElementById('manual_subject').value.trim();
             const grade = document.getElementById('manual_grade').value.trim();
             const tags = document.getElementById('manual_tags').value.trim();
@@ -1395,6 +1591,10 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
                 <input type="hidden" name="answer_mode" value="${answerMode}">
                 <input type="hidden" name="required_phase1" value="${requiredPhase1}">
                 <input type="hidden" name="required_phase2" value="${requiredPhase2}">
+                <input type="hidden" name="reverse_enabled" value="${reverseEnabled}">
+                <input type="hidden" name="reverse_answer_mode" value="${reverseAnswerMode}">
+                <input type="hidden" name="reverse_required_phase1" value="${reverseRequiredPhase1}">
+                <input type="hidden" name="reverse_required_phase2" value="${reverseRequiredPhase2}">
                 <input type="hidden" name="subject" value="${subject}">
                 <input type="hidden" name="grade" value="${grade}">
                 <input type="hidden" name="tags" value="${tags}">
@@ -1483,13 +1683,13 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
 
             if (quizType === 'glossary') {
                 hint.innerHTML = `
-                    <strong class="text-green-800">📚 Glosquiz format:</strong> Mening,Ord,Rätt översättning,Fel översättning 1,Fel översättning 2,...<br>
-                    <span class="text-xs text-gray-500 mt-1 block">Exempel: the cat is sleeping,cat,katt,hund,sover,säng</span>
+                    <strong class="text-green-800">📚 Glosquiz format:</strong> Mening;Ord;Rätt översättning;Fel översättning 1;Fel översättning 2;...<br>
+                    <span class="text-xs text-gray-500 mt-1 block">Exempel: the cat is sleeping;cat;katt;hund;sover;säng</span>
                 `;
             } else {
                 hint.innerHTML = `
-                    <strong class="text-blue-800">📝 Fakta-quiz format:</strong> Fråga,Rätt svar,Fel alternativ 1,Fel alternativ 2,...<br>
-                    <span class="text-xs text-gray-500 mt-1 block">Exempel: Vad kallas djur som äter växter?,Växtätare,Köttätare,Allätare,Rovdjur</span>
+                    <strong class="text-blue-800">📝 Fakta-quiz format:</strong> Fråga;Rätt svar;Fel alternativ 1;Fel alternativ 2;...<br>
+                    <span class="text-xs text-gray-500 mt-1 block">Exempel: Vad kallas djur som äter växter?;Växtätare;Köttätare;Allätare;Rovdjur</span>
                 `;
             }
         }
@@ -1502,19 +1702,19 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
             if (quizType === 'glossary') {
                 hint.innerHTML = `
                     <strong class="text-green-800">📚 Glosquiz format:</strong><br>
-                    <code class="bg-white px-2 py-1 rounded">Mening,Ord,Rätt översättning,Fel översättning 1,Fel översättning 2,...</code><br>
-                    <span class="text-xs text-gray-500 mt-1 block">Exempel: the cat is sleeping,cat,katt,hund,sover,säng</span>
+                    <code class="bg-white px-2 py-1 rounded">Mening;Ord;Rätt översättning;Fel översättning 1;Fel översättning 2;...</code><br>
+                    <span class="text-xs text-gray-500 mt-1 block">Exempel: the cat is sleeping;cat;katt;hund;sover;säng</span>
                 `;
                 hint.className = 'text-sm text-gray-600 mt-2 p-3 bg-green-50 border border-green-200 rounded';
-                textarea.placeholder = 'Mening,Ord,Rätt översättning,Fel 1,Fel 2,...\nthe cat is sleeping,cat,katt,hund,sover,säng';
+                textarea.placeholder = 'Mening;Ord;Rätt översättning;Fel 1;Fel 2;...\nthe cat is sleeping;cat;katt;hund;sover;säng';
             } else {
                 hint.innerHTML = `
                     <strong class="text-blue-800">📝 Fakta-quiz format:</strong><br>
-                    <code class="bg-white px-2 py-1 rounded">Fråga,Rätt svar,Fel alternativ 1,Fel alternativ 2,...</code><br>
-                    <span class="text-xs text-gray-500 mt-1 block">Exempel: Vad kallas djur som äter växter?,Växtätare,Köttätare,Allätare,Rovdjur</span>
+                    <code class="bg-white px-2 py-1 rounded">Fråga;Rätt svar;Fel alternativ 1;Fel alternativ 2;...</code><br>
+                    <span class="text-xs text-gray-500 mt-1 block">Exempel: Vad kallas djur som äter växter?;Växtätare;Köttätare;Allätare;Rovdjur</span>
                 `;
                 hint.className = 'text-sm text-gray-600 mt-2 p-3 bg-blue-50 border border-blue-200 rounded';
-                textarea.placeholder = 'Fråga,Rätt svar,Fel alternativ 1,Fel alternativ 2,...\nVad kallas djur som äter växter?,Växtätare,Köttätare,Allätare,Rovdjur';
+                textarea.placeholder = 'Fråga;Rätt svar;Fel alternativ 1;Fel alternativ 2;...\nVad kallas djur som äter växter?;Växtätare;Köttätare;Allätare;Rovdjur';
             }
         }
 
@@ -1597,6 +1797,10 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
             formData.append('answer_mode', document.getElementById('batch_gloss_answer_mode').value);
             formData.append('required_phase1', document.getElementById('batch_gloss_required_phase1').value);
             formData.append('required_phase2', document.getElementById('batch_gloss_required_phase2').value);
+            formData.append('reverse_enabled', document.getElementById('batch_gloss_reverse_enabled').value);
+            formData.append('reverse_answer_mode', document.getElementById('batch_gloss_reverse_answer_mode').value);
+            formData.append('reverse_required_phase1', document.getElementById('batch_gloss_reverse_required_phase1').value);
+            formData.append('reverse_required_phase2', document.getElementById('batch_gloss_reverse_required_phase2').value);
             formData.append('action', 'batch_import_gloss');
             formData.append('csrf_token', csrfToken);
 
