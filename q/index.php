@@ -406,8 +406,15 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                                 return [];
                             }
                             const normalizedWord = q.word.toLowerCase().trim();
-                            const wrongReverse = allGlossaryWords.filter(w => w.toLowerCase().trim() !== normalizedWord);
-                            const pickedWrong = shuffleArray(wrongReverse).slice(0, 3);
+                            const explicitReverseWrong = Array.isArray(q.reverse_wrong_options)
+                                ? q.reverse_wrong_options
+                                    .map(w => (w || '').trim())
+                                    .filter(Boolean)
+                                    .filter(w => w.toLowerCase().trim() !== normalizedWord)
+                                : [];
+                            const fallbackWrong = allGlossaryWords.filter(w => w.toLowerCase().trim() !== normalizedWord);
+                            const mergedWrong = Array.from(new Set([...explicitReverseWrong, ...fallbackWrong]));
+                            const pickedWrong = shuffleArray(mergedWrong).slice(0, 3);
                             const candidate = [q.word, ...pickedWrong];
                             return shuffleArray(Array.from(new Set(candidate)));
                         })()

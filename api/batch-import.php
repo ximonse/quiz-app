@@ -268,28 +268,41 @@ elseif ($action === 'batch_import_gloss') {
             continue;
         }
 
-        // Annars är det en glosfråga (minst 4 kolumner: Mening,Ord,Rätt svar,Fel1,...)
+        // Annars är det en glosfråga (minst 4 kolumner: Mening,Ord,Rätt svar,Fel sv 1,...)
         if (count($data) >= 4) {
             $sentence = trim($data[0]);
             $word = trim($data[1]);
             $answer = trim($data[2]);
 
-            // Samla alla felaktiga alternativ (från kolumn 3 och framåt)
+            // Kolumn 3-5: fel svenska alternativ (framåt)
             $wrongOptions = [];
-            for ($i = 3; $i < count($data); $i++) {
+            for ($i = 3; $i < min(count($data), 6); $i++) {
                 $wrong = trim($data[$i]);
                 if ($wrong) {
                     $wrongOptions[] = $wrong;
                 }
             }
 
+            // Kolumn 6+: fel ord på målspråket (omvänt), valfritt
+            $reverseWrongOptions = [];
+            for ($i = 6; $i < count($data); $i++) {
+                $wrong = trim($data[$i]);
+                if ($wrong) {
+                    $reverseWrongOptions[] = $wrong;
+                }
+            }
+
             if ($sentence && $word && $answer && count($wrongOptions) > 0) {
-                $current_questions[] = [
+                $entry = [
                     'question' => $sentence,
                     'word' => $word,
                     'answer' => $answer,
                     'options' => [$answer, ...$wrongOptions]
                 ];
+                if (!empty($reverseWrongOptions)) {
+                    $entry['reverse_wrong_options'] = array_values(array_unique($reverseWrongOptions));
+                }
+                $current_questions[] = $entry;
             }
         }
     }
