@@ -599,6 +599,27 @@ foreach ($my_quizzes as $qid => $quiz) {
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
+                            <label class="block text-gray-700 font-medium mb-2">Ämne</label>
+                            <input type="text" name="csv_subject" id="paste_subject"
+                                   placeholder="t.ex. Biologi, Engelska"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Årskurs</label>
+                            <input type="text" name="csv_grade" id="paste_grade"
+                                   placeholder="t.ex. åk 6, åk 9"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Egna taggar</label>
+                            <input type="text" name="csv_tags" id="paste_tags"
+                                   placeholder="Komma-separerade"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
                             <label class="block text-gray-700 font-medium mb-2">Quiz-typ</label>
                             <select name="csv_quiz_type" id="paste_quiz_type" onchange="updatePasteFormat()"
                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
@@ -867,6 +888,20 @@ foreach ($my_quizzes as $qid => $quiz) {
                                 <input type="file" id="batch_fact_file" accept=".csv" required
                                        class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
                             </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Ämne</label>
+                                    <input type="text" id="batch_fact_subject" class="w-full px-3 py-2 border border-gray-300 rounded text-sm" placeholder="t.ex. Biologi">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Årskurs</label>
+                                    <input type="text" id="batch_fact_grade" class="w-full px-3 py-2 border border-gray-300 rounded text-sm" placeholder="t.ex. åk 6">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Taggar</label>
+                                    <input type="text" id="batch_fact_tags" class="w-full px-3 py-2 border border-gray-300 rounded text-sm" placeholder="Komma-separerade">
+                                </div>
+                            </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Svarsläge</label>
                                 <select id="batch_fact_answer_mode" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
@@ -911,6 +946,20 @@ foreach ($my_quizzes as $qid => $quiz) {
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Excel-fil (.csv)</label>
                                 <input type="file" id="batch_gloss_file" accept=".csv" required
                                        class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Ämne</label>
+                                    <input type="text" id="batch_gloss_subject" class="w-full px-3 py-2 border border-gray-300 rounded text-sm" placeholder="t.ex. Spanska">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Årskurs</label>
+                                    <input type="text" id="batch_gloss_grade" class="w-full px-3 py-2 border border-gray-300 rounded text-sm" placeholder="t.ex. åk 8">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Taggar</label>
+                                    <input type="text" id="batch_gloss_tags" class="w-full px-3 py-2 border border-gray-300 rounded text-sm" placeholder="Komma-separerade">
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Språk</label>
@@ -1265,14 +1314,36 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
 
         // Spara quiz-inställningar till localStorage
         function saveQuizSettings() {
+            const subject =
+                document.getElementById('csv_subject')?.value ||
+                document.getElementById('paste_subject')?.value ||
+                document.getElementById('manual_subject')?.value ||
+                document.getElementById('batch_fact_subject')?.value ||
+                document.getElementById('batch_gloss_subject')?.value ||
+                '';
+            const grade =
+                document.getElementById('csv_grade')?.value ||
+                document.getElementById('paste_grade')?.value ||
+                document.getElementById('manual_grade')?.value ||
+                document.getElementById('batch_fact_grade')?.value ||
+                document.getElementById('batch_gloss_grade')?.value ||
+                '';
+            const tags =
+                document.getElementById('csv_tags')?.value ||
+                document.getElementById('paste_tags')?.value ||
+                document.getElementById('manual_tags')?.value ||
+                document.getElementById('batch_fact_tags')?.value ||
+                document.getElementById('batch_gloss_tags')?.value ||
+                '';
+
             const settings = {
                 quizMode: currentQuizMode,
                 answerMode: currentAnswerMode,
                 language: document.getElementById('csv_language')?.value || 'sv',
                 spellingMode: document.getElementById('csv_spelling_mode')?.value || 'student_choice',
-                subject: document.getElementById('csv_subject')?.value || '',
-                grade: document.getElementById('csv_grade')?.value || '',
-                tags: document.getElementById('csv_tags')?.value || '',
+                subject: subject,
+                grade: grade,
+                tags: tags,
                 requiredPhase1: document.getElementById('csv_required_phase1')?.value || '2',
                 requiredPhase2: document.getElementById('csv_required_phase2')?.value || '2',
                 reverseEnabled: document.getElementById('csv_reverse_enabled')?.value || '1',
@@ -1332,6 +1403,14 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
                 if (document.getElementById('manual_reverse_answer_mode')) document.getElementById('manual_reverse_answer_mode').value = settings.reverseAnswerMode || 'hybrid';
                 if (document.getElementById('manual_reverse_required_phase1')) document.getElementById('manual_reverse_required_phase1').value = settings.reverseRequiredPhase1 || '2';
                 if (document.getElementById('manual_reverse_required_phase2')) document.getElementById('manual_reverse_required_phase2').value = settings.reverseRequiredPhase2 || '2';
+
+                // Batch-flikar
+                if (document.getElementById('batch_fact_subject')) document.getElementById('batch_fact_subject').value = settings.subject;
+                if (document.getElementById('batch_fact_grade')) document.getElementById('batch_fact_grade').value = settings.grade;
+                if (document.getElementById('batch_fact_tags')) document.getElementById('batch_fact_tags').value = settings.tags;
+                if (document.getElementById('batch_gloss_subject')) document.getElementById('batch_gloss_subject').value = settings.subject;
+                if (document.getElementById('batch_gloss_grade')) document.getElementById('batch_gloss_grade').value = settings.grade;
+                if (document.getElementById('batch_gloss_tags')) document.getElementById('batch_gloss_tags').value = settings.tags;
 
             } catch (e) {
                 console.error('Kunde inte ladda sparade inställningar:', e);
@@ -1766,6 +1845,9 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
             formData.append('answer_mode', document.getElementById('batch_fact_answer_mode').value);
             formData.append('required_phase1', document.getElementById('batch_fact_required_phase1').value);
             formData.append('required_phase2', document.getElementById('batch_fact_required_phase2').value);
+            formData.append('subject', document.getElementById('batch_fact_subject')?.value || '');
+            formData.append('grade', document.getElementById('batch_fact_grade')?.value || '');
+            formData.append('tags', document.getElementById('batch_fact_tags')?.value || '');
 
             try {
                 const response = await fetch('api/batch-import.php', {
@@ -1825,6 +1907,9 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
             formData.append('reverse_answer_mode', document.getElementById('batch_gloss_reverse_answer_mode').value);
             formData.append('reverse_required_phase1', document.getElementById('batch_gloss_reverse_required_phase1').value);
             formData.append('reverse_required_phase2', document.getElementById('batch_gloss_reverse_required_phase2').value);
+            formData.append('subject', document.getElementById('batch_gloss_subject')?.value || '');
+            formData.append('grade', document.getElementById('batch_gloss_grade')?.value || '');
+            formData.append('tags', document.getElementById('batch_gloss_tags')?.value || '');
             formData.append('action', 'batch_import_gloss');
             formData.append('csrf_token', csrfToken);
 

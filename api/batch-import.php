@@ -35,6 +35,9 @@ if ($action === 'batch_import_fact') {
     $answer_mode = $_POST['answer_mode'] ?? 'hybrid';
     $required_phase1 = intval($_POST['required_phase1'] ?? 2);
     $required_phase2 = intval($_POST['required_phase2'] ?? 2);
+    $subject = trim($_POST['subject'] ?? '');
+    $grade = trim($_POST['grade'] ?? '');
+    $tags = trim($_POST['tags'] ?? '');
 
     $file = fopen($_FILES['batch_fact_file']['tmp_name'], 'r');
     if (!$file) {
@@ -68,6 +71,9 @@ if ($action === 'batch_import_fact') {
                     'reverse_answer_mode' => 'hybrid',
                     'reverse_required_correct_phase1' => 2,
                     'reverse_required_correct_phase2' => 2,
+                    'subject' => $subject,
+                    'grade' => $grade,
+                    'tags' => $tags,
                     'teacher_id' => $teacher_id,
                     'teacher_name' => $teacher_name,
                     'created' => date('Y-m-d H:i:s'),
@@ -141,6 +147,9 @@ if ($action === 'batch_import_fact') {
             'reverse_answer_mode' => 'hybrid',
             'reverse_required_correct_phase1' => 2,
             'reverse_required_correct_phase2' => 2,
+            'subject' => $subject,
+            'grade' => $grade,
+            'tags' => $tags,
             'teacher_id' => $teacher_id,
             'teacher_name' => $teacher_name,
             'created' => date('Y-m-d H:i:s'),
@@ -189,6 +198,9 @@ elseif ($action === 'batch_import_gloss') {
     $answer_mode = $_POST['answer_mode'] ?? 'hybrid';
     $required_phase1 = intval($_POST['required_phase1'] ?? 2);
     $required_phase2 = intval($_POST['required_phase2'] ?? 2);
+    $subject = trim($_POST['subject'] ?? '');
+    $grade = trim($_POST['grade'] ?? '');
+    $tags = trim($_POST['tags'] ?? '');
     $reverse_enabled = (($_POST['reverse_enabled'] ?? '1') === '1');
     $reverse_answer_mode = $_POST['reverse_answer_mode'] ?? 'hybrid';
     $reverse_required_phase1 = intval($_POST['reverse_required_phase1'] ?? 2);
@@ -226,6 +238,9 @@ elseif ($action === 'batch_import_gloss') {
                     'reverse_answer_mode' => $reverse_answer_mode,
                     'reverse_required_correct_phase1' => $reverse_required_phase1,
                     'reverse_required_correct_phase2' => $reverse_required_phase2,
+                    'subject' => $subject,
+                    'grade' => $grade,
+                    'tags' => $tags,
                     'teacher_id' => $teacher_id,
                     'teacher_name' => $teacher_name,
                     'created' => date('Y-m-d H:i:s'),
@@ -314,6 +329,9 @@ elseif ($action === 'batch_import_gloss') {
             'reverse_answer_mode' => $reverse_answer_mode,
             'reverse_required_correct_phase1' => $reverse_required_phase1,
             'reverse_required_correct_phase2' => $reverse_required_phase2,
+            'subject' => $subject,
+            'grade' => $grade,
+            'tags' => $tags,
             'teacher_id' => $teacher_id,
             'teacher_name' => $teacher_name,
             'created' => date('Y-m-d H:i:s'),
