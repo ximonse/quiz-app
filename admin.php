@@ -1415,7 +1415,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
 
             const settings = {
                 quizMode: currentQuizMode,
-                answerMode: currentAnswerMode,
+                answerMode: document.getElementById('csv_answer_mode')?.value || document.getElementById('paste_answer_mode')?.value || document.getElementById('manual_answer_mode')?.value || currentAnswerMode,
                 language: document.getElementById('csv_language')?.value || 'sv',
                 spellingMode: document.getElementById('csv_spelling_mode')?.value || 'student_choice',
                 subject: subject,

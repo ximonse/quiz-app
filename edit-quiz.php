@@ -556,8 +556,12 @@ $return_url = $is_super_admin ? 'super-admin.php' : 'admin.php';
                     alert(`Fråga ${i + 1} saknar ord`);
                     return;
                 }
-                if (!q.options[1] || !q.options[2] || !q.options[3]) {
+                if (!isGlossary && (!q.options[1] || !q.options[2] || !q.options[3])) {
                     alert(`Fråga ${i + 1} saknar felaktiga svarsalternativ`);
+                    return;
+                }
+                if (isGlossary && !q.options[1]) {
+                    alert(`Fråga ${i + 1} saknar minst ett felaktigt svarsalternativ`);
                     return;
                 }
                 // Sätt options[0] till answer

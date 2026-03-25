@@ -4,6 +4,11 @@
 
 require_once '../config.php';
 
+// Förhindra caching så att uppdaterade quiz-inställningar alltid hämtas
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 // Hämta quiz ID från URL
 $request_uri = $_SERVER['REQUEST_URI'];
 preg_match('/\/q\/([a-f0-9]+)\.html/', $request_uri, $matches);
@@ -205,6 +210,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const [spellingMode, setSpellingMode] = useState('student_choice'); // easy, puritan, student_choice
             const teacherSpellingMode = quizData.spelling_mode || 'student_choice';
             const [misspellings, setMisspellings] = useState([]); // För glosquiz statistik
+            const [isDag2, setIsDag2] = useState(false); // Dag 2-läge (repetition)
             const [isMuted, setIsMuted] = useState(false); // Mute autouppläsning
             const [selectedVoice, setSelectedVoice] = useState(null); // Manuellt vald röst
             const [showReversePrompt, setShowReversePrompt] = useState(false); // Dialog: vill du träna omvänt?
@@ -234,6 +240,18 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const requiredPhase1 = currentSettings.requiredPhase1;
             const requiredPhase2 = currentSettings.requiredPhase2;
             const isReverseDirection = direction === 'reverse';
+
+            // Debug: logga aktiva inställningar
+            useEffect(() => {
+                console.log('[Quiz Settings]', {
+                    answer_mode: answerMode,
+                    requiredPhase1,
+                    requiredPhase2,
+                    reverseEnabled,
+                    direction,
+                    raw_reverse_enabled: quizData.reverse_enabled
+                });
+            }, [direction]);
 
             // Fisher-Yates shuffle
             function shuffleArray(array) {
@@ -726,6 +744,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                                 // 3. Det var i puritan mode
                                 if (hoursDiff < 25 && session.completed && session.mode === 'puritan') {
                                     setPhase(2);
+                                    setIsDag2(true);
                                 }
                             } catch (e) {
                                 // Gammal format (bara timestamp) - ignorera
@@ -775,7 +794,10 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                                 if (answerMode === 'multiple_choice') {
                                     finishDirectionOrQuiz();
                                 } else {
-                                    // hybrid mode: gå till fas 2
+                                    // hybrid mode: gå till fas 2, nollställ progress
+                                    const freshProg = {};
+                                    questions.forEach((_, i) => { freshProg[i] = 0; });
+                                    setProgress(freshProg);
                                     setPhase(2);
                                     setCurrentQueue(questions.map((_, i) => i));
                                     setCurrentQuestionIndex(0);
@@ -842,8 +864,8 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                         checkMilestone(newProg, level);
                     }
 
-                    // För glosquiz fas 2 (efter 25h - dag 2): 1 färre rätt krävs (minimum 1)
-                    const requiredCorrect = (isGlossary && !isReverseDirection && phase === 2 && currentQueue.length === questions.length)
+                    // För glosquiz dag 2 (efter 25h): 1 färre rätt krävs (minimum 1)
+                    const requiredCorrect = (isGlossary && !isReverseDirection && isDag2)
                         ? Math.max(1, requiredPhase2 - 1)
                         : requiredPhase2;
 
