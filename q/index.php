@@ -207,6 +207,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const [misspellings, setMisspellings] = useState([]); // För glosquiz statistik
             const [isMuted, setIsMuted] = useState(false); // Mute autouppläsning
             const [selectedVoice, setSelectedVoice] = useState(null); // Manuellt vald röst
+            const [showReversePrompt, setShowReversePrompt] = useState(false); // Dialog: vill du träna omvänt?
             const [availableVoices, setAvailableVoices] = useState([]); // Tillgängliga röster
             const isGlossary = quizData.type === 'glossary';
             const quizLanguage = quizData.language || 'sv';
@@ -692,7 +693,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
 
             function finishDirectionOrQuiz() {
                 if (isGlossary && reverseEnabled && !isReverseDirection) {
-                    startDirectionRound('reverse');
+                    setShowReversePrompt(true);
                     return;
                 }
 
@@ -761,9 +762,8 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                         checkMilestone(newProg, level);
                     }
 
-                    // För multiple_choice mode: kräv requiredPhase2 rätt innan klar
-                    // För hybrid mode: kräv requiredPhase1 rätt innan gå till fas 2
-                    const requiredCorrect = answerMode === 'multiple_choice' ? requiredPhase2 : requiredPhase1;
+                    // Fas 1 (flerval) kräver alltid requiredPhase1 rätt svar
+                    const requiredCorrect = requiredPhase1;
 
                     if (newProg[qIdx] >= requiredCorrect) {
                         setTimeout(() => {
@@ -1105,6 +1105,33 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                                         )}
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (showReversePrompt) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4" style={{background: `linear-gradient(to bottom right, var(--bg-from), var(--bg-to))`}}>
+                        <div className="rounded-xl shadow-2xl p-8 max-w-md w-full text-center" style={{backgroundColor: 'var(--card-bg)'}}>
+                            <div className="text-6xl mb-4">🔄</div>
+                            <h2 className="text-2xl font-bold mb-3" style={{color: 'var(--text-primary)'}}>Bra jobbat!</h2>
+                            <p className="mb-6" style={{color: 'var(--text-secondary)'}}>Vill du fortsätta med omvända glosor? Då tränar du på att översätta åt andra hållet.</p>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => { setShowReversePrompt(false); setIsComplete(true); setTimerRunning(false); saveStats(); }}
+                                    className="flex-1 py-3 rounded-lg font-medium border-2"
+                                    style={{borderColor: 'var(--border)', color: 'var(--text-secondary)', backgroundColor: 'var(--card-bg)'}}
+                                >
+                                    Nej tack
+                                </button>
+                                <button
+                                    onClick={() => { setShowReversePrompt(false); startDirectionRound('reverse'); }}
+                                    className="flex-1 py-3 rounded-lg font-bold text-white bg-blue-500 hover:bg-blue-600"
+                                >
+                                    Ja, kör!
+                                </button>
                             </div>
                         </div>
                     </div>

@@ -90,11 +90,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     if ($updated_questions && count($updated_questions) > 0) {
         $quizzes[$quiz_id]['questions'] = $updated_questions;
-        writeJSON(QUIZZES_FILE, $quizzes);
-        $return_url = $is_super_admin ? 'super-admin.php?updated=1' : 'admin.php?updated=1';
-        header('Location: ' . $return_url);
-        exit;
     }
+    writeJSON(QUIZZES_FILE, $quizzes);
+    $return_url = $is_super_admin ? 'super-admin.php?updated=1' : 'admin.php?updated=1';
+    header('Location: ' . $return_url);
+    exit;
 }
 
 $is_glossary = isset($quiz['type']) && $quiz['type'] === 'glossary';
@@ -534,9 +534,14 @@ $return_url = $is_super_admin ? 'super-admin.php' : 'admin.php';
                 <input type="hidden" name="reverse_answer_mode" value="${document.getElementById('quiz_reverse_answer_mode') ? document.getElementById('quiz_reverse_answer_mode').value : 'hybrid'}">
                 <input type="hidden" name="reverse_required_phase1" value="${document.getElementById('quiz_reverse_required_phase1') ? document.getElementById('quiz_reverse_required_phase1').value : '2'}">
                 <input type="hidden" name="reverse_required_phase2" value="${document.getElementById('quiz_reverse_required_phase2') ? document.getElementById('quiz_reverse_required_phase2').value : '2'}">
-                <input type="hidden" name="questions" value='${JSON.stringify(questions)}'>
             `;
             document.body.appendChild(form);
+            // Sätt questions via .value för att undvika HTML-escaping-problem med apostrofer
+            const questionsInput = document.createElement('input');
+            questionsInput.type = 'hidden';
+            questionsInput.name = 'questions';
+            questionsInput.value = JSON.stringify(questions);
+            form.appendChild(questionsInput);
             form.submit();
         }
 
