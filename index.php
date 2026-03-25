@@ -3,6 +3,7 @@ require_once 'config.php';
 
 // Hantera inloggning
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrf();
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
 
@@ -26,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    $error = "Felaktigt användarnamn eller lösenord";
+$error = "Felaktigt användarnamn eller lösenord";
 }
 
 // Hantera utloggning
@@ -55,6 +56,7 @@ if (isset($_GET['logout'])) {
         <?php endif; ?>
 
         <form method="POST" class="space-y-4">
+            <?= csrfField() ?>
             <div>
                 <label class="block text-gray-700 font-medium mb-2">Användarnamn</label>
                 <input type="text" name="username" required

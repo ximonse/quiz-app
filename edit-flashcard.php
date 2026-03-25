@@ -4,6 +4,11 @@ requireTeacher();
 
 $teacher_id = getCurrentTeacherID();
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $expects_json = isset($_POST['action']) && in_array($_POST['action'], ['upload_image', 'delete_image'], true);
+    requireValidCsrf($expects_json);
+}
+
 // Definiera flashcards-fil om den inte finns
 if (!defined('FLASHCARDS_FILE')) {
     define('FLASHCARDS_FILE', DATA_DIR . 'flashcards.json');
@@ -170,6 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     </div>
 
     <script>
+        const csrfToken = <?= json_encode(getCsrfToken()) ?>;
         let cards = <?= json_encode($deck['cards'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
         function renderCards() {
@@ -267,6 +273,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             const formData = new FormData();
             formData.append('image', file);
             formData.append('action', 'upload_image');
+            formData.append('csrf_token', csrfToken);
 
             try {
                 const response = await fetch('', {
@@ -300,6 +307,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             const formData = new FormData();
             formData.append('action', 'delete_image');
             formData.append('filename', filename);
+            formData.append('csrf_token', csrfToken);
 
             try {
                 const response = await fetch('', {
@@ -342,6 +350,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             form.method = 'POST';
             form.innerHTML = `
                 <input type="hidden" name="action" value="update_deck">
+                <input type="hidden" name="csrf_token" value="${csrfToken}">
                 <input type="hidden" name="title" value="${escapeHtml(title)}">
                 <input type="hidden" name="subject" value="${escapeHtml(document.getElementById('deck_subject').value.trim())}">
                 <input type="hidden" name="grade" value="${escapeHtml(document.getElementById('deck_grade').value.trim())}">

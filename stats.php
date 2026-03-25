@@ -2,9 +2,12 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 require_once 'config.php';
-requireTeacher();
+$is_super_admin = isLoggedInAsSuperAdmin();
+if (!$is_super_admin) {
+    requireTeacher();
+}
 
-$teacher_id = getCurrentTeacherID();
+$teacher_id = $is_super_admin ? null : getCurrentTeacherID();
 
 // Definiera flashcards-fil om den inte finns
 if (!defined('FLASHCARDS_FILE')) {
@@ -33,8 +36,9 @@ if ($is_flashcard) {
 $stats = readJSON(STATS_FILE);
 
 // Kolla att item finns och tillhör läraren
-if (!$item || $item['teacher_id'] !== $teacher_id) {
-    header('Location: ' . ($is_flashcard ? 'flashcards-admin.php' : 'admin.php'));
+if (!$item || (!$is_super_admin && $item['teacher_id'] !== $teacher_id)) {
+    $fallback_url = $is_flashcard ? 'flashcards-admin.php' : ($is_super_admin ? 'super-admin.php' : 'admin.php');
+    header('Location: ' . $fallback_url);
     exit;
 }
 
@@ -192,7 +196,7 @@ if (isset($quiz_stats['attempts']) && is_array($quiz_stats['attempts'])) {
                         <?php endif; ?>
                     </p>
                 </div>
-                <a href="<?= $is_flashcard ? 'flashcards-admin.php' : 'admin.php' ?>" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                <a href="<?= $is_flashcard ? 'flashcards-admin.php' : ($is_super_admin ? 'super-admin.php' : 'admin.php') ?>" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
                     Tillbaka
                 </a>
             </div>

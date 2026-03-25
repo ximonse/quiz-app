@@ -2,9 +2,19 @@
 require_once 'config.php';
 requireSuperAdmin();
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireValidCsrf();
+}
+
+$csrf_field = csrfField();
+
 $teachers = readJSON(TEACHERS_FILE);
 $quizzes = readJSON(QUIZZES_FILE);
 $stats = readJSON(STATS_FILE);
+if (!defined('FLASHCARDS_FILE')) {
+    define('FLASHCARDS_FILE', DATA_DIR . 'flashcards.json');
+}
+$flashcards = readJSON(FLASHCARDS_FILE);
 
 // Hantera lärare-actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -113,6 +123,7 @@ foreach ($stats as $quiz_stats) {
         <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
             <h2 class="text-2xl font-bold text-gray-800 mb-4">➕ Skapa ny lärare</h2>
             <form method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <?= $csrf_field ?>
                 <input type="hidden" name="action" value="create_teacher">
                 <input type="text" name="username" placeholder="Användarnamn" required
                        class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
@@ -164,6 +175,7 @@ foreach ($stats as $quiz_stats) {
                                     <div class="flex gap-2">
                                         <!-- Toggle aktiv -->
                                         <form method="POST" class="inline">
+                                            <?= $csrf_field ?>
                                             <input type="hidden" name="action" value="toggle_active">
                                             <input type="hidden" name="teacher_id" value="<?= $tid ?>">
                                             <button type="submit" class="text-blue-600 hover:text-blue-800 text-sm">
@@ -179,6 +191,7 @@ foreach ($stats as $quiz_stats) {
 
                                         <!-- Radera -->
                                         <form method="POST" class="inline" onsubmit="return confirm('Är du säker?')">
+                                            <?= $csrf_field ?>
                                             <input type="hidden" name="action" value="delete_teacher">
                                             <input type="hidden" name="teacher_id" value="<?= $tid ?>">
                                             <button type="submit" class="text-red-600 hover:text-red-800 text-sm">
@@ -259,7 +272,11 @@ foreach ($stats as $quiz_stats) {
                                         </span>
                                     </div>
                                 </div>
-                                <div class="flex flex-wrap gap-1.5">
+                                <div class="flex flex-wrap gap-1.5">
+                                    <a href="edit-quiz.php?quiz_id=<?= $qid ?>"
+                                       class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-center text-xs whitespace-nowrap">
+                                        Redigera
+                                    </a>
                                     <a href="q/<?= $qid ?>.html" target="_blank"
                                        class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-center text-xs whitespace-nowrap">
                                         Öppna
@@ -277,6 +294,82 @@ foreach ($stats as $quiz_stats) {
                 <p class="text-gray-500 text-center py-8">Inga quizzes ännu.</p>
             <?php endif; ?>
         </div>
+
+        <!-- Lista över alla flashcard-decks -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mt-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Alla flashcard-deck (<?= count($flashcards) ?>)</h2>
+
+            <?php if (!empty($flashcards)): ?>
+                <div class="space-y-2">
+                    <?php foreach ($flashcards as $did => $deck): ?>
+                        <?php
+                            $deck_stats = $stats[$did] ?? ['total_attempts' => 0, 'completed' => 0];
+                            $is_active = $deck['active'] ?? true;
+                            $card_class = $is_active ? 'border-gray-200' : 'border-gray-300 bg-gray-50';
+                            $text_class = $is_active ? 'text-gray-800' : 'text-gray-400';
+                        ?>
+                        <div class="border rounded-lg p-3 hover:shadow-md transition <?= $card_class ?>">
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <h3 class="text-lg font-bold <?= $text_class ?>"><?= htmlspecialchars($deck['title']) ?></h3>
+                                    </div>
+                                    <p class="text-sm <?= $is_active ? 'text-gray-500' : 'text-gray-400' ?>">
+                                        Lärare: <?= htmlspecialchars($deck['teacher_name'] ?? 'Okänd') ?> -
+                                        <?= count($deck['cards'] ?? []) ?> kort -
+                                        Skapad <?= date('Y-m-d', strtotime($deck['created'])) ?>
+                                        <?php if (!$is_active): ?>
+                                            - <span class="text-red-500 font-medium">INAKTIV</span>
+                                        <?php endif; ?>
+                                    </p>
+                                    <?php if (!empty($deck['subject']) || !empty($deck['grade']) || !empty($deck['tags'])): ?>
+                                        <div class="mt-2 flex flex-wrap gap-2">
+                                            <?php if (!empty($deck['subject'])): ?>
+                                                <span class="inline-block px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
+                                                    <?= htmlspecialchars($deck['subject']) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($deck['grade'])): ?>
+                                                <span class="inline-block px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">
+                                                    <?= htmlspecialchars($deck['grade']) ?>
+                                                </span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($deck['tags'])): ?>
+                                                <?php foreach (explode(',', $deck['tags']) as $tag): ?>
+                                                    <span class="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                                                        <?= htmlspecialchars(trim($tag)) ?>
+                                                    </span>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    <div class="mt-2 flex gap-4 text-sm">
+                                        <span class="<?= $is_active ? 'text-gray-600' : 'text-gray-400' ?>">
+                                            Försök: <?= $deck_stats['total_attempts'] ?>
+                                        </span>
+                                        <span class="<?= $is_active ? 'text-green-600' : 'text-gray-400' ?>">
+                                            Klarat: <?= $deck_stats['completed'] ?>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <a href="q/flashcards.php?deck_id=<?= $did ?>" target="_blank"
+                                       class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-center text-xs whitespace-nowrap">
+                                        Öppna
+                                    </a>
+                                    <a href="stats.php?flashcard_id=<?= $did ?>"
+                                       class="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded text-center text-xs whitespace-nowrap">
+                                        Statistik
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <p class="text-gray-500 text-center py-8">Inga flashcard-decks ännu.</p>
+            <?php endif; ?>
+        </div>
     </div>
 
     <!-- Reset password modal -->
@@ -284,6 +377,7 @@ foreach ($stats as $quiz_stats) {
         <div class="bg-white rounded-xl shadow-lg p-6 max-w-md w-full">
             <h3 class="text-xl font-bold mb-4">Återställ lösenord</h3>
             <form method="POST">
+                <?= $csrf_field ?>
                 <input type="hidden" name="action" value="reset_password">
                 <input type="hidden" name="teacher_id" id="reset_teacher_id">
                 <div class="mb-4">
