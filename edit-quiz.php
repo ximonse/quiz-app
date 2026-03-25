@@ -257,6 +257,54 @@ $return_url = $is_super_admin ? 'super-admin.php' : 'admin.php';
         const isGlossary = <?= $is_glossary ? 'true' : 'false' ?>;
         let questions = <?= json_encode($quiz['questions'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
+        // --- Disable/enable fält baserat på inställningar ---
+        function setFieldDisabled(elementId, disabled) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.disabled = disabled;
+            const container = el.parentElement;
+            if (container) {
+                container.style.opacity = disabled ? '0.4' : '1';
+                container.style.pointerEvents = disabled ? 'none' : '';
+            }
+        }
+
+        function updatePhaseFields(answerModeId, phase1Id, phase2Id) {
+            const mode = document.getElementById(answerModeId)?.value;
+            if (!mode) return;
+            setFieldDisabled(phase1Id, mode === 'text_only');
+            setFieldDisabled(phase2Id, mode === 'multiple_choice');
+        }
+
+        function updateReverseFields(reverseEnabledId, reverseAnswerModeId, reverseFas1Id, reverseFas2Id) {
+            const el = document.getElementById(reverseEnabledId);
+            if (!el) return;
+            const enabled = el.value === '1';
+            setFieldDisabled(reverseAnswerModeId, !enabled);
+            if (!enabled) {
+                setFieldDisabled(reverseFas1Id, true);
+                setFieldDisabled(reverseFas2Id, true);
+            } else {
+                updatePhaseFields(reverseAnswerModeId, reverseFas1Id, reverseFas2Id);
+            }
+        }
+
+        (function initEditFieldToggles() {
+            const am = document.getElementById('quiz_answer_mode');
+            if (am) {
+                am.addEventListener('change', () => updatePhaseFields('quiz_answer_mode', 'quiz_required_phase1', 'quiz_required_phase2'));
+                updatePhaseFields('quiz_answer_mode', 'quiz_required_phase1', 'quiz_required_phase2');
+            }
+            const re = document.getElementById('quiz_reverse_enabled');
+            if (re) {
+                const update = () => updateReverseFields('quiz_reverse_enabled', 'quiz_reverse_answer_mode', 'quiz_reverse_required_phase1', 'quiz_reverse_required_phase2');
+                re.addEventListener('change', update);
+                const ram = document.getElementById('quiz_reverse_answer_mode');
+                if (ram) ram.addEventListener('change', update);
+                update();
+            }
+        })();
+
         function renderQuestions() {
             const container = document.getElementById('questions-container');
             container.innerHTML = '';

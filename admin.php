@@ -1312,6 +1312,83 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
         let currentQuizMode = 'fact'; // 'fact' or 'glossary'
         let currentAnswerMode = 'hybrid'; // 'hybrid', 'multiple_choice', 'text_only'
 
+        // --- Disable/enable fält baserat på inställningar ---
+        function setFieldDisabled(elementId, disabled) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.disabled = disabled;
+            const container = el.parentElement;
+            if (container) {
+                container.style.opacity = disabled ? '0.4' : '1';
+                container.style.pointerEvents = disabled ? 'none' : '';
+            }
+        }
+
+        function updatePhaseFields(answerModeId, phase1Id, phase2Id) {
+            const mode = document.getElementById(answerModeId)?.value;
+            if (!mode) return;
+            setFieldDisabled(phase1Id, mode === 'text_only');
+            setFieldDisabled(phase2Id, mode === 'multiple_choice');
+        }
+
+        function updateReverseFields(reverseEnabledId, reverseAnswerModeId, reverseFas1Id, reverseFas2Id) {
+            const el = document.getElementById(reverseEnabledId);
+            if (!el) return;
+            const enabled = el.value === '1';
+            setFieldDisabled(reverseAnswerModeId, !enabled);
+            if (!enabled) {
+                setFieldDisabled(reverseFas1Id, true);
+                setFieldDisabled(reverseFas2Id, true);
+            } else {
+                updatePhaseFields(reverseAnswerModeId, reverseFas1Id, reverseFas2Id);
+            }
+        }
+
+        function setupFieldToggles(config) {
+            const { answerModeId, phase1Id, phase2Id, reverseEnabledId, reverseAnswerModeId, reverseFas1Id, reverseFas2Id } = config;
+            const answerModeEl = document.getElementById(answerModeId);
+            if (answerModeEl) {
+                answerModeEl.addEventListener('change', () => updatePhaseFields(answerModeId, phase1Id, phase2Id));
+                updatePhaseFields(answerModeId, phase1Id, phase2Id);
+            }
+            if (reverseEnabledId) {
+                const reverseEl = document.getElementById(reverseEnabledId);
+                if (reverseEl) {
+                    const update = () => updateReverseFields(reverseEnabledId, reverseAnswerModeId, reverseFas1Id, reverseFas2Id);
+                    reverseEl.addEventListener('change', update);
+                    const reverseAnswerEl = document.getElementById(reverseAnswerModeId);
+                    if (reverseAnswerEl) reverseAnswerEl.addEventListener('change', update);
+                    update();
+                }
+            }
+        }
+
+        function initAllFieldToggles() {
+            setupFieldToggles({
+                answerModeId: 'csv_answer_mode', phase1Id: 'csv_required_phase1', phase2Id: 'csv_required_phase2',
+                reverseEnabledId: 'csv_reverse_enabled', reverseAnswerModeId: 'csv_reverse_answer_mode',
+                reverseFas1Id: 'csv_reverse_required_phase1', reverseFas2Id: 'csv_reverse_required_phase2'
+            });
+            setupFieldToggles({
+                answerModeId: 'paste_answer_mode', phase1Id: 'paste_required_phase1', phase2Id: 'paste_required_phase2',
+                reverseEnabledId: 'paste_reverse_enabled', reverseAnswerModeId: 'paste_reverse_answer_mode',
+                reverseFas1Id: 'paste_reverse_required_phase1', reverseFas2Id: 'paste_reverse_required_phase2'
+            });
+            setupFieldToggles({
+                answerModeId: 'manual_answer_mode', phase1Id: 'manual_required_phase1', phase2Id: 'manual_required_phase2',
+                reverseEnabledId: 'manual_reverse_enabled', reverseAnswerModeId: 'manual_reverse_answer_mode',
+                reverseFas1Id: 'manual_reverse_required_phase1', reverseFas2Id: 'manual_reverse_required_phase2'
+            });
+            setupFieldToggles({
+                answerModeId: 'batch_fact_answer_mode', phase1Id: 'batch_fact_required_phase1', phase2Id: 'batch_fact_required_phase2'
+            });
+            setupFieldToggles({
+                answerModeId: 'batch_gloss_answer_mode', phase1Id: 'batch_gloss_required_phase1', phase2Id: 'batch_gloss_required_phase2',
+                reverseEnabledId: 'batch_gloss_reverse_enabled', reverseAnswerModeId: 'batch_gloss_reverse_answer_mode',
+                reverseFas1Id: 'batch_gloss_reverse_required_phase1', reverseFas2Id: 'batch_gloss_reverse_required_phase2'
+            });
+        }
+
         // Spara quiz-inställningar till localStorage
         function saveQuizSettings() {
             const subject =
@@ -1418,7 +1495,10 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
         }
 
         // Ladda sparade inställningar när sidan laddas
-        window.addEventListener('DOMContentLoaded', loadSavedSettings);
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSavedSettings();
+            initAllFieldToggles();
+        });
 
         function selectQuizMode(mode, answerMode) {
             currentQuizMode = mode;
