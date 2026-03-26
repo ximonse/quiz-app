@@ -795,10 +795,10 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                             setCurrentQueue(newQueue);
 
                             if (newQueue.length === 0) {
-                                if (isTestMode || answerMode === 'multiple_choice') {
+                                if (answerMode === 'multiple_choice' || (isTestMode && answerMode !== 'hybrid')) {
                                     finishDirectionOrQuiz();
                                 } else {
-                                    // hybrid training mode: gå till fas 2, nollställ progress
+                                    // hybrid mode (training or test): gå till fas 2, nollställ progress
                                     const freshProg = {};
                                     questions.forEach((_, i) => { freshProg[i] = 0; });
                                     setProgress(freshProg);
@@ -1354,25 +1354,48 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
 
                         {/* Progress bars */}
                         <div className="rounded-xl shadow-lg p-6 mb-6" style={{backgroundColor: 'var(--card-bg)'}}>
-                            <div className="grid grid-cols-5 gap-2">
-                                {questions.map((q, i) => (
-                                    <div key={i} className="flex flex-col gap-1">
-                                        {[0, 1, 2, 3].map(segment => (
-                                            <div
-                                                key={segment}
-                                                className={`h-2 rounded ${
-                                                    progress[i] > segment ? 'bg-green-500' : 'bg-gray-200'
-                                                }`}
-                                            />
+                            {isTestMode ? (
+                                (() => {
+                                    const answered = questions.length - currentQueue.length;
+                                    const total = questions.length;
+                                    const pct = total > 0 ? Math.round(answered / total * 100) : 0;
+                                    return (
+                                        <div>
+                                            <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                                                <div
+                                                    className="h-4 rounded-full transition-all duration-300"
+                                                    style={{width: `${pct}%`, backgroundColor: 'var(--accent, #3b82f6)'}}
+                                                />
+                                            </div>
+                                            <div className="text-xs text-center mt-2" style={{color: 'var(--text-secondary)'}}>
+                                                {answered} / {total} besvarade
+                                            </div>
+                                        </div>
+                                    );
+                                })()
+                            ) : (
+                                <div>
+                                    <div className="grid grid-cols-5 gap-2">
+                                        {questions.map((q, i) => (
+                                            <div key={i} className="flex flex-col gap-1">
+                                                {[0, 1, 2, 3].map(segment => (
+                                                    <div
+                                                        key={segment}
+                                                        className={`h-2 rounded ${
+                                                            progress[i] > segment ? 'bg-green-500' : 'bg-gray-200'
+                                                        }`}
+                                                    />
+                                                ))}
+                                            </div>
                                         ))}
                                     </div>
-                                ))}
-                            </div>
-                            <div className="text-xs text-center mt-2" style={{color: 'var(--text-secondary)'}}>
-                                {answerMode === 'multiple_choice' || answerMode === 'text_only' ?
-                                    `Kvar: ${currentQueue.length} frågor` :
-                                    `Kvar i fas ${phase}: ${currentQueue.length} frågor`}
-                            </div>
+                                    <div className="text-xs text-center mt-2" style={{color: 'var(--text-secondary)'}}>
+                                        {answerMode === 'multiple_choice' || answerMode === 'text_only' ?
+                                            `Kvar: ${currentQueue.length} frågor` :
+                                            `Kvar i fas ${phase}: ${currentQueue.length} frågor`}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Question card */}
