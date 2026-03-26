@@ -50,6 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $answer_mode = $_POST['answer_mode'] ?? 'hybrid';
         $required_phase1 = intval($_POST['required_phase1'] ?? 2);
         $required_phase2 = intval($_POST['required_phase2'] ?? 2);
+        $quiz_mode = $_POST['quiz_mode'] ?? 'training';
 
         if ($quiz_type !== 'glossary') {
             $reverse_enabled = false;
@@ -69,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'language' => $language,
                     'spelling_mode' => $spelling_mode,
                     'answer_mode' => $answer_mode,
+                    'quiz_mode' => $quiz_mode,
                     'required_correct_phase1' => $required_phase1,
                     'required_correct_phase2' => $required_phase2,
                     'reverse_enabled' => $reverse_enabled,
@@ -151,6 +153,7 @@ if ((isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_O
     $answer_mode = $_POST['csv_answer_mode'] ?? 'hybrid';
     $required_phase1 = intval($_POST['csv_required_phase1'] ?? 2);
     $required_phase2 = intval($_POST['csv_required_phase2'] ?? 2);
+    $quiz_mode = $_POST['csv_quiz_mode'] ?? 'training';
     $reverse_enabled = (($_POST['csv_reverse_enabled'] ?? '1') === '1');
     $reverse_answer_mode = $_POST['csv_reverse_answer_mode'] ?? 'hybrid';
     $reverse_required_phase1 = intval($_POST['csv_reverse_required_phase1'] ?? 2);
@@ -268,6 +271,7 @@ if ((isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_O
                     'language' => $language,
                     'spelling_mode' => $spelling_mode,
                     'answer_mode' => $answer_mode,
+                    'quiz_mode' => $quiz_mode,
                     'required_correct_phase1' => $required_phase1,
                     'required_correct_phase2' => $required_phase2,
                     'reverse_enabled' => $reverse_enabled,
@@ -514,7 +518,15 @@ foreach ($my_quizzes as $qid => $quiz) {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Quizläge</label>
+                            <select name="csv_quiz_mode" id="csv_quiz_mode"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="training" selected>Träning (repetera tills rätt)</option>
+                                <option value="test">Test (en omgång)</option>
+                            </select>
+                        </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Svarsläge</label>
                             <select name="csv_answer_mode" id="csv_answer_mode"
@@ -668,7 +680,15 @@ foreach ($my_quizzes as $qid => $quiz) {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Quizläge</label>
+                            <select name="csv_quiz_mode" id="paste_quiz_mode"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="training" selected>Träning (repetera tills rätt)</option>
+                                <option value="test">Test (en omgång)</option>
+                            </select>
+                        </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Svarsläge</label>
                             <select name="csv_answer_mode" id="paste_answer_mode"
@@ -801,7 +821,15 @@ foreach ($my_quizzes as $qid => $quiz) {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">Quizläge</label>
+                            <select id="manual_quiz_mode"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="training" selected>Träning (repetera tills rätt)</option>
+                                <option value="test">Test (en omgång)</option>
+                            </select>
+                        </div>
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Svarsläge</label>
                             <select id="manual_answer_mode"
@@ -980,6 +1008,13 @@ foreach ($my_quizzes as $qid => $quiz) {
                                     <option value="student_choice">Eleven väljer</option>
                                     <option value="easy">Easy mode</option>
                                     <option value="puritan">Puritan mode</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Quizläge</label>
+                                <select id="batch_gloss_quiz_mode" class="w-full px-3 py-2 border border-gray-300 rounded text-sm">
+                                    <option value="training" selected>Träning (repetera tills rätt)</option>
+                                    <option value="test">Test (en omgång)</option>
                                 </select>
                             </div>
                             <div>
@@ -1344,37 +1379,86 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
             }
         }
 
+        function applyTestModeDisabling(config, isTest) {
+            const { phase1Id, phase2Id, reverseEnabledId, reverseAnswerModeId, reverseFas1Id, reverseFas2Id } = config;
+            setFieldDisabled(phase1Id, isTest);
+            setFieldDisabled(phase2Id, isTest);
+            if (reverseEnabledId) {
+                if (isTest) {
+                    setFieldDisabled(reverseEnabledId, true);
+                    setFieldDisabled(reverseAnswerModeId, true);
+                    setFieldDisabled(reverseFas1Id, true);
+                    setFieldDisabled(reverseFas2Id, true);
+                } else {
+                    setFieldDisabled(reverseEnabledId, false);
+                    updateReverseFields(reverseEnabledId, reverseAnswerModeId, reverseFas1Id, reverseFas2Id);
+                }
+            }
+        }
+
         function setupFieldToggles(config) {
-            const { answerModeId, phase1Id, phase2Id, reverseEnabledId, reverseAnswerModeId, reverseFas1Id, reverseFas2Id } = config;
+            const { quizModeId, answerModeId, phase1Id, phase2Id, reverseEnabledId, reverseAnswerModeId, reverseFas1Id, reverseFas2Id } = config;
+
+            function isTestMode() {
+                const el = document.getElementById(quizModeId);
+                return el && el.value === 'test';
+            }
+
+            if (quizModeId) {
+                const qmEl = document.getElementById(quizModeId);
+                if (qmEl) {
+                    qmEl.addEventListener('change', () => {
+                        applyTestModeDisabling(config, isTestMode());
+                        if (!isTestMode()) {
+                            updatePhaseFields(answerModeId, phase1Id, phase2Id);
+                        }
+                    });
+                    applyTestModeDisabling(config, isTestMode());
+                }
+            }
+
             const answerModeEl = document.getElementById(answerModeId);
             if (answerModeEl) {
-                answerModeEl.addEventListener('change', () => updatePhaseFields(answerModeId, phase1Id, phase2Id));
-                updatePhaseFields(answerModeId, phase1Id, phase2Id);
+                answerModeEl.addEventListener('change', () => {
+                    if (!isTestMode()) {
+                        updatePhaseFields(answerModeId, phase1Id, phase2Id);
+                    }
+                });
+                if (!isTestMode()) {
+                    updatePhaseFields(answerModeId, phase1Id, phase2Id);
+                }
             }
             if (reverseEnabledId) {
                 const reverseEl = document.getElementById(reverseEnabledId);
                 if (reverseEl) {
-                    const update = () => updateReverseFields(reverseEnabledId, reverseAnswerModeId, reverseFas1Id, reverseFas2Id);
+                    const update = () => {
+                        if (!isTestMode()) {
+                            updateReverseFields(reverseEnabledId, reverseAnswerModeId, reverseFas1Id, reverseFas2Id);
+                        }
+                    };
                     reverseEl.addEventListener('change', update);
                     const reverseAnswerEl = document.getElementById(reverseAnswerModeId);
                     if (reverseAnswerEl) reverseAnswerEl.addEventListener('change', update);
-                    update();
+                    if (!isTestMode()) update();
                 }
             }
         }
 
         function initAllFieldToggles() {
             setupFieldToggles({
+                quizModeId: 'csv_quiz_mode',
                 answerModeId: 'csv_answer_mode', phase1Id: 'csv_required_phase1', phase2Id: 'csv_required_phase2',
                 reverseEnabledId: 'csv_reverse_enabled', reverseAnswerModeId: 'csv_reverse_answer_mode',
                 reverseFas1Id: 'csv_reverse_required_phase1', reverseFas2Id: 'csv_reverse_required_phase2'
             });
             setupFieldToggles({
+                quizModeId: 'paste_quiz_mode',
                 answerModeId: 'paste_answer_mode', phase1Id: 'paste_required_phase1', phase2Id: 'paste_required_phase2',
                 reverseEnabledId: 'paste_reverse_enabled', reverseAnswerModeId: 'paste_reverse_answer_mode',
                 reverseFas1Id: 'paste_reverse_required_phase1', reverseFas2Id: 'paste_reverse_required_phase2'
             });
             setupFieldToggles({
+                quizModeId: 'manual_quiz_mode',
                 answerModeId: 'manual_answer_mode', phase1Id: 'manual_required_phase1', phase2Id: 'manual_required_phase2',
                 reverseEnabledId: 'manual_reverse_enabled', reverseAnswerModeId: 'manual_reverse_answer_mode',
                 reverseFas1Id: 'manual_reverse_required_phase1', reverseFas2Id: 'manual_reverse_required_phase2'
@@ -1383,6 +1467,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
                 answerModeId: 'batch_fact_answer_mode', phase1Id: 'batch_fact_required_phase1', phase2Id: 'batch_fact_required_phase2'
             });
             setupFieldToggles({
+                quizModeId: 'batch_gloss_quiz_mode',
                 answerModeId: 'batch_gloss_answer_mode', phase1Id: 'batch_gloss_required_phase1', phase2Id: 'batch_gloss_required_phase2',
                 reverseEnabledId: 'batch_gloss_reverse_enabled', reverseAnswerModeId: 'batch_gloss_reverse_answer_mode',
                 reverseFas1Id: 'batch_gloss_reverse_required_phase1', reverseFas2Id: 'batch_gloss_reverse_required_phase2'
@@ -1415,6 +1500,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
 
             const settings = {
                 quizMode: currentQuizMode,
+                quizTestMode: document.getElementById('csv_quiz_mode')?.value || document.getElementById('paste_quiz_mode')?.value || document.getElementById('manual_quiz_mode')?.value || 'training',
                 answerMode: document.getElementById('csv_answer_mode')?.value || document.getElementById('paste_answer_mode')?.value || document.getElementById('manual_answer_mode')?.value || currentAnswerMode,
                 language: document.getElementById('csv_language')?.value || 'sv',
                 spellingMode: document.getElementById('csv_spelling_mode')?.value || 'student_choice',
@@ -1446,6 +1532,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
 
                 // Fyll i alla fält i alla flikar
                 // CSV-fliken
+                if (document.getElementById('csv_quiz_mode')) document.getElementById('csv_quiz_mode').value = settings.quizTestMode || 'training';
                 if (document.getElementById('csv_language')) document.getElementById('csv_language').value = settings.language;
                 if (document.getElementById('csv_spelling_mode')) document.getElementById('csv_spelling_mode').value = settings.spellingMode;
                 if (document.getElementById('csv_subject')) document.getElementById('csv_subject').value = settings.subject;
@@ -1469,6 +1556,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
                 });
 
                 // Manual-fliken
+                if (document.getElementById('manual_quiz_mode')) document.getElementById('manual_quiz_mode').value = settings.quizTestMode || 'training';
                 if (document.getElementById('manual_language')) document.getElementById('manual_language').value = settings.language;
                 if (document.getElementById('manual_spelling_mode')) document.getElementById('manual_spelling_mode').value = settings.spellingMode;
                 if (document.getElementById('manual_subject')) document.getElementById('manual_subject').value = settings.subject;
@@ -1687,6 +1775,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
             const answerMode = document.getElementById('manual_answer_mode').value;
             const requiredPhase1 = document.getElementById('manual_required_phase1').value;
             const requiredPhase2 = document.getElementById('manual_required_phase2').value;
+            const quizMode = document.getElementById('manual_quiz_mode').value;
             const reverseEnabled = document.getElementById('manual_reverse_enabled').value;
             const reverseAnswerMode = document.getElementById('manual_reverse_answer_mode').value;
             const reverseRequiredPhase1 = document.getElementById('manual_reverse_required_phase1').value;
@@ -1772,6 +1861,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
                 <input type="hidden" name="language" value="${language}">
                 <input type="hidden" name="spelling_mode" value="${spellingMode}">
                 <input type="hidden" name="answer_mode" value="${answerMode}">
+                <input type="hidden" name="quiz_mode" value="${quizMode}">
                 <input type="hidden" name="required_phase1" value="${requiredPhase1}">
                 <input type="hidden" name="required_phase2" value="${requiredPhase2}">
                 <input type="hidden" name="reverse_enabled" value="${reverseEnabled}">
@@ -1981,6 +2071,7 @@ VIKTIGT: Svara ENDAST med CSV-text. Inga kodblock, inga förklaringar, bara CSV-
             formData.append('language', language);
             formData.append('spelling_mode', spelling);
             formData.append('answer_mode', document.getElementById('batch_gloss_answer_mode').value);
+            formData.append('quiz_mode', document.getElementById('batch_gloss_quiz_mode').value);
             formData.append('required_phase1', document.getElementById('batch_gloss_required_phase1').value);
             formData.append('required_phase2', document.getElementById('batch_gloss_required_phase2').value);
             formData.append('reverse_enabled', document.getElementById('batch_gloss_reverse_enabled').value);

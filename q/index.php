@@ -241,6 +241,9 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             const requiredPhase2 = currentSettings.requiredPhase2;
             const isReverseDirection = direction === 'reverse';
 
+            const quizMode = quizData.quiz_mode || 'training';
+            const isTestMode = quizMode === 'test';
+
             // Debug: logga aktiva inställningar
             useEffect(() => {
                 console.log('[Quiz Settings]', {
@@ -249,6 +252,8 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     requiredPhase2,
                     reverseEnabled,
                     direction,
+                    quizMode,
+                    isTestMode,
                     raw_reverse_enabled: quizData.reverse_enabled
                 });
             }, [direction]);
@@ -710,7 +715,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             }
 
             function finishDirectionOrQuiz() {
-                if (isGlossary && reverseEnabled && !isReverseDirection) {
+                if (!isTestMode && isGlossary && reverseEnabled && !isReverseDirection) {
                     setShowReversePrompt(true);
                     return;
                 }
@@ -726,8 +731,8 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     if (answerMode === 'text_only') {
                         setPhase(2);
                     }
-                    // För glosquiz: kolla localStorage för senaste session
-                    else if (isGlossary && answerMode === 'hybrid') {
+                    // För glosquiz (training mode): kolla localStorage för senaste session
+                    else if (!isTestMode && isGlossary && answerMode === 'hybrid') {
                         const storageKey = `glossary_${quizData.id}`;
                         const lastSessionData = localStorage.getItem(storageKey);
 
@@ -781,8 +786,8 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                         checkMilestone(newProg, level);
                     }
 
-                    // Fas 1 (flerval) kräver alltid requiredPhase1 rätt svar
-                    const requiredCorrect = requiredPhase1;
+                    // Test mode: 1 rätt räcker. Training: requiredPhase1
+                    const requiredCorrect = isTestMode ? 1 : requiredPhase1;
 
                     if (newProg[qIdx] >= requiredCorrect) {
                         setTimeout(() => {
@@ -790,11 +795,10 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                             setCurrentQueue(newQueue);
 
                             if (newQueue.length === 0) {
-                                // Fas 1 klar!
-                                if (answerMode === 'multiple_choice') {
+                                if (isTestMode || answerMode === 'multiple_choice') {
                                     finishDirectionOrQuiz();
                                 } else {
-                                    // hybrid mode: gå till fas 2, nollställ progress
+                                    // hybrid training mode: gå till fas 2, nollställ progress
                                     const freshProg = {};
                                     questions.forEach((_, i) => { freshProg[i] = 0; });
                                     setProgress(freshProg);
@@ -818,20 +822,36 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                         }, 1500);
                     }
                 } else {
-                    // Fel svar - räkna fel och flytta frågan till slutet
+                    // Fel svar
                     setErrorCount(c => c + 1);
                     const qIdx = currentQueue[currentQuestionIndex];
                     setQuestionErrors(prev => ({ ...prev, [qIdx]: prev[qIdx] + 1 }));
 
-                    setTimeout(() => {
-                        const newQueue = [...currentQueue];
-                        const [removed] = newQueue.splice(currentQuestionIndex, 1);
-                        newQueue.push(removed);
-                        setCurrentQueue(newQueue);
-                        setCurrentQuestionIndex(currentQuestionIndex % newQueue.length);
-                        setShowFeedback(false);
-                        setSelectedAnswer(null);
-                    }, 2500);
+                    if (isTestMode) {
+                        // Test mode: ta bort frågan och gå vidare
+                        setTimeout(() => {
+                            const newQueue = currentQueue.filter((_, i) => i !== currentQuestionIndex);
+                            setCurrentQueue(newQueue);
+                            if (newQueue.length === 0) {
+                                finishDirectionOrQuiz();
+                            } else {
+                                setCurrentQuestionIndex(Math.min(currentQuestionIndex, newQueue.length - 1));
+                            }
+                            setShowFeedback(false);
+                            setSelectedAnswer(null);
+                        }, 2500);
+                    } else {
+                        // Training mode: flytta frågan till slutet
+                        setTimeout(() => {
+                            const newQueue = [...currentQueue];
+                            const [removed] = newQueue.splice(currentQuestionIndex, 1);
+                            newQueue.push(removed);
+                            setCurrentQueue(newQueue);
+                            setCurrentQuestionIndex(currentQuestionIndex % newQueue.length);
+                            setShowFeedback(false);
+                            setSelectedAnswer(null);
+                        }, 2500);
+                    }
                 }
             }
 
@@ -864,10 +884,12 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                         checkMilestone(newProg, level);
                     }
 
-                    // För glosquiz dag 2 (efter 25h): 1 färre rätt krävs (minimum 1)
-                    const requiredCorrect = (isGlossary && !isReverseDirection && isDag2)
-                        ? Math.max(1, requiredPhase2 - 1)
-                        : requiredPhase2;
+                    // Test mode: 1 rätt räcker. Training dag 2: 1 färre. Annars: requiredPhase2
+                    const requiredCorrect = isTestMode
+                        ? 1
+                        : (isGlossary && !isReverseDirection && isDag2)
+                            ? Math.max(1, requiredPhase2 - 1)
+                            : requiredPhase2;
 
                     // Om nått required antal rätt, ta bort från kön
                     if (newProg[qIdx] >= requiredCorrect) {
@@ -896,15 +918,31 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     const qIdx = currentQueue[currentQuestionIndex];
                     setQuestionErrors(prev => ({ ...prev, [qIdx]: prev[qIdx] + 1 }));
 
-                    setTimeout(() => {
-                        const newQueue = [...currentQueue];
-                        const [removed] = newQueue.splice(currentQuestionIndex, 1);
-                        newQueue.push(removed);
-                        setCurrentQueue(newQueue);
-                        setCurrentQuestionIndex(currentQuestionIndex % newQueue.length);
-                        setShowFeedback(false);
-                        setTextAnswer('');
-                    }, 2500);
+                    if (isTestMode) {
+                        // Test mode: ta bort frågan och gå vidare
+                        setTimeout(() => {
+                            const newQueue = currentQueue.filter((_, i) => i !== currentQuestionIndex);
+                            setCurrentQueue(newQueue);
+                            if (newQueue.length === 0) {
+                                finishDirectionOrQuiz();
+                            } else {
+                                setCurrentQuestionIndex(Math.min(currentQuestionIndex, newQueue.length - 1));
+                            }
+                            setShowFeedback(false);
+                            setTextAnswer('');
+                        }, 2500);
+                    } else {
+                        // Training mode: flytta frågan till slutet
+                        setTimeout(() => {
+                            const newQueue = [...currentQueue];
+                            const [removed] = newQueue.splice(currentQuestionIndex, 1);
+                            newQueue.push(removed);
+                            setCurrentQueue(newQueue);
+                            setCurrentQuestionIndex(currentQuestionIndex % newQueue.length);
+                            setShowFeedback(false);
+                            setTextAnswer('');
+                        }, 2500);
+                    }
                 }
             }
 
@@ -1203,6 +1241,20 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                                 <p className="text-2xl font-bold mb-4" style={{color: 'var(--accent)'}}>
                                     {quizData.title}
                                 </p>
+                                {isTestMode && (() => {
+                                    const correctCount = questions.length - errorCount;
+                                    const pct = Math.round((correctCount / questions.length) * 100);
+                                    return (
+                                        <div className="mb-4 p-4 rounded-lg" style={{backgroundColor: 'rgba(34,197,94,0.1)', border: '2px solid rgba(34,197,94,0.3)'}}>
+                                            <div className="text-5xl font-bold mb-1" style={{color: correctCount === questions.length ? '#22c55e' : 'var(--accent)'}}>
+                                                {correctCount} / {questions.length}
+                                            </div>
+                                            <div className="text-lg font-medium" style={{color: 'var(--text-secondary)'}}>
+                                                {pct}% rätt
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                                 <div className="grid grid-cols-3 gap-4 text-center">
                                     <div>
                                         <div className="text-3xl font-bold" style={{color: 'var(--accent)'}}>📝 {questions.length}</div>

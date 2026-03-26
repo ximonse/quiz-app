@@ -196,6 +196,7 @@ elseif ($action === 'batch_import_gloss') {
     $language = $_POST['language'] ?? 'sv';
     $spelling_mode = $_POST['spelling_mode'] ?? 'student_choice';
     $answer_mode = $_POST['answer_mode'] ?? 'hybrid';
+    $quiz_mode = $_POST['quiz_mode'] ?? 'training';
     $required_phase1 = intval($_POST['required_phase1'] ?? 2);
     $required_phase2 = intval($_POST['required_phase2'] ?? 2);
     $subject = trim($_POST['subject'] ?? '');
@@ -232,6 +233,7 @@ elseif ($action === 'batch_import_gloss') {
                     'language' => $language,
                     'spelling_mode' => $spelling_mode,
                     'answer_mode' => $answer_mode,
+                    'quiz_mode' => $quiz_mode,
                     'required_correct_phase1' => $required_phase1,
                     'required_correct_phase2' => $required_phase2,
                     'reverse_enabled' => $reverse_enabled,
@@ -323,6 +325,7 @@ elseif ($action === 'batch_import_gloss') {
             'language' => $language,
             'spelling_mode' => $spelling_mode,
             'answer_mode' => $answer_mode,
+            'quiz_mode' => $quiz_mode,
             'required_correct_phase1' => $required_phase1,
             'required_correct_phase2' => $required_phase2,
             'reverse_enabled' => $reverse_enabled,

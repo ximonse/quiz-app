@@ -74,6 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $quizzes[$quiz_id]['language'] = $_POST['language'] ?? $quiz['language'];
     $quizzes[$quiz_id]['spelling_mode'] = $_POST['spelling_mode'] ?? $quiz['spelling_mode'];
     $quizzes[$quiz_id]['answer_mode'] = $_POST['answer_mode'] ?? $quiz['answer_mode'];
+    $quizzes[$quiz_id]['quiz_mode'] = $_POST['quiz_mode'] ?? ($quiz['quiz_mode'] ?? 'training');
     $quizzes[$quiz_id]['required_correct_phase1'] = intval($_POST['required_phase1'] ?? $quiz['required_correct_phase1']);
     $quizzes[$quiz_id]['required_correct_phase2'] = intval($_POST['required_phase2'] ?? $quiz['required_correct_phase2']);
     if (isset($quiz['type']) && $quiz['type'] === 'glossary') {
@@ -184,7 +185,14 @@ $return_url = $is_super_admin ? 'super-admin.php' : 'admin.php';
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Quizläge</label>
+                        <select id="quiz_quiz_mode" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="training" <?= ($quiz['quiz_mode'] ?? 'training') === 'training' ? 'selected' : '' ?>>Träning (repetera tills rätt)</option>
+                            <option value="test" <?= ($quiz['quiz_mode'] ?? '') === 'test' ? 'selected' : '' ?>>Test (en omgång)</option>
+                        </select>
+                    </div>
                     <div>
                         <label class="block text-gray-700 font-medium mb-2">Rätt svar fas 1 (flerval)</label>
                         <input type="number" id="quiz_required_phase1" value="<?= $quiz['required_correct_phase1'] ?? 2 ?>" min="1" max="10"
@@ -290,18 +298,48 @@ $return_url = $is_super_admin ? 'super-admin.php' : 'admin.php';
         }
 
         (function initEditFieldToggles() {
+            function isTestMode() {
+                const el = document.getElementById('quiz_quiz_mode');
+                return el && el.value === 'test';
+            }
+
+            function applyTestModeDisablingEdit(isTest) {
+                setFieldDisabled('quiz_required_phase1', isTest);
+                setFieldDisabled('quiz_required_phase2', isTest);
+                setFieldDisabled('quiz_reverse_enabled', isTest);
+                setFieldDisabled('quiz_reverse_answer_mode', isTest);
+                setFieldDisabled('quiz_reverse_required_phase1', isTest);
+                setFieldDisabled('quiz_reverse_required_phase2', isTest);
+            }
+
+            const qm = document.getElementById('quiz_quiz_mode');
+            if (qm) {
+                qm.addEventListener('change', () => {
+                    applyTestModeDisablingEdit(isTestMode());
+                    if (!isTestMode()) {
+                        updatePhaseFields('quiz_answer_mode', 'quiz_required_phase1', 'quiz_required_phase2');
+                        updateReverseFields('quiz_reverse_enabled', 'quiz_reverse_answer_mode', 'quiz_reverse_required_phase1', 'quiz_reverse_required_phase2');
+                    }
+                });
+                applyTestModeDisablingEdit(isTestMode());
+            }
+
             const am = document.getElementById('quiz_answer_mode');
             if (am) {
-                am.addEventListener('change', () => updatePhaseFields('quiz_answer_mode', 'quiz_required_phase1', 'quiz_required_phase2'));
-                updatePhaseFields('quiz_answer_mode', 'quiz_required_phase1', 'quiz_required_phase2');
+                am.addEventListener('change', () => {
+                    if (!isTestMode()) updatePhaseFields('quiz_answer_mode', 'quiz_required_phase1', 'quiz_required_phase2');
+                });
+                if (!isTestMode()) updatePhaseFields('quiz_answer_mode', 'quiz_required_phase1', 'quiz_required_phase2');
             }
             const re = document.getElementById('quiz_reverse_enabled');
             if (re) {
-                const update = () => updateReverseFields('quiz_reverse_enabled', 'quiz_reverse_answer_mode', 'quiz_reverse_required_phase1', 'quiz_reverse_required_phase2');
+                const update = () => {
+                    if (!isTestMode()) updateReverseFields('quiz_reverse_enabled', 'quiz_reverse_answer_mode', 'quiz_reverse_required_phase1', 'quiz_reverse_required_phase2');
+                };
                 re.addEventListener('change', update);
                 const ram = document.getElementById('quiz_reverse_answer_mode');
                 if (ram) ram.addEventListener('change', update);
-                update();
+                if (!isTestMode()) update();
             }
         })();
 
@@ -580,6 +618,7 @@ $return_url = $is_super_admin ? 'super-admin.php' : 'admin.php';
                 <input type="hidden" name="language" value="${document.getElementById('quiz_language').value}">
                 <input type="hidden" name="spelling_mode" value="${document.getElementById('quiz_spelling_mode').value}">
                 <input type="hidden" name="answer_mode" value="${document.getElementById('quiz_answer_mode').value}">
+                <input type="hidden" name="quiz_mode" value="${document.getElementById('quiz_quiz_mode') ? document.getElementById('quiz_quiz_mode').value : 'training'}">
                 <input type="hidden" name="required_phase1" value="${document.getElementById('quiz_required_phase1').value}">
                 <input type="hidden" name="required_phase2" value="${document.getElementById('quiz_required_phase2').value}">
                 <input type="hidden" name="reverse_enabled" value="${document.getElementById('quiz_reverse_enabled') ? document.getElementById('quiz_reverse_enabled').value : '0'}">
