@@ -11,7 +11,7 @@ if (!$input || empty($input['quiz_id']) || empty($input['student_name'])) {
     exit;
 }
 
-$quizzes = readJSON(DATA_DIR . '/quizzes.json');
+$quizzes = readJSON(QUIZZES_FILE);
 $quizId = $input['quiz_id'];
 
 if (!isset($quizzes[$quizId])) {
@@ -38,6 +38,6 @@ $result = [
 ];
 
 $quizzes[$quizId]['results'][] = $result;
-writeJSON(DATA_DIR . '/quizzes.json', $quizzes);
+writeJSON(QUIZZES_FILE, $quizzes);
 
 echo json_encode(['saved' => true]);

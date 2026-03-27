@@ -11,7 +11,7 @@ if (!$quizId) {
     exit;
 }
 
-$quizzes = readJSON(DATA_DIR . '/quizzes.json');
+$quizzes = readJSON(QUIZZES_FILE);
 if (!isset($quizzes[$quizId])) {
     http_response_code(404);
     echo json_encode(['error' => 'Quiz not found']);

@@ -1,8 +1,7 @@
 <?php
 // admin/create.php — Create new quiz (glossary or fact)
-session_start();
 require_once __DIR__ . '/../config.php';
-requireTeacher();
+if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 
 $csrfToken = getCsrfToken();
 $error = '';
@@ -62,9 +61,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
             }
 
-            $quizzes = readJSON(DATA_DIR . '/quizzes.json');
+            $quizzes = readJSON(QUIZZES_FILE);
             $quizzes[$quizId] = $quiz;
-            writeJSON(DATA_DIR . '/quizzes.json', $quizzes);
+            writeJSON(QUIZZES_FILE, $quizzes);
 
             header('Location: dashboard.php');
             exit;

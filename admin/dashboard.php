@@ -1,10 +1,9 @@
 <?php
 // admin/dashboard.php — Compact quiz list for teachers
-session_start();
 require_once __DIR__ . '/../config.php';
-requireTeacher();
+if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 
-$quizzes = readJSON(DATA_DIR . '/quizzes.json');
+$quizzes = readJSON(QUIZZES_FILE);
 $teacherId = getCurrentTeacherID();
 
 // Filter to current teacher's quizzes
@@ -22,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $deleteId = $_POST['quiz_id'] ?? '';
     if (isset($quizzes[$deleteId]) && ($quizzes[$deleteId]['teacher_id'] ?? '') === $teacherId) {
         unset($quizzes[$deleteId]);
-        writeJSON(DATA_DIR . '/quizzes.json', $quizzes);
+        writeJSON(QUIZZES_FILE, $quizzes);
         header('Location: dashboard.php');
         exit;
     }

@@ -1,11 +1,10 @@
 <?php
 // admin/edit.php — Edit existing quiz
-session_start();
 require_once __DIR__ . '/../config.php';
-requireTeacher();
+if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 
 $quizId = $_GET['id'] ?? '';
-$quizzes = readJSON(DATA_DIR . '/quizzes.json');
+$quizzes = readJSON(QUIZZES_FILE);
 
 if (!isset($quizzes[$quizId]) || ($quizzes[$quizId]['teacher_id'] ?? '') !== getCurrentTeacherID()) {
     header('Location: dashboard.php');
@@ -56,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!$error) {
             $quizzes[$quizId] = $quiz;
-            writeJSON(DATA_DIR . '/quizzes.json', $quizzes);
+            writeJSON(QUIZZES_FILE, $quizzes);
             header('Location: dashboard.php');
             exit;
         }

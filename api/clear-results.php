@@ -1,6 +1,5 @@
 <?php
 // api/clear-results.php — Clear all results for a quiz (teacher only)
-session_start();
 require_once __DIR__ . '/../config.php';
 
 header('Content-Type: application/json');
@@ -16,7 +15,7 @@ if (!$quizId) {
     exit;
 }
 
-$quizzes = readJSON(DATA_DIR . '/quizzes.json');
+$quizzes = readJSON(QUIZZES_FILE);
 if (!isset($quizzes[$quizId])) {
     http_response_code(404);
     echo json_encode(['error' => 'Quiz not found']);
@@ -24,6 +23,6 @@ if (!isset($quizzes[$quizId])) {
 }
 
 $quizzes[$quizId]['results'] = [];
-writeJSON(DATA_DIR . '/quizzes.json', $quizzes);
+writeJSON(QUIZZES_FILE, $quizzes);
 
 echo json_encode(['success' => true]);
