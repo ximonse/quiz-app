@@ -1,31 +1,123 @@
 <?php
-// admin/dashboard.php — Compact quiz list for teachers
+// admin/dashboard.php — Quiz list + create on one page
 require_once __DIR__ . '/../config.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 
-$quizzes = readJSON(QUIZZES_FILE);
-$teacherId = getCurrentTeacherID();
-
-// Filter to current teacher's quizzes
-$myQuizzes = array_filter($quizzes, fn($q) => ($q['teacher_id'] ?? '') === $teacherId);
-$myQuizzes = array_values($myQuizzes);
-
-// Sort by created date, newest first
-usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? ''));
-
 $csrfToken = getCsrfToken();
+$teacherId = getCurrentTeacherID();
+$teacherName = $_SESSION['teacher_name'] ?? 'Lärare';
+$error = '';
+$success = '';
 
-// Handle delete
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
+// --- Handle delete ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
     requireValidCsrf();
     $deleteId = $_POST['quiz_id'] ?? '';
+    $quizzes = readJSON(QUIZZES_FILE);
     if (isset($quizzes[$deleteId]) && ($quizzes[$deleteId]['teacher_id'] ?? '') === $teacherId) {
         unset($quizzes[$deleteId]);
         writeJSON(QUIZZES_FILE, $quizzes);
-        header('Location: dashboard.php');
-        exit;
+        $success = 'Quiz raderad!';
     }
 }
+
+// --- Handle create ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create') {
+    requireValidCsrf();
+    $type = $_POST['type'] ?? '';
+    $title = trim($_POST['title'] ?? '');
+    $csvData = trim($_POST['csv_data'] ?? '');
+
+    if (!$title || !$csvData || !in_array($type, ['glossary', 'fact'])) {
+        $error = 'Fyll i alla fält.';
+    } else {
+        $items = parseCSV($csvData, $type);
+        if (empty($items)) {
+            $error = 'Kunde inte tolka CSV-data. Kontrollera formatet.';
+        } else {
+            $quizId = 'q_' . bin2hex(random_bytes(5));
+            $answerMode = $_POST['answer_mode'] ?? 'multiple_choice';
+            $reverseEnabled = isset($_POST['reverse_enabled']);
+            $reverseAnswerMode = $_POST['reverse_answer_mode'] ?? 'multiple_choice';
+
+            $quiz = [
+                'id' => $quizId,
+                'title' => $title,
+                'type' => $type,
+                'subject' => trim($_POST['subject'] ?? ''),
+                'created' => date('Y-m-d H:i:s'),
+                'teacher_id' => $teacherId,
+                'settings' => [
+                    'answer_mode' => $answerMode,
+                    'mc_count' => intval($_POST['mc_count'] ?? count($items)),
+                    'text_count' => intval($_POST['text_count'] ?? 0),
+                    'reverse_enabled' => $reverseEnabled,
+                    'reverse_answer_mode' => $reverseAnswerMode,
+                    'reverse_mc_count' => intval($_POST['reverse_mc_count'] ?? count($items)),
+                    'reverse_text_count' => intval($_POST['reverse_text_count'] ?? 0),
+                    'quiz_mode' => $_POST['quiz_mode'] ?? 'training',
+                    'tts_enabled' => isset($_POST['tts_enabled']),
+                    'language' => $_POST['language'] ?? 'sv',
+                    'spelling_mode' => $_POST['spelling_mode'] ?? 'student_choice',
+                    'time_lock' => null,
+                    'generate_flashcards' => isset($_POST['generate_flashcards']),
+                ],
+                'items' => $items,
+                'results' => []
+            ];
+
+            $opens = trim($_POST['time_lock_opens'] ?? '');
+            $closes = trim($_POST['time_lock_closes'] ?? '');
+            if ($opens || $closes) {
+                $quiz['settings']['time_lock'] = [
+                    'opens' => $opens ?: null,
+                    'closes' => $closes ?: null
+                ];
+            }
+
+            $quizzes = readJSON(QUIZZES_FILE);
+            $quizzes[$quizId] = $quiz;
+            writeJSON(QUIZZES_FILE, $quizzes);
+            $success = "Quiz \"{$title}\" skapad!";
+        }
+    }
+}
+
+function parseCSV($csvText, $type) {
+    $lines = array_filter(array_map('trim', explode("\n", $csvText)));
+    $items = [];
+    $first = strtolower($lines[0] ?? '');
+    if (str_contains($first, 'mening') || str_contains($first, 'begrepp')) {
+        array_shift($lines);
+    }
+    foreach ($lines as $line) {
+        $cols = array_map('trim', explode(';', $line));
+        if ($type === 'glossary') {
+            if (count($cols) < 6) continue;
+            $items[] = [
+                'sentence' => $cols[0],
+                'word' => $cols[1],
+                'translation' => $cols[2],
+                'wrong_options' => array_filter([$cols[3] ?? '', $cols[4] ?? '', $cols[5] ?? '']),
+                'reverse_wrong_options' => array_filter([$cols[6] ?? '', $cols[7] ?? '', $cols[8] ?? ''])
+            ];
+        } else {
+            if (count($cols) < 5) continue;
+            $items[] = [
+                'concept' => $cols[0],
+                'description' => $cols[1],
+                'wrong_options' => array_filter([$cols[2] ?? '', $cols[3] ?? '', $cols[4] ?? ''])
+            ];
+        }
+    }
+    return $items;
+}
+
+// Load quizzes for list
+$quizzes = readJSON(QUIZZES_FILE);
+$myQuizzes = array_filter($quizzes, fn($q) => ($q['teacher_id'] ?? '') === $teacherId);
+$myQuizzes = array_values($myQuizzes);
+usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? ''));
 ?>
 <!DOCTYPE html>
 <html lang="sv">
@@ -36,71 +128,331 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="../engine/themes.css">
 </head>
-<body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
 <div class="max-w-4xl mx-auto p-4">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold" style="color: var(--text-primary)">Mina Quiz</h1>
-        <a href="create.php" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">+ Skapa quiz</a>
+
+    <!-- Header -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Hej <?= htmlspecialchars($teacherName) ?>!</h1>
+                <p class="text-gray-500 text-sm">Hantera dina quizzes</p>
+            </div>
+            <a href="../index.php?logout=1" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">Logga ut</a>
+        </div>
     </div>
 
-    <?php if (empty($myQuizzes)): ?>
-        <p class="text-center py-12" style="color: var(--text-secondary)">Inga quiz ännu. Skapa ditt första!</p>
-    <?php else: ?>
-    <div class="space-y-1">
-        <?php foreach ($myQuizzes as $quiz):
-            $type = $quiz['type'] ?? 'glossary';
-            $typeBadge = $type === 'glossary' ? 'glosquiz' : 'faktaquiz';
-            $badgeColor = $type === 'glossary' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
-            $itemCount = count($quiz['items'] ?? []);
-            $resultCount = count($quiz['results'] ?? []);
-            $itemWord = $type === 'glossary' ? 'glosor' : 'frågor';
+    <?php if ($success): ?>
+        <div class="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm"><?= htmlspecialchars($success) ?></div>
+    <?php endif; ?>
+    <?php if ($error): ?>
+        <div class="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm"><?= htmlspecialchars($error) ?></div>
+    <?php endif; ?>
 
-            // Time lock status
-            $lockText = 'Alltid öppen';
-            if (!empty($quiz['settings']['time_lock'])) {
-                $lock = $quiz['settings']['time_lock'];
-                $opens = !empty($lock['opens']) ? date('j/n', strtotime($lock['opens'])) : '';
-                $closes = !empty($lock['closes']) ? date('j/n', strtotime($lock['closes'])) : '';
-                if ($opens && $closes) $lockText = "Öppen $opens–$closes";
-                elseif ($opens) $lockText = "Öppnar $opens";
-                elseif ($closes) $lockText = "Stänger $closes";
-            }
-
-            $playUrl = '../play/index.php?id=' . urlencode($quiz['id']);
-        ?>
-        <div class="flex items-center justify-between px-4 py-2 rounded-lg" style="background: var(--card-bg); border: 1px solid var(--border)">
-            <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                    <span class="font-medium truncate" style="color: var(--text-primary)"><?= htmlspecialchars($quiz['title']) ?></span>
-                    <span class="text-xs px-2 py-0.5 rounded-full <?= $badgeColor ?>"><?= $typeBadge ?></span>
-                </div>
-                <div class="text-xs" style="color: var(--text-secondary)">
-                    <?= $itemCount ?> <?= $itemWord ?> · <?= $lockText ?> · <?= $resultCount ?> resultat
-                </div>
-            </div>
-            <div class="flex items-center gap-1 ml-4">
-                <button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="p-1.5 rounded hover:bg-gray-100 text-gray-500" title="Kopiera länk">📋</button>
-                <a href="edit.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-100 text-gray-500" title="Redigera">✏️</a>
-                <a href="stats.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-100 text-gray-500" title="Statistik">📊</a>
-                <form method="POST" style="display:inline" onsubmit="return confirm('Radera detta quiz?')">
-                    <?= csrfField() ?>
-                    <input type="hidden" name="action" value="delete">
-                    <input type="hidden" name="quiz_id" value="<?= htmlspecialchars($quiz['id']) ?>">
-                    <button type="submit" class="p-1.5 rounded hover:bg-red-50 text-gray-500" title="Radera">🗑️</button>
-                </form>
+    <!-- ═══════════ MINA QUIZ ═══════════ -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold text-gray-800">Mina Quiz (<?= count($myQuizzes) ?>)</h2>
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-500">Sortera:</label>
+                <select id="sort-select" onchange="sortQuizzes()" class="text-sm px-2 py-1 border border-gray-300 rounded">
+                    <option value="created-desc">Nyast först</option>
+                    <option value="created-asc">Äldst först</option>
+                    <option value="title-asc">Titel A-Ö</option>
+                    <option value="title-desc">Titel Ö-A</option>
+                    <option value="type">Typ</option>
+                    <option value="subject">Ämne</option>
+                </select>
             </div>
         </div>
-        <?php endforeach; ?>
+
+        <?php if (empty($myQuizzes)): ?>
+            <p class="text-center py-8 text-gray-400">Inga quiz ännu. Skapa ditt första nedan!</p>
+        <?php else: ?>
+        <div id="quiz-list" class="space-y-1">
+            <?php foreach ($myQuizzes as $quiz):
+                $type = $quiz['type'] ?? 'glossary';
+                $typeBadge = $type === 'glossary' ? 'glosquiz' : 'faktaquiz';
+                $badgeColor = $type === 'glossary' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
+                $itemCount = count($quiz['items'] ?? []);
+                $resultCount = count($quiz['results'] ?? []);
+                $itemWord = $type === 'glossary' ? 'glosor' : 'frågor';
+                $subject = htmlspecialchars($quiz['subject'] ?? '');
+                $created = $quiz['created'] ?? '';
+                $createdShort = $created ? date('j/n', strtotime($created)) : '';
+                $playUrl = '../play/index.php?id=' . urlencode($quiz['id']);
+            ?>
+            <div class="quiz-row flex items-center justify-between px-4 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 transition"
+                 data-created="<?= htmlspecialchars($created) ?>"
+                 data-title="<?= htmlspecialchars($quiz['title']) ?>"
+                 data-type="<?= $type ?>"
+                 data-subject="<?= $subject ?>">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium text-gray-800 truncate"><?= htmlspecialchars($quiz['title']) ?></span>
+                        <span class="text-xs px-2 py-0.5 rounded-full <?= $badgeColor ?>"><?= $typeBadge ?></span>
+                        <?php if ($subject): ?>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"><?= $subject ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                        <?= $itemCount ?> <?= $itemWord ?> &middot; <?= $createdShort ?> &middot; <?= $resultCount ?> resultat
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 ml-4">
+                    <button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Kopiera elevlänk">📋</button>
+                    <a href="edit.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Redigera">✏️</a>
+                    <a href="stats.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Statistik">📊</a>
+                    <form method="POST" style="display:inline" onsubmit="return confirm('Radera detta quiz?')">
+                        <?= csrfField() ?>
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="quiz_id" value="<?= htmlspecialchars($quiz['id']) ?>">
+                        <button type="submit" class="p-1.5 rounded hover:bg-red-100 text-gray-500" title="Radera">🗑️</button>
+                    </form>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
     </div>
-    <?php endif; ?>
+
+    <!-- ═══════════ SKAPA QUIZ ═══════════ -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">Skapa nytt quiz</h2>
+
+        <form method="POST" class="space-y-4">
+            <?= csrfField() ?>
+            <input type="hidden" name="action" value="create">
+
+            <!-- Typ -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Typ</label>
+                <div class="flex gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer text-gray-700">
+                        <input type="radio" name="type" value="glossary" checked onchange="toggleTypeFields()"> Glosquiz
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer text-gray-700">
+                        <input type="radio" name="type" value="fact" onchange="toggleTypeFields()"> Faktaquiz
+                    </label>
+                </div>
+            </div>
+
+            <!-- Titel + Ämne -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Titel</label>
+                    <input type="text" name="title" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="T.ex. Spanska vecka 12">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Ämne (valfritt)</label>
+                    <input type="text" name="subject" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="T.ex. Spanska, NO, Matte">
+                </div>
+            </div>
+
+            <!-- CSV Data -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">CSV-data (semikolon-separerad)</label>
+                <div id="csv-hint-glossary" class="text-xs text-gray-500 mb-1">Format: mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3</div>
+                <div id="csv-hint-fact" class="text-xs text-gray-500 mb-1 hidden">Format: begrepp;beskrivning;fel1;fel2;fel3</div>
+                <textarea name="csv_data" required rows="6" class="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500" placeholder="Klistra in CSV här..."></textarea>
+
+                <!-- AI Prompt Helper -->
+                <div class="mt-2">
+                    <button type="button" onclick="toggleAiPrompt()" class="flex items-center text-purple-600 hover:text-purple-800 font-medium text-xs">
+                        <span class="mr-1">🤖</span> Behöver du hjälp att skapa CSV? Klicka här för AI-prompt
+                    </button>
+                    <div id="ai-prompt-box" class="hidden mt-2 p-3 bg-purple-50 border border-purple-100 rounded-lg">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold text-purple-800">Kopiera denna prompt till ChatGPT/Claude:</span>
+                            <button type="button" onclick="copyAiPrompt()" class="bg-purple-200 hover:bg-purple-300 text-purple-800 px-2 py-1 rounded text-xs transition">
+                                📋 Kopiera prompt
+                            </button>
+                        </div>
+                        <pre id="prompt-text" class="text-xs bg-white p-2 rounded border border-gray-200 overflow-x-auto whitespace-pre-wrap text-gray-600">Du är en expert på pedagogik. Jag vill skapa quiz-material.
+
+Processen sker i två steg:
+
+STEG 1: ANALYS &amp; FÖRSLAG
+1. Analysera texten/bilden jag bifogar.
+2. Föreslå 10-20 relevanta begrepp/glosor.
+3. Fråga mig om jag vill ändra något.
+
+STEG 2: GENERERING (Efter mitt godkännande)
+Skapa CSV-text med semikolon som separator.
+
+FORMAT:
+Begrepp/glosa;Beskrivning;Exempelmening;Översättning;Fråga;Felsvar1;Felsvar2;Felsvar3
+
+REGLER:
+- "Begrepp/glosa": Ordet som ska läras.
+- "Beskrivning": Förklaring (för flashcards).
+- "Exempelmening": Ordet i sammanhang (eller tomt).
+- "Översättning": Bara för språkglosor (annars tomt ;;).
+- "Fråga": Fråga där begreppet är svaret.
+- "Felsvar": 3 trovärdiga felalternativ.
+- Inga citattecken. Inga radbrytningar i celler.
+
+Nu, invänta mitt material.</pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inställningar -->
+            <fieldset class="border border-gray-200 rounded-lg p-4">
+                <legend class="text-sm font-medium text-gray-700 px-2">Inställningar</legend>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Svarsläge</label>
+                        <select name="answer_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm" onchange="toggleHybridFields()">
+                            <option value="multiple_choice">Flerval</option>
+                            <option value="text_only">Skrivsvar</option>
+                            <option value="hybrid">Hybrid (flerval + skrivsvar)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Quizläge</label>
+                        <select name="quiz_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                            <option value="training">Träning (repetition)</option>
+                            <option value="test">Test (en genomgång)</option>
+                        </select>
+                    </div>
+                    <div id="mc-count-field" class="hidden">
+                        <label class="block text-xs text-gray-500 mb-1">Antal flerval</label>
+                        <input type="number" name="mc_count" min="1" value="10" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                    </div>
+                    <div id="text-count-field" class="hidden">
+                        <label class="block text-xs text-gray-500 mb-1">Antal skrivsvar</label>
+                        <input type="number" name="text_count" min="1" value="5" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Språk</label>
+                        <select name="language" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                            <option value="sv">Svenska</option>
+                            <option value="en">Engelska</option>
+                            <option value="es">Spanska</option>
+                            <option value="fr">Franska</option>
+                            <option value="de">Tyska</option>
+                            <option value="uk">Ukrainska</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Stavningsläge</label>
+                        <select name="spelling_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                            <option value="student_choice">Eleven väljer</option>
+                            <option value="easy">Generös</option>
+                            <option value="puritan">Exakt</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2 flex flex-wrap gap-4">
+                        <label class="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
+                            <input type="checkbox" name="reverse_enabled" onchange="toggleReverseFields()"> Omvänd riktning
+                        </label>
+                        <label class="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
+                            <input type="checkbox" name="tts_enabled" id="tts-checkbox" checked> Uppläsning (TTS)
+                        </label>
+                        <label class="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
+                            <input type="checkbox" name="generate_flashcards" checked> Generera flashcards
+                        </label>
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Omvänd riktning -->
+            <fieldset id="reverse-fields" class="border border-gray-200 rounded-lg p-4 hidden">
+                <legend class="text-sm font-medium text-gray-700 px-2">Omvänd riktning</legend>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Omvänt svarsläge</label>
+                        <select name="reverse_answer_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm" onchange="toggleReverseHybridFields()">
+                            <option value="multiple_choice">Flerval</option>
+                            <option value="text_only">Skrivsvar</option>
+                            <option value="hybrid">Hybrid</option>
+                        </select>
+                    </div>
+                    <div></div>
+                    <div id="reverse-mc-count-field" class="hidden">
+                        <label class="block text-xs text-gray-500 mb-1">Antal flerval (omvänd)</label>
+                        <input type="number" name="reverse_mc_count" min="1" value="10" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                    </div>
+                    <div id="reverse-text-count-field" class="hidden">
+                        <label class="block text-xs text-gray-500 mb-1">Antal skrivsvar (omvänd)</label>
+                        <input type="number" name="reverse_text_count" min="1" value="5" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Tidsspärr -->
+            <fieldset class="border border-gray-200 rounded-lg p-4">
+                <legend class="text-sm font-medium text-gray-700 px-2">Tidsspärr (valfritt)</legend>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Öppnar</label>
+                        <input type="datetime-local" name="time_lock_opens" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Stänger</label>
+                        <input type="datetime-local" name="time_lock_closes" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                    </div>
+                </div>
+            </fieldset>
+
+            <button type="submit" class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-lg shadow-md">Skapa Quiz</button>
+        </form>
+    </div>
 </div>
 
 <script>
 function copyLink(path) {
     const url = window.location.origin + path;
-    navigator.clipboard.writeText(url).then(() => {
-        alert('Länk kopierad!');
+    navigator.clipboard.writeText(url).then(() => alert('Länk kopierad!'));
+}
+
+function sortQuizzes() {
+    const list = document.getElementById('quiz-list');
+    if (!list) return;
+    const rows = [...list.querySelectorAll('.quiz-row')];
+    const val = document.getElementById('sort-select').value;
+
+    rows.sort((a, b) => {
+        switch (val) {
+            case 'created-desc': return b.dataset.created.localeCompare(a.dataset.created);
+            case 'created-asc': return a.dataset.created.localeCompare(b.dataset.created);
+            case 'title-asc': return a.dataset.title.localeCompare(b.dataset.title, 'sv');
+            case 'title-desc': return b.dataset.title.localeCompare(a.dataset.title, 'sv');
+            case 'type': return a.dataset.type.localeCompare(b.dataset.type);
+            case 'subject': return a.dataset.subject.localeCompare(b.dataset.subject, 'sv');
+            default: return 0;
+        }
     });
+    rows.forEach(r => list.appendChild(r));
+}
+
+function toggleTypeFields() {
+    const isGlossary = document.querySelector('input[name="type"][value="glossary"]').checked;
+    document.getElementById('csv-hint-glossary').classList.toggle('hidden', !isGlossary);
+    document.getElementById('csv-hint-fact').classList.toggle('hidden', isGlossary);
+    document.getElementById('tts-checkbox').checked = isGlossary;
+}
+function toggleHybridFields() {
+    const mode = document.querySelector('select[name="answer_mode"]').value;
+    document.getElementById('mc-count-field').classList.toggle('hidden', mode !== 'hybrid');
+    document.getElementById('text-count-field').classList.toggle('hidden', mode !== 'hybrid');
+}
+function toggleReverseFields() {
+    const enabled = document.querySelector('input[name="reverse_enabled"]').checked;
+    document.getElementById('reverse-fields').classList.toggle('hidden', !enabled);
+}
+function toggleReverseHybridFields() {
+    const mode = document.querySelector('select[name="reverse_answer_mode"]').value;
+    document.getElementById('reverse-mc-count-field').classList.toggle('hidden', mode !== 'hybrid');
+    document.getElementById('reverse-text-count-field').classList.toggle('hidden', mode !== 'hybrid');
+}
+function toggleAiPrompt() {
+    document.getElementById('ai-prompt-box').classList.toggle('hidden');
+}
+function copyAiPrompt() {
+    const text = document.getElementById('prompt-text').innerText;
+    navigator.clipboard.writeText(text).then(() => alert('Prompt kopierad! Klistra in den i din AI-chatt.'));
 }
 </script>
 </body>
