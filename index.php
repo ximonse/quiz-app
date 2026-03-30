@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             password_verify($password, $teacher['password_hash'])) {
             $_SESSION['teacher_id'] = $tid;
             $_SESSION['teacher_name'] = $teacher['name'];
-            header('Location: admin.php');
+            header('Location: admin/dashboard.php');
             exit;
         }
     }
