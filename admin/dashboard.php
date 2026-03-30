@@ -45,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
                 'title' => $title,
                 'type' => $type,
                 'subject' => trim($_POST['subject'] ?? ''),
+                'tags' => trim($_POST['tags'] ?? ''),
                 'created' => date('Y-m-d H:i:s'),
                 'teacher_id' => $teacherId,
                 'settings' => [
@@ -149,73 +150,6 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
         <div class="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
 
-    <!-- ═══════════ MINA QUIZ ═══════════ -->
-    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold text-gray-800">Mina Quiz (<?= count($myQuizzes) ?>)</h2>
-            <div class="flex items-center gap-2">
-                <label class="text-xs text-gray-500">Sortera:</label>
-                <select id="sort-select" onchange="sortQuizzes()" class="text-sm px-2 py-1 border border-gray-300 rounded">
-                    <option value="created-desc">Nyast först</option>
-                    <option value="created-asc">Äldst först</option>
-                    <option value="title-asc">Titel A-Ö</option>
-                    <option value="title-desc">Titel Ö-A</option>
-                    <option value="type">Typ</option>
-                    <option value="subject">Ämne</option>
-                </select>
-            </div>
-        </div>
-
-        <?php if (empty($myQuizzes)): ?>
-            <p class="text-center py-8 text-gray-400">Inga quiz ännu. Skapa ditt första nedan!</p>
-        <?php else: ?>
-        <div id="quiz-list" class="space-y-1">
-            <?php foreach ($myQuizzes as $quiz):
-                $type = $quiz['type'] ?? 'glossary';
-                $typeBadge = $type === 'glossary' ? 'glosquiz' : 'faktaquiz';
-                $badgeColor = $type === 'glossary' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
-                $itemCount = count($quiz['items'] ?? []);
-                $resultCount = count($quiz['results'] ?? []);
-                $itemWord = $type === 'glossary' ? 'glosor' : 'frågor';
-                $subject = htmlspecialchars($quiz['subject'] ?? '');
-                $created = $quiz['created'] ?? '';
-                $createdShort = $created ? date('j/n', strtotime($created)) : '';
-                $playUrl = '../play/index.php?id=' . urlencode($quiz['id']);
-            ?>
-            <div class="quiz-row flex items-center justify-between px-4 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 transition"
-                 data-created="<?= htmlspecialchars($created) ?>"
-                 data-title="<?= htmlspecialchars($quiz['title']) ?>"
-                 data-type="<?= $type ?>"
-                 data-subject="<?= $subject ?>">
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                        <span class="font-medium text-gray-800 truncate"><?= htmlspecialchars($quiz['title']) ?></span>
-                        <span class="text-xs px-2 py-0.5 rounded-full <?= $badgeColor ?>"><?= $typeBadge ?></span>
-                        <?php if ($subject): ?>
-                            <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"><?= $subject ?></span>
-                        <?php endif; ?>
-                    </div>
-                    <div class="text-xs text-gray-500">
-                        <?= $itemCount ?> <?= $itemWord ?> &middot; <?= $createdShort ?> &middot; <?= $resultCount ?> resultat
-                    </div>
-                </div>
-                <div class="flex items-center gap-1 ml-4">
-                    <button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Kopiera elevlänk">📋</button>
-                    <a href="edit.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Redigera">✏️</a>
-                    <a href="stats.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Statistik">📊</a>
-                    <form method="POST" style="display:inline" onsubmit="return confirm('Radera detta quiz?')">
-                        <?= csrfField() ?>
-                        <input type="hidden" name="action" value="delete">
-                        <input type="hidden" name="quiz_id" value="<?= htmlspecialchars($quiz['id']) ?>">
-                        <button type="submit" class="p-1.5 rounded hover:bg-red-100 text-gray-500" title="Radera">🗑️</button>
-                    </form>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
-    </div>
-
     <!-- ═══════════ SKAPA QUIZ ═══════════ -->
     <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
         <h2 class="text-lg font-bold text-gray-800 mb-4">Skapa nytt quiz</h2>
@@ -224,28 +158,32 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
             <?= csrfField() ?>
             <input type="hidden" name="action" value="create">
 
-            <!-- Typ -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Typ</label>
-                <div class="flex gap-4">
-                    <label class="flex items-center gap-2 cursor-pointer text-gray-700">
-                        <input type="radio" name="type" value="glossary" checked onchange="toggleTypeFields()"> Glosquiz
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer text-gray-700">
-                        <input type="radio" name="type" value="fact" onchange="toggleTypeFields()"> Faktaquiz
-                    </label>
-                </div>
+            <!-- Typ (knappar) -->
+            <input type="hidden" name="type" id="type-input" value="glossary">
+            <div class="flex gap-3 mb-2">
+                <button type="button" id="btn-glossary" onclick="selectType('glossary')"
+                    class="flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-purple-500 bg-purple-50 text-purple-700 shadow-md">
+                    Glosquiz
+                </button>
+                <button type="button" id="btn-fact" onclick="selectType('fact')"
+                    class="flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-gray-200 bg-white text-gray-500 hover:border-blue-400">
+                    Faktaquiz
+                </button>
             </div>
 
-            <!-- Titel + Ämne -->
-            <div class="grid grid-cols-2 gap-4">
+            <!-- Titel + Ämne + Taggar -->
+            <div class="grid grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Titel</label>
                     <input type="text" name="title" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="T.ex. Spanska vecka 12">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Ämne (valfritt)</label>
-                    <input type="text" name="subject" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="T.ex. Spanska, NO, Matte">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Ämne</label>
+                    <input type="text" name="subject" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="T.ex. Spanska">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Taggar</label>
+                    <input type="text" name="tags" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="vecka12, åk6">
                 </div>
             </div>
 
@@ -399,6 +337,73 @@ Nu, invänta mitt material.</pre>
             <button type="submit" class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-lg shadow-md">Skapa Quiz</button>
         </form>
     </div>
+
+    <!-- ═══════════ MINA QUIZ ═══════════ -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-bold text-gray-800">Mina Quiz (<?= count($myQuizzes) ?>)</h2>
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-500">Sortera:</label>
+                <select id="sort-select" onchange="sortQuizzes()" class="text-sm px-2 py-1 border border-gray-300 rounded">
+                    <option value="created-desc">Nyast först</option>
+                    <option value="created-asc">Äldst först</option>
+                    <option value="title-asc">Titel A-Ö</option>
+                    <option value="title-desc">Titel Ö-A</option>
+                    <option value="type">Typ</option>
+                    <option value="subject">Ämne</option>
+                </select>
+            </div>
+        </div>
+
+        <?php if (empty($myQuizzes)): ?>
+            <p class="text-center py-8 text-gray-400">Inga quiz ännu. Skapa ditt första ovan!</p>
+        <?php else: ?>
+        <div id="quiz-list" class="space-y-1">
+            <?php foreach ($myQuizzes as $quiz):
+                $type = $quiz['type'] ?? 'glossary';
+                $typeBadge = $type === 'glossary' ? 'glosquiz' : 'faktaquiz';
+                $badgeColor = $type === 'glossary' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
+                $itemCount = count($quiz['items'] ?? []);
+                $resultCount = count($quiz['results'] ?? []);
+                $itemWord = $type === 'glossary' ? 'glosor' : 'frågor';
+                $subject = htmlspecialchars($quiz['subject'] ?? '');
+                $created = $quiz['created'] ?? '';
+                $createdShort = $created ? date('j/n', strtotime($created)) : '';
+                $playUrl = '../play/index.php?id=' . urlencode($quiz['id']);
+            ?>
+            <div class="quiz-row flex items-center justify-between px-4 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 transition"
+                 data-created="<?= htmlspecialchars($created) ?>"
+                 data-title="<?= htmlspecialchars($quiz['title']) ?>"
+                 data-type="<?= $type ?>"
+                 data-subject="<?= $subject ?>">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium text-gray-800 truncate"><?= htmlspecialchars($quiz['title']) ?></span>
+                        <span class="text-xs px-2 py-0.5 rounded-full <?= $badgeColor ?>"><?= $typeBadge ?></span>
+                        <?php if ($subject): ?>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"><?= $subject ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                        <?= $itemCount ?> <?= $itemWord ?> &middot; <?= $createdShort ?> &middot; <?= $resultCount ?> resultat
+                    </div>
+                </div>
+                <div class="flex items-center gap-1 ml-4">
+                    <button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Kopiera elevlänk">📋</button>
+                    <a href="edit.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Redigera">✏️</a>
+                    <a href="stats.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Statistik">📊</a>
+                    <form method="POST" style="display:inline" onsubmit="return confirm('Radera detta quiz?')">
+                        <?= csrfField() ?>
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="quiz_id" value="<?= htmlspecialchars($quiz['id']) ?>">
+                        <button type="submit" class="p-1.5 rounded hover:bg-red-100 text-gray-500" title="Radera">🗑️</button>
+                    </form>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+    </div>
 </div>
 
 <script>
@@ -427,12 +432,22 @@ function sortQuizzes() {
     rows.forEach(r => list.appendChild(r));
 }
 
-function toggleTypeFields() {
-    const isGlossary = document.querySelector('input[name="type"][value="glossary"]').checked;
-    document.getElementById('csv-hint-glossary').classList.toggle('hidden', !isGlossary);
-    document.getElementById('csv-hint-fact').classList.toggle('hidden', isGlossary);
-    document.getElementById('tts-checkbox').checked = isGlossary;
+function selectType(type) {
+    document.getElementById('type-input').value = type;
+    const btnG = document.getElementById('btn-glossary');
+    const btnF = document.getElementById('btn-fact');
+    if (type === 'glossary') {
+        btnG.className = 'flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-purple-500 bg-purple-50 text-purple-700 shadow-md';
+        btnF.className = 'flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-gray-200 bg-white text-gray-500 hover:border-blue-400';
+    } else {
+        btnF.className = 'flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-blue-500 bg-blue-50 text-blue-700 shadow-md';
+        btnG.className = 'flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-gray-200 bg-white text-gray-500 hover:border-purple-400';
+    }
+    document.getElementById('csv-hint-glossary').classList.toggle('hidden', type !== 'glossary');
+    document.getElementById('csv-hint-fact').classList.toggle('hidden', type !== 'fact');
+    document.getElementById('tts-checkbox').checked = (type === 'glossary');
 }
+function toggleTypeFields() { /* kept for compat */ }
 function toggleHybridFields() {
     const mode = document.querySelector('select[name="answer_mode"]').value;
     document.getElementById('mc-count-field').classList.toggle('hidden', mode !== 'hybrid');
