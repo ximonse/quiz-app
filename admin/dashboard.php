@@ -172,7 +172,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
             </div>
 
             <!-- Titel + Ämne + Taggar -->
-            <div class="grid grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Titel</label>
                     <input type="text" name="title" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="T.ex. Spanska vecka 12">
@@ -206,29 +206,58 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                                 📋 Kopiera prompt
                             </button>
                         </div>
-                        <pre id="prompt-text" class="text-xs bg-white p-2 rounded border border-gray-200 overflow-x-auto whitespace-pre-wrap text-gray-600">Du är en expert på pedagogik. Jag vill skapa quiz-material.
+                        <pre id="prompt-glossary" class="text-xs bg-white p-2 rounded border border-gray-200 overflow-x-auto whitespace-pre-wrap text-gray-600">Du är en expert på pedagogik. Jag vill skapa glosquiz-material.
 
 Processen sker i två steg:
 
-STEG 1: ANALYS &amp; FÖRSLAG
+STEG 1: ANALYS & FÖRSLAG
 1. Analysera texten/bilden jag bifogar.
-2. Föreslå 10-20 relevanta begrepp/glosor.
+2. Föreslå 10-20 relevanta glosor.
 3. Fråga mig om jag vill ändra något.
 
 STEG 2: GENERERING (Efter mitt godkännande)
 Skapa CSV-text med semikolon som separator.
 
-FORMAT:
-Begrepp/glosa;Beskrivning;Exempelmening;Översättning;Fråga;Felsvar1;Felsvar2;Felsvar3
+FORMAT (en rad per glosa):
+mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3
 
-REGLER:
-- "Begrepp/glosa": Ordet som ska läras.
-- "Beskrivning": Förklaring (för flashcards).
-- "Exempelmening": Ordet i sammanhang (eller tomt).
-- "Översättning": Bara för språkglosor (annars tomt ;;).
-- "Fråga": Fråga där begreppet är svaret.
-- "Felsvar": 3 trovärdiga felalternativ.
+FÖRKLARING:
+- "mening": En exempelmening där ordet används.
+- "ord": Glosans ord på källspråket.
+- "översättning": Översättning till svenska.
+- "fel1-3": 3 trovärdiga felaktiga svenska översättningar.
+- "omvänt_fel1-3": 3 trovärdiga felaktiga ord på källspråket.
 - Inga citattecken. Inga radbrytningar i celler.
+- Ingen header-rad.
+
+EXEMPEL:
+Hola, me llamo Roberto;llamo;heter;bor;läser;springer;vive;toma;mira
+
+Nu, invänta mitt material.</pre>
+                        <pre id="prompt-fact" class="text-xs bg-white p-2 rounded border border-gray-200 overflow-x-auto whitespace-pre-wrap text-gray-600 hidden">Du är en expert på pedagogik. Jag vill skapa faktaquiz-material.
+
+Processen sker i två steg:
+
+STEG 1: ANALYS & FÖRSLAG
+1. Analysera texten/bilden jag bifogar.
+2. Föreslå 10-20 relevanta begrepp/fakta.
+3. Fråga mig om jag vill ändra något.
+
+STEG 2: GENERERING (Efter mitt godkännande)
+Skapa CSV-text med semikolon som separator.
+
+FORMAT (en rad per begrepp):
+begrepp;beskrivning;fel1;fel2;fel3
+
+FÖRKLARING:
+- "begrepp": Ordet/begreppet som ska läras.
+- "beskrivning": Korrekt förklaring/definition.
+- "fel1-3": 3 trovärdiga men felaktiga beskrivningar.
+- Inga citattecken. Inga radbrytningar i celler.
+- Ingen header-rad.
+
+EXEMPEL:
+Fotosyntes;Processen där växter omvandlar solljus till energi;Nedbrytning av proteiner;Transport av vatten i rötter;Cellandning i djur
 
 Nu, invänta mitt material.</pre>
                     </div>
@@ -367,6 +396,7 @@ Nu, invänta mitt material.</pre>
                 $resultCount = count($quiz['results'] ?? []);
                 $itemWord = $type === 'glossary' ? 'glosor' : 'frågor';
                 $subject = htmlspecialchars($quiz['subject'] ?? '');
+                $tags = htmlspecialchars($quiz['tags'] ?? '');
                 $created = $quiz['created'] ?? '';
                 $createdShort = $created ? date('j/n', strtotime($created)) : '';
                 $playUrl = '../play/index.php?id=' . urlencode($quiz['id']);
@@ -383,6 +413,9 @@ Nu, invänta mitt material.</pre>
                         <?php if ($subject): ?>
                             <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"><?= $subject ?></span>
                         <?php endif; ?>
+                        <?php if ($tags): foreach (explode(',', $tags) as $tag): $tag = trim($tag); if ($tag): ?>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700"><?= htmlspecialchars($tag) ?></span>
+                        <?php endif; endforeach; endif; ?>
                     </div>
                     <div class="text-xs text-gray-500">
                         <?= $itemCount ?> <?= $itemWord ?> &middot; <?= $createdShort ?> &middot; <?= $resultCount ?> resultat
@@ -445,9 +478,10 @@ function selectType(type) {
     }
     document.getElementById('csv-hint-glossary').classList.toggle('hidden', type !== 'glossary');
     document.getElementById('csv-hint-fact').classList.toggle('hidden', type !== 'fact');
+    document.getElementById('prompt-glossary').classList.toggle('hidden', type !== 'glossary');
+    document.getElementById('prompt-fact').classList.toggle('hidden', type !== 'fact');
     document.getElementById('tts-checkbox').checked = (type === 'glossary');
 }
-function toggleTypeFields() { /* kept for compat */ }
 function toggleHybridFields() {
     const mode = document.querySelector('select[name="answer_mode"]').value;
     document.getElementById('mc-count-field').classList.toggle('hidden', mode !== 'hybrid');
@@ -466,8 +500,9 @@ function toggleAiPrompt() {
     document.getElementById('ai-prompt-box').classList.toggle('hidden');
 }
 function copyAiPrompt() {
-    const text = document.getElementById('prompt-text').innerText;
-    navigator.clipboard.writeText(text).then(() => alert('Prompt kopierad! Klistra in den i din AI-chatt.'));
+    const type = document.getElementById('type-input').value;
+    const el = document.getElementById('prompt-' + type);
+    navigator.clipboard.writeText(el.innerText).then(() => alert('Prompt kopierad! Klistra in den i din AI-chatt.'));
 }
 </script>
 </body>
