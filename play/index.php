@@ -72,12 +72,18 @@ fetch('../api/quiz-data.php?id=' + encodeURIComponent(QUIZ_ID))
     .then(data => {
         quizData = data;
         document.getElementById('quiz-title').textContent = data.title || 'Quiz';
+        const savedName = sessionStorage.getItem('quiz-student-' + QUIZ_ID);
+        if (savedName) {
+            document.getElementById('name-input').value = savedName;
+            enterQuiz();
+        }
     });
 
 function enterQuiz(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const name = document.getElementById('name-input').value.trim();
     if (!name) return;
+    sessionStorage.setItem('quiz-student-' + QUIZ_ID, name);
 
     document.getElementById('name-screen').classList.add('hidden');
     document.getElementById('dashboard').classList.remove('hidden');
