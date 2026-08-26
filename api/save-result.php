@@ -37,7 +37,9 @@ $result = [
     'errors' => $input['errors'] ?? []
 ];
 
-$quizzes[$quizId]['results'][] = $result;
-writeJSON(QUIZZES_FILE, $quizzes);
+updateJSONLocked(QUIZZES_FILE, function (&$lockedQuizzes) use ($quizId, $result) {
+    if (!isset($lockedQuizzes[$quizId])) throw new RuntimeException('Quiz not found');
+    $lockedQuizzes[$quizId]['results'][] = $result;
+});
 
 echo json_encode(['saved' => true]);

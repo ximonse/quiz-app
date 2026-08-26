@@ -40,7 +40,25 @@ function readJSON($file) {
 }
 
 function writeJSON($file, $data) {
-    return writeFileLocked($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    if ($json === false) return false;
+    $temporary = $file . '.tmp.' . bin2hex(random_bytes(4));
+    if (file_put_contents($temporary, $json) === false) return false;
+    return rename($temporary, $file);
+}
+
+function updateJSONLocked($file, callable $update) {
+    $lock = fopen($file . '.lock', 'c');
+    if (!$lock || !flock($lock, LOCK_EX)) throw new RuntimeException('Could not lock data file');
+    try {
+        $data = file_exists($file) ? (json_decode(file_get_contents($file), true) ?: []) : [];
+        $result = $update($data);
+        if (!writeJSON($file, $data)) throw new RuntimeException('Could not write data file');
+        return $result;
+    } finally {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
 }
 
 function generateID($prefix = '') {
