@@ -240,9 +240,19 @@ function App() {
                 </div>
             </div>
 
-            {/* Progress bar */}
-            <div className="w-full h-1.5 rounded-full mb-6" style={{background: 'var(--border)'}}>
-                <div className="h-full rounded-full bg-green-500 transition-all" style={{width: `${progress.answered > 0 ? (progress.correctCount / progress.totalQuestions) * 100 : 0}%`}}></div>
+            {/* Mastery progress */}
+            <div className="rounded-lg p-3 mb-6" style={{background: 'var(--card-bg)', border: '1px solid var(--border)'}}>
+                <div className="flex justify-between text-xs mb-2" style={{color: 'var(--text-secondary)'}}>
+                    <span>Rätt per fråga</span><span>{progress.masteredCount}/{progress.phaseTotal} klara · {progress.requiredCorrect} rätt krävs</span>
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                    {progress.phaseItemIndices.map((index, position) => (
+                        <div key={index} className="text-center" title={`Fråga ${position + 1}: ${progress.masteryCounts[index] || 0}/${progress.requiredCorrect}`}>
+                            <div className="flex gap-0.5">{Array.from({length: progress.requiredCorrect}, (_, segment) => <span key={segment} className={`h-2 flex-1 rounded ${(progress.masteryCounts[index] || 0) > segment ? 'bg-green-500' : 'bg-gray-200'}`}></span>)}</div>
+                            <span className="text-[10px]" style={{color: 'var(--text-secondary)'}}>{progress.masteryCounts[index] || 0}/{progress.requiredCorrect}</span>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             {/* Spelling mode choice (if student_choice) */}

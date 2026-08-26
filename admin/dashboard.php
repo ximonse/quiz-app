@@ -52,10 +52,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
                     'answer_mode' => $answerMode,
                     'mc_count' => intval($_POST['mc_count'] ?? count($items)),
                     'text_count' => intval($_POST['text_count'] ?? 0),
+                    'required_correct' => max(1, intval($_POST['required_correct'] ?? 1)),
                     'reverse_enabled' => $reverseEnabled,
                     'reverse_answer_mode' => $reverseAnswerMode,
                     'reverse_mc_count' => intval($_POST['reverse_mc_count'] ?? count($items)),
                     'reverse_text_count' => intval($_POST['reverse_text_count'] ?? 0),
+                    'reverse_required_correct' => max(1, intval($_POST['reverse_required_correct'] ?? 1)),
                     'quiz_mode' => $_POST['quiz_mode'] ?? 'training',
                     'tts_enabled' => isset($_POST['tts_enabled']),
                     'language' => $_POST['language'] ?? 'sv',
@@ -290,6 +292,10 @@ Nu, invänta mitt material.</pre>
                     <div id="text-count-field" class="hidden">
                         <label class="block text-xs text-gray-500 mb-1">Antal skrivsvar</label>
                         <input type="number" name="text_count" min="1" value="5" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Rätt per fråga</label>
+                        <input type="number" name="required_correct" min="1" max="10" value="2" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Språk</label>

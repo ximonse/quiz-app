@@ -16,6 +16,8 @@ function QuizEngine(config) {
     let totalQuestions = 0;
     let correctCount = 0;
     let totalErrors = 0;
+    let masteryCounts = {};
+    let phaseItemIndices = [];
     let errors = [];                 // { item_index, given, correct }
     let sessionComplete = false;
 
@@ -32,6 +34,19 @@ function QuizEngine(config) {
     function getTextCount() {
         if (direction === 'reverse') return settings.reverse_text_count || 0;
         return settings.text_count || 0;
+    }
+
+    function getRequiredCorrect() {
+        if (isTest) return 1;
+        const configured = direction === 'reverse'
+            ? settings.reverse_required_correct
+            : settings.required_correct;
+        return Math.max(1, Number(configured) || 1);
+    }
+
+    function resetPhaseMastery() {
+        phaseItemIndices = queue.map(item => item._index);
+        masteryCounts = Object.fromEntries(phaseItemIndices.map(index => [index, 0]));
     }
 
     function buildQueue() {
@@ -57,6 +72,7 @@ function QuizEngine(config) {
         }
 
         totalQuestions = isTest ? queue.length : queue.length + (queue._textQueue ? queue._textQueue.length : 0);
+        resetPhaseMastery();
     }
 
     function shuffle(arr) {
@@ -144,8 +160,17 @@ function QuizEngine(config) {
         }
 
         if (result.correct) {
-            correctCount++;
-            queue.shift(); // Remove from queue
+            const requiredCorrect = getRequiredCorrect();
+            const masteryCount = Math.min((masteryCounts[item._index] || 0) + 1, requiredCorrect);
+            masteryCounts[item._index] = masteryCount;
+            result.masteryCount = masteryCount;
+            result.requiredCorrect = requiredCorrect;
+            if (masteryCount >= requiredCorrect) {
+                correctCount++;
+                queue.shift(); // Mastered: remove from queue
+            } else {
+                queue.push(queue.shift()); // Keep rotating until mastered
+            }
         } else {
             totalErrors++;
             errors.push({ item_index: item._index, given: answer, correct: q.answer });
@@ -161,6 +186,7 @@ function QuizEngine(config) {
             queue = queue._textQueue;
             delete queue._textQueue;
             phase = 'text';
+            resetPhaseMastery();
             return { ...result, phaseChange: true, newPhase: 'text' };
         }
 
@@ -182,7 +208,9 @@ function QuizEngine(config) {
 
     function getProgress() {
         const answered = correctCount + totalErrors;
-        return { correctCount, totalErrors, answered, totalQuestions, remaining: queue.length, direction, phase, flawless: totalErrors === 0 };
+        const requiredCorrect = getRequiredCorrect();
+        const masteredCount = phaseItemIndices.filter(index => (masteryCounts[index] || 0) >= requiredCorrect).length;
+        return { correctCount, totalErrors, answered, totalQuestions, remaining: queue.length, direction, phase, flawless: totalErrors === 0, masteryCounts: { ...masteryCounts }, phaseItemIndices, requiredCorrect, masteredCount, phaseTotal: phaseItemIndices.length };
     }
 
     function getResults() {

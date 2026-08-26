@@ -27,10 +27,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $quiz['settings']['answer_mode'] = $_POST['answer_mode'] ?? 'multiple_choice';
         $quiz['settings']['mc_count'] = intval($_POST['mc_count'] ?? count($quiz['items']));
         $quiz['settings']['text_count'] = intval($_POST['text_count'] ?? 0);
+        $quiz['settings']['required_correct'] = max(1, intval($_POST['required_correct'] ?? 1));
         $quiz['settings']['reverse_enabled'] = isset($_POST['reverse_enabled']);
         $quiz['settings']['reverse_answer_mode'] = $_POST['reverse_answer_mode'] ?? 'multiple_choice';
         $quiz['settings']['reverse_mc_count'] = intval($_POST['reverse_mc_count'] ?? count($quiz['items']));
         $quiz['settings']['reverse_text_count'] = intval($_POST['reverse_text_count'] ?? 0);
+        $quiz['settings']['reverse_required_correct'] = max(1, intval($_POST['reverse_required_correct'] ?? 1));
         $quiz['settings']['quiz_mode'] = $_POST['quiz_mode'] ?? 'training';
         $quiz['settings']['tts_enabled'] = isset($_POST['tts_enabled']);
         $quiz['settings']['language'] = $_POST['language'] ?? 'sv';
