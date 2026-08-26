@@ -6,6 +6,7 @@ const LANG_MAP = {
 };
 
 let selectedVoice = null;
+let speechGeneration = 0;
 
 function setVoice(voice) {
     selectedVoice = voice;
@@ -13,6 +14,7 @@ function setVoice(voice) {
 
 function speakText(text, lang) {
     if (!('speechSynthesis' in window)) return;
+    speechGeneration += 1;
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -41,6 +43,8 @@ function speakText(text, lang) {
 
 function speakGlossary(sentence, word, lang) {
     if (!('speechSynthesis' in window)) return;
+    speechGeneration += 1;
+    const generation = speechGeneration;
     window.speechSynthesis.cancel();
 
     const u1 = new SpeechSynthesisUtterance(sentence);
@@ -56,7 +60,9 @@ function speakGlossary(sentence, word, lang) {
     if (voice) u1.voice = voice;
 
     u1.onend = () => {
+        if (generation !== speechGeneration) return;
         setTimeout(() => {
+            if (generation !== speechGeneration) return;
             const u2 = new SpeechSynthesisUtterance(word);
             u2.lang = LANG_MAP[lang] || 'sv-SE';
             u2.rate = 0.85;
@@ -69,5 +75,6 @@ function speakGlossary(sentence, word, lang) {
 }
 
 function stopSpeech() {
+    speechGeneration += 1;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 }

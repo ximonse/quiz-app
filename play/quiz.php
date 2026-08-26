@@ -154,10 +154,16 @@ function App() {
             return;
         }
 
-        // Correct, next question — TTS for the new current item
-        const nextItem = engine.currentItem();
-        const nextQ = nextItem ? engine.getQuestion(nextItem) : null;
-        playTTS(nextItem, nextQ);
+        // Show confirmation before rendering and reading the next question.
+        setFeedback({ correct: true });
+        setStatus('feedback');
+        setTimeout(() => {
+            setFeedback(null);
+            setStatus('playing');
+            const nextItem = engine.currentItem();
+            const nextQ = nextItem ? engine.getQuestion(nextItem) : null;
+            playTTS(nextItem, nextQ);
+        }, 900);
     }
 
     function playTTS(item, q) {

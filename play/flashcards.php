@@ -61,12 +61,7 @@ fetch('../api/quiz-data.php?id=' + encodeURIComponent(QUIZ_ID))
         if (items.length > 0) showCard();
         document.getElementById('counter').textContent = `1/${items.length}`;
 
-        // TTS on load
-        if (data.settings?.tts_enabled) {
-            const item = items[0];
-            if (data.type === 'glossary') speakGlossary(item.sentence, item.word, data.settings.language);
-            else speakText(item.concept || item.description, data.settings.language);
-        }
+
     });
 
 function shuffle(arr) {
@@ -85,6 +80,15 @@ function showCard() {
     document.getElementById('front-text').textContent = item.word || item.concept || '';
     document.getElementById('back-text').textContent = item.translation || item.description || '';
     document.getElementById('counter').textContent = `${currentIndex + 1}/${items.length}`;
+    playCardTTS();
+}
+
+function playCardTTS() {
+    if (!quizSettings?.tts_enabled) return;
+    const item = items[currentIndex];
+    if (!item) return;
+    if (quizType === 'glossary') speakGlossary(item.sentence, item.word, quizSettings.language);
+    else speakText(item.concept || item.description, quizSettings.language);
 }
 
 function flipCard() {
