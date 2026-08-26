@@ -54,9 +54,11 @@ function App() {
                 setQuiz(data);
                 const sm = data.settings.spelling_mode || 'easy';
                 if (sm !== 'student_choice') setSpellingMode(sm);
+                const requestedMode = new URLSearchParams(window.location.search).get('mode');
+                const effectiveSettings = { ...data.settings, quiz_mode: requestedMode === 'test' ? 'test' : data.settings.quiz_mode };
                 const eng = QuizEngine({
                     items: data.items,
-                    settings: data.settings,
+                    settings: effectiveSettings,
                     quizType: data.type
                 });
                 setEngine(eng);
