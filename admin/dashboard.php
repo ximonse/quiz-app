@@ -342,7 +342,10 @@ Nu, invänta mitt material.</pre>
                             <option value="hybrid">Hybrid</option>
                         </select>
                     </div>
-                    <div></div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Rätt per fråga (omvänd)</label>
+                        <input type="number" name="reverse_required_correct" min="1" max="10" value="2" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                    </div>
                     <div id="reverse-mc-count-field" class="hidden">
                         <label class="block text-xs text-gray-500 mb-1">Antal flerval (omvänd)</label>
                         <input type="number" name="reverse_mc_count" min="1" value="10" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">

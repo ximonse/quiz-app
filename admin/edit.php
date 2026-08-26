@@ -27,12 +27,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $quiz['settings']['answer_mode'] = $_POST['answer_mode'] ?? 'multiple_choice';
         $quiz['settings']['mc_count'] = intval($_POST['mc_count'] ?? count($quiz['items']));
         $quiz['settings']['text_count'] = intval($_POST['text_count'] ?? 0);
-        $quiz['settings']['required_correct'] = max(1, intval($_POST['required_correct'] ?? 1));
+        $quiz['settings']['required_correct'] = max(1, intval($_POST['required_correct'] ?? ($quiz['settings']['required_correct'] ?? 1)));
         $quiz['settings']['reverse_enabled'] = isset($_POST['reverse_enabled']);
         $quiz['settings']['reverse_answer_mode'] = $_POST['reverse_answer_mode'] ?? 'multiple_choice';
         $quiz['settings']['reverse_mc_count'] = intval($_POST['reverse_mc_count'] ?? count($quiz['items']));
         $quiz['settings']['reverse_text_count'] = intval($_POST['reverse_text_count'] ?? 0);
-        $quiz['settings']['reverse_required_correct'] = max(1, intval($_POST['reverse_required_correct'] ?? 1));
+        $quiz['settings']['reverse_required_correct'] = max(1, intval($_POST['reverse_required_correct'] ?? ($quiz['settings']['reverse_required_correct'] ?? 1)));
         $quiz['settings']['quiz_mode'] = $_POST['quiz_mode'] ?? 'training';
         $quiz['settings']['tts_enabled'] = isset($_POST['tts_enabled']);
         $quiz['settings']['language'] = $_POST['language'] ?? 'sv';
@@ -174,6 +174,10 @@ $csvText = itemsToCSV($quiz['items'], $quiz['type']);
                     <input type="number" name="text_count" min="1" value="<?= $s['text_count'] ?? 5 ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                 </div>
                 <div>
+                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Rätt per fråga</label>
+                    <input type="number" name="required_correct" min="1" max="10" value="<?= $s['required_correct'] ?? 1 ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                </div>
+                <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Språk</label>
                     <select name="language" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                         <?php foreach (['sv'=>'Svenska','en'=>'Engelska','es'=>'Spanska','fr'=>'Franska','de'=>'Tyska','uk'=>'Ukrainska'] as $code => $name): ?>
@@ -214,7 +218,10 @@ $csvText = itemsToCSV($quiz['items'], $quiz['type']);
                         <option value="hybrid" <?= ($s['reverse_answer_mode'] ?? '') === 'hybrid' ? 'selected' : '' ?>>Hybrid</option>
                     </select>
                 </div>
-                <div></div>
+                <div>
+                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Rätt per fråga (omvänd)</label>
+                    <input type="number" name="reverse_required_correct" min="1" max="10" value="<?= $s['reverse_required_correct'] ?? 1 ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                </div>
                 <div id="reverse-mc-count-field" class="<?= ($s['reverse_answer_mode'] ?? '') !== 'hybrid' ? 'hidden' : '' ?>">
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Antal flerval (omvänd)</label>
                     <input type="number" name="reverse_mc_count" min="1" value="<?= $s['reverse_mc_count'] ?? 10 ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">

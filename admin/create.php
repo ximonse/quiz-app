@@ -36,10 +36,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'answer_mode' => $answerMode,
                     'mc_count' => intval($_POST['mc_count'] ?? count($items)),
                     'text_count' => intval($_POST['text_count'] ?? 0),
+                    'required_correct' => max(1, intval($_POST['required_correct'] ?? 2)),
                     'reverse_enabled' => $reverseEnabled,
                     'reverse_answer_mode' => $reverseAnswerMode,
                     'reverse_mc_count' => intval($_POST['reverse_mc_count'] ?? count($items)),
                     'reverse_text_count' => intval($_POST['reverse_text_count'] ?? 0),
+                    'reverse_required_correct' => max(1, intval($_POST['reverse_required_correct'] ?? 2)),
                     'quiz_mode' => $_POST['quiz_mode'] ?? 'training',
                     'tts_enabled' => isset($_POST['tts_enabled']),
                     'language' => $_POST['language'] ?? 'sv',
@@ -195,6 +197,11 @@ function parseCSV($csvText, $type) {
                 </div>
 
                 <div>
+                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Rätt per fråga</label>
+                    <input type="number" name="required_correct" min="1" max="10" value="2" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                </div>
+
+                <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Språk</label>
                     <select name="language" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                         <option value="sv">Svenska</option>
@@ -242,7 +249,10 @@ function parseCSV($csvText, $type) {
                         <option value="hybrid">Hybrid</option>
                     </select>
                 </div>
-                <div></div>
+                <div>
+                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Rätt per fråga (omvänd)</label>
+                    <input type="number" name="reverse_required_correct" min="1" max="10" value="2" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                </div>
                 <div id="reverse-mc-count-field" class="hidden">
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Antal flerval (omvänd)</label>
                     <input type="number" name="reverse_mc_count" min="1" value="10" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
