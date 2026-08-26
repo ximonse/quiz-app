@@ -441,7 +441,7 @@ Nu, invänta mitt material.</pre>
 
 <script>
 function copyLink(path) {
-    const url = window.location.origin + path;
+    const url = new URL(path, window.location.href).href;
     navigator.clipboard.writeText(url).then(() => alert('Länk kopierad!'));
 }
 
