@@ -68,7 +68,7 @@ function App() {
                 if (data.settings.tts_enabled) {
                     const item = eng.currentItem();
                     const q = eng.getQuestion(item);
-                    if (data.type === 'glossary' && eng.currentDirection() === 'forward') {
+                    if (data.type === 'glossary' && eng.currentDirection() === 'forward' && eng.currentPhase() !== 'text') {
                         speakGlossary(item.sentence, item.word, data.settings.language);
                     } else {
                         speakText(q.prompt, data.settings.language);
@@ -170,7 +170,7 @@ function App() {
 
     function playTTS(item, q) {
         if (!quiz?.settings?.tts_enabled || !item) return;
-        if (quiz.type === 'glossary' && engine.currentDirection() === 'forward') {
+        if (quiz.type === 'glossary' && engine.currentDirection() === 'forward' && engine.currentPhase() !== 'text') {
             speakGlossary(item.sentence, item.word, quiz.settings.language);
         } else if (q) {
             speakText(q.prompt, quiz.settings.language);
@@ -278,8 +278,8 @@ function App() {
             {/* Question card */}
             {status === 'playing' && q && (
                 <div className="rounded-xl p-6 mb-4" style={{background: 'var(--card-bg)', border: '1px solid var(--border)'}}>
-                    {/* Glossary forward: show sentence with highlighted word */}
-                    {quiz.type === 'glossary' && progress.direction === 'forward' && (
+                    {/* Glossary forward (mc phase only): show sentence with highlighted word */}
+                    {quiz.type === 'glossary' && progress.direction === 'forward' && progress.phase !== 'text' && (
                         <div>
                             <p className="text-lg mb-2" style={{color: 'var(--text-secondary)'}}>
                                 {q.prompt.replace(q.highlight, `**${q.highlight}**`).split('**').map((part, i) =>
@@ -294,8 +294,8 @@ function App() {
                         </div>
                     )}
 
-                    {/* Glossary reverse or fact quiz: show prompt directly */}
-                    {(quiz.type !== 'glossary' || progress.direction === 'reverse') && (
+                    {/* Glossary reverse, glossary text phase, or fact quiz: show prompt directly */}
+                    {(quiz.type !== 'glossary' || progress.direction === 'reverse' || progress.phase === 'text') && (
                         <p className="text-lg" style={{color: 'var(--text-primary)'}}>{q.prompt}</p>
                     )}
 

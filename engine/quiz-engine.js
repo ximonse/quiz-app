@@ -98,7 +98,11 @@ function QuizEngine(config) {
     function getQuestion(item) {
         if (!item) return null;
         if (quizType === 'glossary') {
-            if (direction === 'forward') {
+            if (direction === 'forward' && phase === 'text') {
+                // Skrivsvar ska alltid vara på språket eleven övar (samma som uttal/TTS),
+                // så skriv-frågor kräver alltid källordet — oavsett riktning.
+                return { prompt: item.translation, highlight: null, answer: item.word, options: buildOptions(item, 'forward') };
+            } else if (direction === 'forward') {
                 return { prompt: item.sentence, highlight: item.word, answer: item.translation, options: buildOptions(item, 'forward') };
             } else {
                 return { prompt: item.translation, highlight: null, answer: item.word, options: buildOptions(item, 'reverse') };
