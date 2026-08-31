@@ -40,6 +40,13 @@ function App() {
     const [feedback, setFeedback] = React.useState(null);
     const [textInput, setTextInput] = React.useState('');
     const [opensAt, setOpensAt] = React.useState('');
+    const [muted, setMuted] = React.useState(() => ttsIsMuted());
+
+    function toggleMute() {
+        const next = !muted;
+        ttsSetMuted(next);
+        setMuted(next);
+    }
 
     // Load quiz
     React.useEffect(() => {
@@ -230,9 +237,15 @@ function App() {
         <div className="max-w-lg mx-auto p-4">
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-medium truncate" style={{color: 'var(--text-primary)'}}>{quiz.title}</h2>
+                <div className="flex items-center gap-2 min-w-0">
+                    <a href={'index.php?id=' + encodeURIComponent(QUIZ_ID)} className="text-xs shrink-0 hover:underline" style={{color: 'var(--accent)'}}>&larr; Start</a>
+                    <h2 className="text-sm font-medium truncate" style={{color: 'var(--text-primary)'}}>{quiz.title}</h2>
+                </div>
                 <div className="flex items-center gap-2">
                     <span className="text-sm font-bold" style={{color: 'var(--accent)'}}>{progress.correctCount}/{progress.correctCount + progress.totalErrors}</span>
+                    <button onClick={toggleMute} title={muted ? 'Slå på uppläsning' : 'Stäng av uppläsning'} className="text-xs px-1.5 py-0.5 rounded border" style={{background: 'var(--card-bg)', color: 'var(--text-secondary)', borderColor: 'var(--border)'}}>
+                        {muted ? '🔇' : '🔊'}
+                    </button>
                     <select value={theme} onChange={e => setTheme(e.target.value)} className="text-xs px-1 py-0.5 rounded border" style={{background: 'var(--card-bg)', color: 'var(--text-secondary)', borderColor: 'var(--border)'}}>
                         <option value="light">Light</option>
                         <option value="night">Night</option>

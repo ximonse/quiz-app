@@ -8,12 +8,23 @@ const LANG_MAP = {
 let selectedVoice = null;
 let speechGeneration = 0;
 
+const TTS_MUTE_KEY = 'quizapp-tts-muted';
+
 function setVoice(voice) {
     selectedVoice = voice;
 }
 
+function ttsIsMuted() {
+    try { return localStorage.getItem(TTS_MUTE_KEY) === '1'; } catch (e) { return false; }
+}
+
+function ttsSetMuted(muted) {
+    try { localStorage.setItem(TTS_MUTE_KEY, muted ? '1' : '0'); } catch (e) {}
+    if (muted) stopSpeech();
+}
+
 function speakText(text, lang) {
-    if (!('speechSynthesis' in window)) return;
+    if (!('speechSynthesis' in window) || ttsIsMuted()) return;
     speechGeneration += 1;
     window.speechSynthesis.cancel();
 
@@ -42,7 +53,7 @@ function speakText(text, lang) {
 }
 
 function speakGlossary(sentence, word, lang) {
-    if (!('speechSynthesis' in window)) return;
+    if (!('speechSynthesis' in window) || ttsIsMuted()) return;
     speechGeneration += 1;
     const generation = speechGeneration;
     window.speechSynthesis.cancel();

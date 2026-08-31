@@ -24,8 +24,11 @@ if (!$quizId) { header('Location: index.php'); exit; }
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
 <div class="max-w-lg mx-auto p-4">
     <div class="flex items-center justify-between mb-6">
-        <a href="index.php?id=<?= urlencode($quizId) ?>" class="text-blue-600 hover:underline text-sm">&larr; Tillbaka</a>
-        <span id="counter" class="text-sm" style="color: var(--text-secondary)">1/0</span>
+        <a href="index.php?id=<?= urlencode($quizId) ?>" class="text-sm hover:underline" style="color: var(--accent)">&larr; Start</a>
+        <div class="flex items-center gap-2">
+            <span id="counter" class="text-sm" style="color: var(--text-secondary)">1/0</span>
+            <button id="mute-btn" onclick="toggleMute()" class="text-xs px-1.5 py-0.5 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)"></button>
+        </div>
     </div>
 
     <div class="card w-full h-64 mb-6" id="card" onclick="flipCard()">
@@ -60,9 +63,21 @@ fetch('../api/quiz-data.php?id=' + encodeURIComponent(QUIZ_ID))
         items = shuffle(data.items || []);
         if (items.length > 0) showCard();
         document.getElementById('counter').textContent = `1/${items.length}`;
-
-
     });
+
+function renderMuteButton() {
+    const btn = document.getElementById('mute-btn');
+    const muted = ttsIsMuted();
+    btn.textContent = muted ? '🔇' : '🔊';
+    btn.title = muted ? 'Slå på uppläsning' : 'Stäng av uppläsning';
+}
+
+function toggleMute() {
+    ttsSetMuted(!ttsIsMuted());
+    renderMuteButton();
+}
+
+renderMuteButton();
 
 function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
