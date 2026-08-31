@@ -214,7 +214,7 @@ Processen sker i två steg:
 
 STEG 1: ANALYS & FÖRSLAG
 1. Analysera texten/bilden jag bifogar.
-2. OM materialet redan anger färdiga ordpar (t.ex. en gloslista med ord + översättningar): dessa ord och översättningar är FACIT. Använd dem EXAKT som de anges — hitta inte på egna översättningar, byt inte ut mot synonymer och ändra inte betydelsen. Din uppgift är bara att hitta på en exempelmening och böja översättningen efter den (se STEG 2), inte att ändra själva ordparet.
+2. OM materialet redan anger färdiga ordpar (t.ex. en gloslista med ord + översättningar): dessa ord och översättningar är FACIT, i den grundform de anges. Använd dem EXAKT som de anges — hitta inte på egna översättningar, byt inte ut mot synonymer, ändra inte betydelsen OCH böj inte om dem. Din uppgift i STEG 2 är att hitta på en exempelmening som passar detta redan bestämda ordpar — inte att ändra ordparet för att passa en mening.
 3. OM materialet INTE anger färdiga ordpar (t.ex. en löpande text/bild utan gloslista): föreslå då själv 10-20 relevanta glosor med översättningar.
 4. Fråga mig om jag vill ändra något innan du går vidare till steg 2.
 
@@ -225,16 +225,15 @@ FORMAT (en rad per glosa) — detta format MÅSTE följas EXAKT, utan undantag:
 mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3
 
 FÖRKLARING:
-- "mening": En exempelmening där ordet används.
-- "ord": Glosans ord på källspråket, exakt som det böjs/stavas i meningen (ett enda ord, inte en fras).
-- "översättning": Översättningen till svenska, böjd så att den grammatiskt stämmer med hur ordet används i just DENNA mening (rätt genus, numerus, bestämd/obestämd form, tempus etc). Använd INTE alltid ordets grundform — om meningen kräver plural, bestämd form, förfluten tid eller annan böjning ska översättningen böjas likadant. (Om jag angett en färdig ordlista är grundbetydelsen redan facit — det är bara BÖJNINGEN du får anpassa efter meningen, inte betydelsen.)
-- "fel1-3": 3 trovärdiga felaktiga svenska översättningar, böjda i SAMMA form som "översättning" (annars avslöjas rätt svar av att det ser grammatiskt annorlunda ut).
-- "omvänt_fel1-3": 3 trovärdiga felaktiga ord på källspråket, böjda i SAMMA form som "ord".
+- "ord" och "översättning": Det redan bestämda ordparet, i sin grundform (facit — antingen från min ordlista, eller det du själv föreslog och jag godkände i STEG 1). Detta ordpar är FAST — det är meningen som ska anpassas efter det, inte tvärtom.
+- "mening": En exempelmening som du konstruerar KRING det redan bestämda ordet. Ordet måste förekomma ORDAGRANT (exakt samma tecken) i meningen — välj numerus, tempus, bestämdhet, person och sammanhang i meningen så att ordets grundform passar rakt av, utan att behöva böjas om. Välj alltså bort meningar som skulle kräva en annan böjning av ordet, och skriv en annan mening istället.
+- "fel1-3": 3 trovärdiga felaktiga svenska översättningar, i SAMMA grundform som "översättning".
+- "omvänt_fel1-3": 3 trovärdiga felaktiga ord på källspråket, i SAMMA grundform som "ord".
 
 STRIKTA REGLER (avvik ALDRIG från dessa, oavsett hur materialet ser ut):
 - Exakt 9 fält per rad, separerade med exakt 8 semikolon (;). Aldrig fler, aldrig färre — även om något fält känns svårt att fylla i, hitta ändå på ett rimligt värde.
 - Samma antal fält på ALLA rader, utan undantag.
-- "ord" och "översättning" ska alltid böjas som i meningen — kontrollera varje rad genom att mentalt sätta in "översättning" i en svensk översättning av meningen och se att böjningen låter rätt.
+- Anpassa MENINGEN efter det redan bestämda ordet och översättningen — böj eller ändra ALDRIG "ord" eller "översättning" för att de ska passa en mening du redan skrivit. Om en mening du tänkt dig kräver en annan böjning, välj en annan mening istället.
 - Inga semikolon inuti något fält (byt ev. semikolon i meningen mot kommatecken).
 - Inga citattecken.
 - Inga radbrytningar inuti en cell — varje glosa ska vara EN enda textrad.
@@ -243,9 +242,9 @@ STRIKTA REGLER (avvik ALDRIG från dessa, oavsett hur materialet ser ut):
 
 EXEMPEL:
 Hola, me llamo Roberto;llamo;heter;bor;läser;springer;vive;toma;mira
-These places are strange.;strange;konstiga;läskiga;tråkiga;vackra;boring;scary;beautiful
+This place is strange.;strange;konstig;läskig;tråkig;vacker;boring;scary;beautiful
 
-(Notera andra exemplet: "places" är plural, så översättningen böjs "konstiga" — inte grundformen "konstig". Alla felval böjs likadant i plural.)
+(Notera andra exemplet: ordparet strange/konstig är i grundform. Meningen är därför skriven i singular — "this place", INTE "these places" — så att grundformen "konstig" passar utan att behöva böjas om till "konstiga". Hade jag istället gett dig ordparet strange/konstiga [plural] hade du valt en mening i plural för att passa DET.)
 
 Nu, invänta mitt material.</pre>
                         <pre id="prompt-fact" class="text-xs bg-white p-2 rounded border border-gray-200 overflow-x-auto whitespace-pre-wrap text-gray-600 hidden">Du är en expert på pedagogik. Jag vill skapa faktaquiz-material.
