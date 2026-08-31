@@ -220,17 +220,24 @@ STEG 1: ANALYS & FÖRSLAG
 STEG 2: GENERERING (Efter mitt godkännande)
 Skapa CSV-text med semikolon som separator.
 
-FORMAT (en rad per glosa):
+FORMAT (en rad per glosa) — detta format MÅSTE följas EXAKT, utan undantag:
 mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3
 
 FÖRKLARING:
 - "mening": En exempelmening där ordet används.
-- "ord": Glosans ord på källspråket.
+- "ord": Glosans ord på källspråket (ett enda ord, inte en fras).
 - "översättning": Översättning till svenska.
 - "fel1-3": 3 trovärdiga felaktiga svenska översättningar.
 - "omvänt_fel1-3": 3 trovärdiga felaktiga ord på källspråket.
-- Inga citattecken. Inga radbrytningar i celler.
+
+STRIKTA REGLER (avvik ALDRIG från dessa, oavsett hur materialet ser ut):
+- Exakt 9 fält per rad, separerade med exakt 8 semikolon (;). Aldrig fler, aldrig färre — även om något fält känns svårt att fylla i, hitta ändå på ett rimligt värde.
+- Samma antal fält på ALLA rader, utan undantag.
+- Inga semikolon inuti något fält (byt ev. semikolon i meningen mot kommatecken).
+- Inga citattecken.
+- Inga radbrytningar inuti en cell — varje glosa ska vara EN enda textrad.
 - Ingen header-rad.
+- Svara ENDAST med råa CSV-rader. Ingen markdown, inga kodblock (```), ingen numrering, inga rubriker och ingen kommentar före eller efter — bara raderna, redo att klistras in direkt.
 
 EXEMPEL:
 Hola, me llamo Roberto;llamo;heter;bor;läser;springer;vive;toma;mira
@@ -248,15 +255,22 @@ STEG 1: ANALYS & FÖRSLAG
 STEG 2: GENERERING (Efter mitt godkännande)
 Skapa CSV-text med semikolon som separator.
 
-FORMAT (en rad per begrepp):
+FORMAT (en rad per begrepp) — detta format MÅSTE följas EXAKT, utan undantag:
 begrepp;beskrivning;fel1;fel2;fel3
 
 FÖRKLARING:
 - "begrepp": Ordet/begreppet som ska läras.
 - "beskrivning": Korrekt förklaring/definition.
 - "fel1-3": 3 trovärdiga men felaktiga beskrivningar.
-- Inga citattecken. Inga radbrytningar i celler.
+
+STRIKTA REGLER (avvik ALDRIG från dessa, oavsett hur materialet ser ut):
+- Exakt 5 fält per rad, separerade med exakt 4 semikolon (;). Aldrig fler, aldrig färre — även om något fält känns svårt att fylla i, hitta ändå på ett rimligt värde.
+- Samma antal fält på ALLA rader, utan undantag.
+- Inga semikolon inuti något fält (byt ev. semikolon i beskrivningen mot kommatecken).
+- Inga citattecken.
+- Inga radbrytningar inuti en cell — varje begrepp ska vara EN enda textrad.
 - Ingen header-rad.
+- Svara ENDAST med råa CSV-rader. Ingen markdown, inga kodblock (```), ingen numrering, inga rubriker och ingen kommentar före eller efter — bara raderna, redo att klistras in direkt.
 
 EXEMPEL:
 Fotosyntes;Processen där växter omvandlar solljus till energi;Nedbrytning av proteiner;Transport av vatten i rötter;Cellandning i djur
