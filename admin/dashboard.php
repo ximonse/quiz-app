@@ -225,14 +225,15 @@ mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3
 
 FÖRKLARING:
 - "mening": En exempelmening där ordet används.
-- "ord": Glosans ord på källspråket (ett enda ord, inte en fras).
-- "översättning": Översättning till svenska.
-- "fel1-3": 3 trovärdiga felaktiga svenska översättningar.
-- "omvänt_fel1-3": 3 trovärdiga felaktiga ord på källspråket.
+- "ord": Glosans ord på källspråket, exakt som det böjs/stavas i meningen (ett enda ord, inte en fras).
+- "översättning": Översättningen till svenska, böjd så att den grammatiskt stämmer med hur ordet används i just DENNA mening (rätt genus, numerus, bestämd/obestämd form, tempus etc). Använd INTE alltid ordets grundform — om meningen kräver plural, bestämd form, förfluten tid eller annan böjning ska översättningen böjas likadant.
+- "fel1-3": 3 trovärdiga felaktiga svenska översättningar, böjda i SAMMA form som "översättning" (annars avslöjas rätt svar av att det ser grammatiskt annorlunda ut).
+- "omvänt_fel1-3": 3 trovärdiga felaktiga ord på källspråket, böjda i SAMMA form som "ord".
 
 STRIKTA REGLER (avvik ALDRIG från dessa, oavsett hur materialet ser ut):
 - Exakt 9 fält per rad, separerade med exakt 8 semikolon (;). Aldrig fler, aldrig färre — även om något fält känns svårt att fylla i, hitta ändå på ett rimligt värde.
 - Samma antal fält på ALLA rader, utan undantag.
+- "ord" och "översättning" ska alltid böjas som i meningen — kontrollera varje rad genom att mentalt sätta in "översättning" i en svensk översättning av meningen och se att böjningen låter rätt.
 - Inga semikolon inuti något fält (byt ev. semikolon i meningen mot kommatecken).
 - Inga citattecken.
 - Inga radbrytningar inuti en cell — varje glosa ska vara EN enda textrad.
@@ -241,6 +242,9 @@ STRIKTA REGLER (avvik ALDRIG från dessa, oavsett hur materialet ser ut):
 
 EXEMPEL:
 Hola, me llamo Roberto;llamo;heter;bor;läser;springer;vive;toma;mira
+These places are strange.;strange;konstiga;läskiga;tråkiga;vackra;boring;scary;beautiful
+
+(Notera andra exemplet: "places" är plural, så översättningen böjs "konstiga" — inte grundformen "konstig". Alla felval böjs likadant i plural.)
 
 Nu, invänta mitt material.</pre>
                         <pre id="prompt-fact" class="text-xs bg-white p-2 rounded border border-gray-200 overflow-x-auto whitespace-pre-wrap text-gray-600 hidden">Du är en expert på pedagogik. Jag vill skapa faktaquiz-material.
