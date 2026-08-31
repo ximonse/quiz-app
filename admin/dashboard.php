@@ -214,8 +214,9 @@ Processen sker i två steg:
 
 STEG 1: ANALYS & FÖRSLAG
 1. Analysera texten/bilden jag bifogar.
-2. Föreslå 10-20 relevanta glosor.
-3. Fråga mig om jag vill ändra något.
+2. OM materialet redan anger färdiga ordpar (t.ex. en gloslista med ord + översättningar): dessa ord och översättningar är FACIT. Använd dem EXAKT som de anges — hitta inte på egna översättningar, byt inte ut mot synonymer och ändra inte betydelsen. Din uppgift är bara att hitta på en exempelmening och böja översättningen efter den (se STEG 2), inte att ändra själva ordparet.
+3. OM materialet INTE anger färdiga ordpar (t.ex. en löpande text/bild utan gloslista): föreslå då själv 10-20 relevanta glosor med översättningar.
+4. Fråga mig om jag vill ändra något innan du går vidare till steg 2.
 
 STEG 2: GENERERING (Efter mitt godkännande)
 Skapa CSV-text med semikolon som separator.
@@ -226,7 +227,7 @@ mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3
 FÖRKLARING:
 - "mening": En exempelmening där ordet används.
 - "ord": Glosans ord på källspråket, exakt som det böjs/stavas i meningen (ett enda ord, inte en fras).
-- "översättning": Översättningen till svenska, böjd så att den grammatiskt stämmer med hur ordet används i just DENNA mening (rätt genus, numerus, bestämd/obestämd form, tempus etc). Använd INTE alltid ordets grundform — om meningen kräver plural, bestämd form, förfluten tid eller annan böjning ska översättningen böjas likadant.
+- "översättning": Översättningen till svenska, böjd så att den grammatiskt stämmer med hur ordet används i just DENNA mening (rätt genus, numerus, bestämd/obestämd form, tempus etc). Använd INTE alltid ordets grundform — om meningen kräver plural, bestämd form, förfluten tid eller annan böjning ska översättningen böjas likadant. (Om jag angett en färdig ordlista är grundbetydelsen redan facit — det är bara BÖJNINGEN du får anpassa efter meningen, inte betydelsen.)
 - "fel1-3": 3 trovärdiga felaktiga svenska översättningar, böjda i SAMMA form som "översättning" (annars avslöjas rätt svar av att det ser grammatiskt annorlunda ut).
 - "omvänt_fel1-3": 3 trovärdiga felaktiga ord på källspråket, böjda i SAMMA form som "ord".
 
