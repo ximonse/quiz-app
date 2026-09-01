@@ -2,7 +2,7 @@
 
 const LANG_MAP = {
     'sv': 'sv-SE', 'en': 'en-US', 'es': 'es-ES',
-    'fr': 'fr-FR', 'de': 'de-DE', 'uk': 'uk'
+    'fr': 'fr-FR', 'de': 'de-DE', 'fi': 'fi-FI', 'uk': 'uk'
 };
 
 let selectedVoice = null;

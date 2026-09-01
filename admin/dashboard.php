@@ -323,6 +323,7 @@ Nu, invänta mitt material.</pre>
                             <option value="es">Spanska</option>
                             <option value="fr">Franska</option>
                             <option value="de">Tyska</option>
+                            <option value="fi">Finska</option>
                             <option value="uk">Ukrainska</option>
                         </select>
                     </div>

@@ -180,7 +180,7 @@ $csvText = itemsToCSV($quiz['items'], $quiz['type']);
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Språk</label>
                     <select name="language" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                        <?php foreach (['sv'=>'Svenska','en'=>'Engelska','es'=>'Spanska','fr'=>'Franska','de'=>'Tyska','uk'=>'Ukrainska'] as $code => $name): ?>
+                        <?php foreach (['sv'=>'Svenska','en'=>'Engelska','es'=>'Spanska','fr'=>'Franska','de'=>'Tyska','fi'=>'Finska','uk'=>'Ukrainska'] as $code => $name): ?>
                             <option value="<?= $code ?>" <?= ($s['language'] ?? 'sv') === $code ? 'selected' : '' ?>><?= $name ?></option>
                         <?php endforeach; ?>
                     </select>
