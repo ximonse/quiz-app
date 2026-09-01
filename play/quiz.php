@@ -106,6 +106,10 @@ function App() {
                     const q = eng.getQuestion(item);
                     if (data.type === 'glossary' && eng.currentDirection() === 'forward' && eng.currentPhase() !== 'text') {
                         speakGlossary(item.sentence, item.word, data.settings.language);
+                    } else if (data.type === 'glossary') {
+                        // Reverse riktning eller skriv-fas: prompten är den svenska
+                        // översättningen, ska alltså läsas upp på svenska.
+                        speakText(q.prompt, 'sv');
                     } else {
                         speakText(q.prompt, data.settings.language);
                     }
@@ -194,6 +198,10 @@ function App() {
         if (!quiz?.settings?.tts_enabled || !item) return;
         if (quiz.type === 'glossary' && engine.currentDirection() === 'forward' && engine.currentPhase() !== 'text') {
             speakGlossary(item.sentence, item.word, quiz.settings.language);
+        } else if (quiz.type === 'glossary' && q) {
+            // Reverse riktning eller skriv-fas: prompten är den svenska
+            // översättningen, ska alltså läsas upp på svenska.
+            speakText(q.prompt, 'sv');
         } else if (q) {
             speakText(q.prompt, quiz.settings.language);
         }
