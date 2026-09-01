@@ -19,6 +19,35 @@ if (!$quizId || !$studentName) {
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <link rel="stylesheet" href="../engine/themes.css">
+    <style>
+        @keyframes answerPulseOnce {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
+            40% { transform: scale(1.035); box-shadow: 0 0 14px 4px rgba(34,197,94,0.45); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+        }
+        .answer-correct-pulse {
+            background: #22c55e !important;
+            color: #fff !important;
+            border-color: #16a34a !important;
+            animation: answerPulseOnce 0.55s ease-out;
+        }
+        .answer-wrong {
+            background: #ef4444 !important;
+            color: #fff !important;
+            border-color: #dc2626 !important;
+        }
+        @keyframes answerGlowTwice {
+            0% { background: var(--card-bg); color: var(--text-primary); border-color: var(--border); transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,0.6); }
+            8% { background: #22c55e; color: #fff; border-color: #16a34a; }
+            22% { transform: scale(1.045); box-shadow: 0 0 16px 5px rgba(34,197,94,0.55); }
+            38% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,0.25); }
+            58% { transform: scale(1.045); box-shadow: 0 0 16px 5px rgba(34,197,94,0.55); }
+            75%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,0); background: #22c55e; color: #fff; border-color: #16a34a; }
+        }
+        .answer-correct-glow {
+            animation: answerGlowTwice 1.1s ease-in-out 0.35s 1 both;
+        }
+    </style>
     <script src="../engine/validator.js"></script>
     <script src="../engine/tts.js"></script>
     <script src="../engine/quiz-engine.js"></script>
@@ -94,12 +123,34 @@ function App() {
         document.body.classList.add('min-h-screen', 'bg-gradient-to-br', 'from-[var(--bg-from)]', 'to-[var(--bg-to)]');
     }, [theme]);
 
+    function showFeedback(payload, delay) {
+        setFeedback(payload);
+        setStatus('feedback');
+        setTimeout(() => {
+            setFeedback(null);
+            setStatus('playing');
+            const nextItem = engine.currentItem();
+            const nextQ = nextItem ? engine.getQuestion(nextItem) : null;
+            playTTS(nextItem, nextQ);
+        }, delay);
+    }
+
     function handleAnswer(answer) {
         const currentSpelling = spellingChoice || spellingMode;
-        // Task 11 fix: capture correct answer BEFORE submitAnswer shifts the queue
+        // Capture the question as asked BEFORE submitAnswer mutates the queue,
+        // so the feedback view can redraw the same prompt/options afterward.
         const currentItem = engine.currentItem();
         const currentQ = engine.getQuestion(currentItem);
-        const correctAnswer = currentQ.answer;
+        const currentProgress = engine.getProgress();
+        const base = {
+            given: answer,
+            correctAnswer: currentQ.answer,
+            options: currentQ.options,
+            prompt: currentQ.prompt,
+            highlight: currentQ.highlight,
+            direction: currentProgress.direction,
+            phase: currentProgress.phase
+        };
         const result = engine.submitAnswer(answer, currentSpelling);
         setTextInput('');
 
@@ -121,58 +172,22 @@ function App() {
         }
 
         if (!result.correct) {
-            // Task 11 fix: use pre-captured correctAnswer (before queue shift)
-            setFeedback({ correct: false, correctAnswer: correctAnswer, given: answer });
-            setStatus('feedback');
-            setTimeout(() => {
-                setFeedback(null);
-                setStatus('playing');
-                // Task 11 fix: TTS for the NEW current item after shift
-                const nextItem = engine.currentItem();
-                const nextQ = nextItem ? engine.getQuestion(nextItem) : null;
-                playTTS(nextItem, nextQ);
-            }, 2000);
+            showFeedback({ ...base, correct: false }, 2000);
             return;
         }
 
         if (result.directionChange) {
-            setFeedback({ correct: true, message: 'Nu kör vi omvänt!' });
-            setStatus('feedback');
-            setTimeout(() => {
-                setFeedback(null);
-                setStatus('playing');
-                // Task 11 fix: TTS for the NEW current item after direction change
-                const nextItem = engine.currentItem();
-                const nextQ = nextItem ? engine.getQuestion(nextItem) : null;
-                playTTS(nextItem, nextQ);
-            }, 1500);
+            showFeedback({ ...base, correct: true, message: 'Nu kör vi omvänt!' }, 1500);
             return;
         }
 
         if (result.phaseChange) {
-            setFeedback({ correct: true, message: 'Bra! Nu skrivsvar.' });
-            setStatus('feedback');
-            setTimeout(() => {
-                setFeedback(null);
-                setStatus('playing');
-                // Task 11 fix: TTS for the NEW current item after phase change
-                const nextItem = engine.currentItem();
-                const nextQ = nextItem ? engine.getQuestion(nextItem) : null;
-                playTTS(nextItem, nextQ);
-            }, 1500);
+            showFeedback({ ...base, correct: true, message: 'Bra! Nu skrivsvar.' }, 1500);
             return;
         }
 
         // Show confirmation before rendering and reading the next question.
-        setFeedback({ correct: true });
-        setStatus('feedback');
-        setTimeout(() => {
-            setFeedback(null);
-            setStatus('playing');
-            const nextItem = engine.currentItem();
-            const nextQ = nextItem ? engine.getQuestion(nextItem) : null;
-            playTTS(nextItem, nextQ);
-        }, 900);
+        showFeedback({ ...base, correct: true }, 900);
     }
 
     function playTTS(item, q) {
@@ -233,6 +248,26 @@ function App() {
     const q = engine.getQuestion(item);
     const progress = engine.getProgress();
 
+    function renderPrompt(promptText, highlightText, direction, phase) {
+        if (quiz.type === 'glossary' && direction === 'forward' && phase !== 'text') {
+            return (
+                <div>
+                    <p className="text-lg mb-2" style={{color: 'var(--text-secondary)'}}>
+                        {promptText.replace(highlightText, `**${highlightText}**`).split('**').map((part, i) =>
+                            i % 2 === 1
+                                ? <strong key={i} style={{color: 'var(--accent)'}}>{part}</strong>
+                                : part
+                        )}
+                    </p>
+                    <p className="text-sm" style={{color: 'var(--text-secondary)'}}>
+                        Vad betyder <strong style={{color: 'var(--accent)'}}>{highlightText}</strong>?
+                    </p>
+                </div>
+            );
+        }
+        return <p className="text-lg" style={{color: 'var(--text-primary)'}}>{promptText}</p>;
+    }
+
     return (
         <div className="max-w-lg mx-auto p-4">
             {/* Header */}
@@ -291,26 +326,7 @@ function App() {
             {/* Question card */}
             {status === 'playing' && q && (
                 <div className="rounded-xl p-6 mb-4" style={{background: 'var(--card-bg)', border: '1px solid var(--border)'}}>
-                    {/* Glossary forward (mc phase only): show sentence with highlighted word */}
-                    {quiz.type === 'glossary' && progress.direction === 'forward' && progress.phase !== 'text' && (
-                        <div>
-                            <p className="text-lg mb-2" style={{color: 'var(--text-secondary)'}}>
-                                {q.prompt.replace(q.highlight, `**${q.highlight}**`).split('**').map((part, i) =>
-                                    i % 2 === 1
-                                        ? <strong key={i} style={{color: 'var(--accent)'}}>{part}</strong>
-                                        : part
-                                )}
-                            </p>
-                            <p className="text-sm" style={{color: 'var(--text-secondary)'}}>
-                                Vad betyder <strong style={{color: 'var(--accent)'}}>{q.highlight}</strong>?
-                            </p>
-                        </div>
-                    )}
-
-                    {/* Glossary reverse, glossary text phase, or fact quiz: show prompt directly */}
-                    {(quiz.type !== 'glossary' || progress.direction === 'reverse' || progress.phase === 'text') && (
-                        <p className="text-lg" style={{color: 'var(--text-primary)'}}>{q.prompt}</p>
-                    )}
+                    {renderPrompt(q.prompt, q.highlight, progress.direction, progress.phase)}
 
                     {/* Multiple choice options */}
                     {q.options && (
@@ -341,20 +357,36 @@ function App() {
                 </div>
             )}
 
-            {/* Feedback overlay */}
+            {/* Feedback: re-render the same question, buttons colored to show what happened */}
             {status === 'feedback' && feedback && (
-                <div className={`rounded-xl p-6 mb-4 text-center ${feedback.correct ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`} style={{border: '1px solid'}}>
-                    {feedback.correct ? (
-                        <div>
-                            <div className="text-3xl mb-2">✅</div>
-                            {feedback.message && <p className="text-green-700 font-medium">{feedback.message}</p>}
+                <div className="rounded-xl p-6 mb-4" style={{background: 'var(--card-bg)', border: '1px solid var(--border)'}}>
+                    {renderPrompt(feedback.prompt, feedback.highlight, feedback.direction, feedback.phase)}
+
+                    {feedback.options ? (
+                        <div className="mt-4 space-y-2">
+                            {feedback.options.map((opt, i) => {
+                                const isGiven = opt === feedback.given;
+                                const isCorrectOpt = opt === feedback.correctAnswer;
+                                let cls = 'w-full text-left px-4 py-3 rounded-lg border text-sm';
+                                let style = {background: 'var(--card-bg)', color: 'var(--text-primary)', borderColor: 'var(--border)'};
+                                if (isGiven && feedback.correct) {
+                                    cls += ' answer-correct-pulse';
+                                } else if (isGiven && !feedback.correct) {
+                                    cls += ' answer-wrong';
+                                } else if (isCorrectOpt && !feedback.correct) {
+                                    cls += ' answer-correct-glow';
+                                }
+                                return <button key={i} disabled className={cls} style={style}>{opt}</button>;
+                            })}
                         </div>
                     ) : (
-                        <div>
-                            <div className="text-3xl mb-2">❌</div>
-                            <p className="text-red-700 text-sm">Rätt svar: <strong>{feedback.correctAnswer}</strong></p>
+                        <div className="mt-4 text-center">
+                            <div className="text-3xl mb-2">{feedback.correct ? '✅' : '❌'}</div>
+                            {!feedback.correct && <p className="text-sm" style={{color: '#ef4444'}}>Rätt svar: <strong>{feedback.correctAnswer}</strong></p>}
                         </div>
                     )}
+
+                    {feedback.message && <p className="mt-3 text-center text-sm font-medium" style={{color: 'var(--accent)'}}>{feedback.message}</p>}
                 </div>
             )}
         </div>
