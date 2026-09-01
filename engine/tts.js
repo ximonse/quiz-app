@@ -23,8 +23,24 @@ function ttsSetMuted(muted) {
     if (muted) stopSpeech();
 }
 
+// Voices load asynchronously in some browsers — a speak() call made before
+// they're ready can silently produce no audio. Wait once, then proceed.
+function whenVoicesReady(callback) {
+    if (!('speechSynthesis' in window)) return;
+    if (window.speechSynthesis.getVoices().length > 0) { callback(); return; }
+    let done = false;
+    const fire = () => { if (done) return; done = true; callback(); };
+    window.speechSynthesis.addEventListener('voiceschanged', fire, { once: true });
+    setTimeout(fire, 300);
+}
+
 function speakText(text, lang) {
     if (!('speechSynthesis' in window) || ttsIsMuted()) return;
+    whenVoicesReady(() => speakTextNow(text, lang));
+}
+
+function speakTextNow(text, lang) {
+    if (ttsIsMuted()) return;
     speechGeneration += 1;
     window.speechSynthesis.cancel();
 
@@ -54,6 +70,11 @@ function speakText(text, lang) {
 
 function speakGlossary(sentence, word, lang) {
     if (!('speechSynthesis' in window) || ttsIsMuted()) return;
+    whenVoicesReady(() => speakGlossaryNow(sentence, word, lang));
+}
+
+function speakGlossaryNow(sentence, word, lang) {
+    if (ttsIsMuted()) return;
     speechGeneration += 1;
     const generation = speechGeneration;
     window.speechSynthesis.cancel();
