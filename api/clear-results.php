@@ -22,6 +22,12 @@ if (!isset($quizzes[$quizId])) {
     exit;
 }
 
+if (($quizzes[$quizId]['teacher_id'] ?? '') !== getCurrentTeacherID()) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Forbidden']);
+    exit;
+}
+
 $quizzes[$quizId]['results'] = [];
 writeJSON(QUIZZES_FILE, $quizzes);
 
