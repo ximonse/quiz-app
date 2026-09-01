@@ -9,14 +9,31 @@ $teacherName = $_SESSION['teacher_name'] ?? 'Lärare';
 $error = '';
 $success = '';
 
+// Håll formuläret ifyllt om ett POST-försök misslyckas (t.ex. CSV-parsefel),
+// så läraren slipper skriva om titel/CSV/inställningar från noll.
+function old($key, $default = '') {
+    return htmlspecialchars($_POST[$key] ?? $default, ENT_QUOTES, 'UTF-8');
+}
+function oldChecked($key, $defaultOnGet = false) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') return $defaultOnGet ? 'checked' : '';
+    return isset($_POST[$key]) ? 'checked' : '';
+}
+function oldSelected($key, $value, $default) {
+    return (($_POST[$key] ?? $default) === $value) ? 'selected' : '';
+}
+
 // --- Handle delete ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete') {
     requireValidCsrf();
     $deleteId = $_POST['quiz_id'] ?? '';
-    $quizzes = readJSON(QUIZZES_FILE);
-    if (isset($quizzes[$deleteId]) && ($quizzes[$deleteId]['teacher_id'] ?? '') === $teacherId) {
-        unset($quizzes[$deleteId]);
-        writeJSON(QUIZZES_FILE, $quizzes);
+    $deleted = updateJSONLocked(QUIZZES_FILE, function (&$lockedQuizzes) use ($deleteId, $teacherId) {
+        if (isset($lockedQuizzes[$deleteId]) && ($lockedQuizzes[$deleteId]['teacher_id'] ?? '') === $teacherId) {
+            unset($lockedQuizzes[$deleteId]);
+            return true;
+        }
+        return false;
+    });
+    if ($deleted) {
         $success = 'Quiz raderad!';
     }
 }
@@ -78,9 +95,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
                 ];
             }
 
-            $quizzes = readJSON(QUIZZES_FILE);
-            $quizzes[$quizId] = $quiz;
-            writeJSON(QUIZZES_FILE, $quizzes);
+            updateJSONLocked(QUIZZES_FILE, function (&$lockedQuizzes) use ($quizId, $quiz) {
+                $lockedQuizzes[$quizId] = $quiz;
+            });
             $success = "Quiz \"{$title}\" skapad!";
         }
     }
@@ -161,7 +178,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
             <input type="hidden" name="action" value="create">
 
             <!-- Typ (knappar) -->
-            <input type="hidden" name="type" id="type-input" value="glossary">
+            <input type="hidden" name="type" id="type-input" value="<?= old('type', 'glossary') ?>">
             <div class="flex gap-3 mb-2">
                 <button type="button" id="btn-glossary" onclick="selectType('glossary')"
                     class="flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-purple-500 bg-purple-50 text-purple-700 shadow-md">
@@ -177,15 +194,15 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Titel</label>
-                    <input type="text" name="title" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="T.ex. Spanska vecka 12">
+                    <input type="text" name="title" value="<?= old('title') ?>" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="T.ex. Spanska vecka 12">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Ämne</label>
-                    <input type="text" name="subject" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="T.ex. Spanska">
+                    <input type="text" name="subject" value="<?= old('subject') ?>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="T.ex. Spanska">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Taggar</label>
-                    <input type="text" name="tags" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="vecka12, åk6">
+                    <input type="text" name="tags" value="<?= old('tags') ?>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="vecka12, åk6">
                 </div>
             </div>
 
@@ -194,7 +211,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                 <label class="block text-sm font-medium text-gray-700 mb-1">CSV-data (semikolon-separerad)</label>
                 <div id="csv-hint-glossary" class="text-xs text-gray-500 mb-1">Format: mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3</div>
                 <div id="csv-hint-fact" class="text-xs text-gray-500 mb-1 hidden">Format: begrepp;beskrivning;fel1;fel2;fel3</div>
-                <textarea name="csv_data" required rows="6" class="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500" placeholder="Klistra in CSV här..."></textarea>
+                <textarea name="csv_data" required rows="6" class="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500" placeholder="Klistra in CSV här..."><?= old('csv_data') ?></textarea>
 
                 <!-- AI Prompt Helper -->
                 <div class="mt-2">
@@ -291,59 +308,59 @@ Nu, invänta mitt material.</pre>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Svarsläge</label>
                         <select name="answer_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm" onchange="toggleHybridFields()">
-                            <option value="multiple_choice">Flerval</option>
-                            <option value="text_only">Skrivsvar</option>
-                            <option value="hybrid">Hybrid (flerval + skrivsvar)</option>
+                            <option value="multiple_choice" <?= oldSelected('answer_mode', 'multiple_choice', 'multiple_choice') ?>>Flerval</option>
+                            <option value="text_only" <?= oldSelected('answer_mode', 'text_only', 'multiple_choice') ?>>Skrivsvar</option>
+                            <option value="hybrid" <?= oldSelected('answer_mode', 'hybrid', 'multiple_choice') ?>>Hybrid (flerval + skrivsvar)</option>
                         </select>
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Quizläge</label>
-                        <select name="quiz_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
-                            <option value="training">Träning (repetition)</option>
-                            <option value="test">Test (en genomgång)</option>
+                        <select name="quiz_mode" id="quiz-mode-select" class="w-full px-2 py-1 border border-gray-300 rounded text-sm" onchange="onQuizModeChange()">
+                            <option value="training" <?= oldSelected('quiz_mode', 'training', 'training') ?>>Träning (repetition)</option>
+                            <option value="test" <?= oldSelected('quiz_mode', 'test', 'training') ?>>Test (en genomgång)</option>
                         </select>
                     </div>
                     <div id="mc-count-field" class="hidden">
                         <label class="block text-xs text-gray-500 mb-1">Antal flerval</label>
-                        <input type="number" name="mc_count" min="1" value="10" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <input type="number" name="mc_count" min="1" value="<?= old('mc_count', '10') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                     </div>
                     <div id="text-count-field" class="hidden">
                         <label class="block text-xs text-gray-500 mb-1">Antal skrivsvar</label>
-                        <input type="number" name="text_count" min="1" value="5" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <input type="number" name="text_count" min="1" value="<?= old('text_count', '5') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Rätt per fråga</label>
-                        <input type="number" name="required_correct" min="1" max="10" value="2" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <input type="number" name="required_correct" min="1" max="10" value="<?= old('required_correct', '2') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Språk</label>
                         <select name="language" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
-                            <option value="sv">Svenska</option>
-                            <option value="en">Engelska</option>
-                            <option value="es">Spanska</option>
-                            <option value="fr">Franska</option>
-                            <option value="de">Tyska</option>
-                            <option value="fi">Finska</option>
-                            <option value="uk">Ukrainska</option>
+                            <option value="sv" <?= oldSelected('language', 'sv', 'sv') ?>>Svenska</option>
+                            <option value="en" <?= oldSelected('language', 'en', 'sv') ?>>Engelska</option>
+                            <option value="es" <?= oldSelected('language', 'es', 'sv') ?>>Spanska</option>
+                            <option value="fr" <?= oldSelected('language', 'fr', 'sv') ?>>Franska</option>
+                            <option value="de" <?= oldSelected('language', 'de', 'sv') ?>>Tyska</option>
+                            <option value="fi" <?= oldSelected('language', 'fi', 'sv') ?>>Finska</option>
+                            <option value="uk" <?= oldSelected('language', 'uk', 'sv') ?>>Ukrainska</option>
                         </select>
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Stavningsläge</label>
                         <select name="spelling_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
-                            <option value="student_choice">Eleven väljer</option>
-                            <option value="easy">Generös</option>
-                            <option value="puritan">Exakt</option>
+                            <option value="student_choice" <?= oldSelected('spelling_mode', 'student_choice', 'student_choice') ?>>Eleven väljer</option>
+                            <option value="easy" <?= oldSelected('spelling_mode', 'easy', 'student_choice') ?>>Generös</option>
+                            <option value="puritan" <?= oldSelected('spelling_mode', 'puritan', 'student_choice') ?>>Exakt</option>
                         </select>
                     </div>
                     <div class="col-span-2 flex flex-wrap gap-4">
                         <label class="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
-                            <input type="checkbox" name="reverse_enabled" onchange="toggleReverseFields()"> Omvänd riktning
+                            <input type="checkbox" name="reverse_enabled" <?= oldChecked('reverse_enabled') ?> onchange="toggleReverseFields()"> Omvänd riktning
                         </label>
                         <label class="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
-                            <input type="checkbox" name="tts_enabled" id="tts-checkbox" checked> Uppläsning (TTS)
+                            <input type="checkbox" name="tts_enabled" id="tts-checkbox" <?= oldChecked('tts_enabled', true) ?>> Uppläsning (TTS)
                         </label>
                         <label class="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
-                            <input type="checkbox" name="generate_flashcards" checked> Generera flashcards
+                            <input type="checkbox" name="generate_flashcards" id="generate-flashcards-checkbox" <?= oldChecked('generate_flashcards', true) ?>> Generera flashcards
                         </label>
                     </div>
                 </div>
@@ -356,22 +373,22 @@ Nu, invänta mitt material.</pre>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Omvänt svarsläge</label>
                         <select name="reverse_answer_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm" onchange="toggleReverseHybridFields()">
-                            <option value="multiple_choice">Flerval</option>
-                            <option value="text_only">Skrivsvar</option>
-                            <option value="hybrid">Hybrid</option>
+                            <option value="multiple_choice" <?= oldSelected('reverse_answer_mode', 'multiple_choice', 'multiple_choice') ?>>Flerval</option>
+                            <option value="text_only" <?= oldSelected('reverse_answer_mode', 'text_only', 'multiple_choice') ?>>Skrivsvar</option>
+                            <option value="hybrid" <?= oldSelected('reverse_answer_mode', 'hybrid', 'multiple_choice') ?>>Hybrid</option>
                         </select>
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Rätt per fråga (omvänd)</label>
-                        <input type="number" name="reverse_required_correct" min="1" max="10" value="2" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <input type="number" name="reverse_required_correct" min="1" max="10" value="<?= old('reverse_required_correct', '2') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                     </div>
                     <div id="reverse-mc-count-field" class="hidden">
                         <label class="block text-xs text-gray-500 mb-1">Antal flerval (omvänd)</label>
-                        <input type="number" name="reverse_mc_count" min="1" value="10" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <input type="number" name="reverse_mc_count" min="1" value="<?= old('reverse_mc_count', '10') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                     </div>
                     <div id="reverse-text-count-field" class="hidden">
                         <label class="block text-xs text-gray-500 mb-1">Antal skrivsvar (omvänd)</label>
-                        <input type="number" name="reverse_text_count" min="1" value="5" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <input type="number" name="reverse_text_count" min="1" value="<?= old('reverse_text_count', '5') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                     </div>
                 </div>
             </fieldset>
@@ -382,11 +399,11 @@ Nu, invänta mitt material.</pre>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Öppnar</label>
-                        <input type="datetime-local" name="time_lock_opens" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <input type="datetime-local" name="time_lock_opens" value="<?= old('time_lock_opens') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Stänger</label>
-                        <input type="datetime-local" name="time_lock_closes" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <input type="datetime-local" name="time_lock_closes" value="<?= old('time_lock_closes') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                     </div>
                 </div>
             </fieldset>
@@ -493,7 +510,7 @@ function sortQuizzes() {
     rows.forEach(r => list.appendChild(r));
 }
 
-function selectType(type) {
+function selectType(type, silent) {
     document.getElementById('type-input').value = type;
     const btnG = document.getElementById('btn-glossary');
     const btnF = document.getElementById('btn-fact');
@@ -508,7 +525,16 @@ function selectType(type) {
     document.getElementById('csv-hint-fact').classList.toggle('hidden', type !== 'fact');
     document.getElementById('prompt-glossary').classList.toggle('hidden', type !== 'glossary');
     document.getElementById('prompt-fact').classList.toggle('hidden', type !== 'fact');
-    document.getElementById('tts-checkbox').checked = (type === 'glossary');
+    // silent=true (används vid sticky-återladdning) rör inte TTS-kryssrutan,
+    // så ett återställt värde från ett tidigare (misslyckat) försök inte skrivs över.
+    if (!silent) document.getElementById('tts-checkbox').checked = (type === 'glossary');
+}
+function onQuizModeChange() {
+    // Test-läge passar sällan ihop med flashcards (repetitionsverktyg) —
+    // avmarkera som förvalt, men läraren kan fritt återaktivera det.
+    if (document.getElementById('quiz-mode-select').value === 'test') {
+        document.getElementById('generate-flashcards-checkbox').checked = false;
+    }
 }
 function toggleHybridFields() {
     const mode = document.querySelector('select[name="answer_mode"]').value;
@@ -532,6 +558,13 @@ function copyAiPrompt() {
     const el = document.getElementById('prompt-' + type);
     navigator.clipboard.writeText(el.innerText).then(() => alert('Prompt kopierad! Klistra in den i din AI-chatt.'));
 }
+
+// Vid ett sticky-återladdat formulär (efter ett misslyckat försök): visa
+// rätt typ-knapp/CSV-hint/inställningsfält utifrån de återställda värdena.
+selectType(document.getElementById('type-input').value, true);
+toggleHybridFields();
+toggleReverseFields();
+toggleReverseHybridFields();
 </script>
 </body>
 </html>

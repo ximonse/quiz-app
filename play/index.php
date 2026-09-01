@@ -42,8 +42,8 @@ if (!$quizId) {
             </a>
         </div>
 
-        <!-- Quiz section -->
-        <div>
+        <!-- Quiz section (visas när Quizläge är Träning) -->
+        <div id="quiz-section" class="hidden">
             <h3 class="text-xs uppercase tracking-wide mb-2 px-1" style="color: var(--text-secondary)">Öva</h3>
             <a id="quiz-link" href="#" class="block rounded-lg px-4 py-3 hover:shadow-md transition-shadow" style="background: var(--card-bg); border: 1px solid var(--border)">
                 <span class="font-medium" style="color: var(--text-primary)">📝 Quiz</span>
@@ -51,7 +51,7 @@ if (!$quizId) {
             </a>
         </div>
 
-        <!-- Test section (if quiz_mode allows) -->
+        <!-- Test section (visas när Quizläge är Test) -->
         <div id="test-section" class="hidden">
             <h3 class="text-xs uppercase tracking-wide mb-2 px-1" style="color: var(--text-secondary)">Testa</h3>
             <a id="test-link" href="#" class="block rounded-lg px-4 py-3 hover:shadow-md transition-shadow" style="background: var(--card-bg); border: 1px solid var(--border)">
@@ -98,9 +98,13 @@ function enterQuiz(e) {
         document.getElementById('flashcard-link').href = 'flashcards.php?id=' + encodeURIComponent(QUIZ_ID) + '&name=' + encodeURIComponent(name);
     }
 
-    if (quizData?.settings?.quiz_mode === 'test' || quizData?.settings?.quiz_mode === 'training') {
+    // Läraren väljer via Quizläge om eleven kör Träning eller Test — bara ett
+    // av alternativen visas, inte båda.
+    if (quizData?.settings?.quiz_mode === 'test') {
         document.getElementById('test-section').classList.remove('hidden');
         document.getElementById('test-link').href = base + '&mode=test';
+    } else {
+        document.getElementById('quiz-section').classList.remove('hidden');
     }
 }
 </script>

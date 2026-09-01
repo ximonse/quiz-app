@@ -46,18 +46,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Re-parse CSV if provided
         $csvData = trim($_POST['csv_data'] ?? '');
+        $newItems = null;
         if ($csvData) {
-            $items = parseCSV($csvData, $quiz['type']);
-            if (!empty($items)) {
-                $quiz['items'] = $items;
+            $parsedItems = parseCSV($csvData, $quiz['type']);
+            if (!empty($parsedItems)) {
+                $newItems = $parsedItems;
+                $quiz['items'] = $parsedItems;
             } else {
                 $error = 'Kunde inte tolka CSV-data.';
             }
         }
 
         if (!$error) {
-            $quizzes[$quizId] = $quiz;
-            writeJSON(QUIZZES_FILE, $quizzes);
+            $newTitle = $quiz['title'];
+            $newSettings = $quiz['settings'];
+            // Skriv bara title/settings/items — läs en färsk kopia under låset så
+            // att t.ex. ett elevresultat som sparats samtidigt inte skrivs över.
+            updateJSONLocked(QUIZZES_FILE, function (&$lockedQuizzes) use ($quizId, $newTitle, $newSettings, $newItems) {
+                if (!isset($lockedQuizzes[$quizId])) return;
+                $lockedQuizzes[$quizId]['title'] = $newTitle;
+                $lockedQuizzes[$quizId]['settings'] = $newSettings;
+                if ($newItems !== null) {
+                    $lockedQuizzes[$quizId]['items'] = $newItems;
+                }
+            });
             header('Location: dashboard.php');
             exit;
         }
@@ -160,7 +172,7 @@ $csvText = itemsToCSV($quiz['items'], $quiz['type']);
                 </div>
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Quizläge</label>
-                    <select name="quiz_mode" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                    <select name="quiz_mode" id="quiz-mode-select" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" onchange="onQuizModeChange()">
                         <option value="training" <?= ($s['quiz_mode'] ?? 'training') === 'training' ? 'selected' : '' ?>>Träning</option>
                         <option value="test" <?= ($s['quiz_mode'] ?? '') === 'test' ? 'selected' : '' ?>>Test</option>
                     </select>
@@ -201,7 +213,7 @@ $csvText = itemsToCSV($quiz['items'], $quiz['type']);
                         <input type="checkbox" name="tts_enabled" <?= !empty($s['tts_enabled']) ? 'checked' : '' ?>> Uppläsning (TTS)
                     </label>
                     <label class="flex items-center gap-2 text-sm cursor-pointer" style="color: var(--text-primary)">
-                        <input type="checkbox" name="generate_flashcards" <?= ($s['generate_flashcards'] ?? true) ? 'checked' : '' ?>> Flashcards
+                        <input type="checkbox" name="generate_flashcards" id="generate-flashcards-checkbox" <?= ($s['generate_flashcards'] ?? true) ? 'checked' : '' ?>> Flashcards
                     </label>
                 </div>
             </div>
@@ -252,6 +264,13 @@ $csvText = itemsToCSV($quiz['items'], $quiz['type']);
 </div>
 
 <script>
+function onQuizModeChange() {
+    // Test-läge passar sällan ihop med flashcards (repetitionsverktyg) —
+    // avmarkera som förvalt, men läraren kan fritt återaktivera det.
+    if (document.getElementById('quiz-mode-select').value === 'test') {
+        document.getElementById('generate-flashcards-checkbox').checked = false;
+    }
+}
 function toggleHybridFields() {
     const mode = document.querySelector('select[name="answer_mode"]').value;
     document.getElementById('mc-count-field').classList.toggle('hidden', mode !== 'hybrid');

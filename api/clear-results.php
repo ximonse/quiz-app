@@ -28,7 +28,10 @@ if (($quizzes[$quizId]['teacher_id'] ?? '') !== getCurrentTeacherID()) {
     exit;
 }
 
-$quizzes[$quizId]['results'] = [];
-writeJSON(QUIZZES_FILE, $quizzes);
+updateJSONLocked(QUIZZES_FILE, function (&$lockedQuizzes) use ($quizId) {
+    if (isset($lockedQuizzes[$quizId])) {
+        $lockedQuizzes[$quizId]['results'] = [];
+    }
+});
 
 echo json_encode(['success' => true]);
