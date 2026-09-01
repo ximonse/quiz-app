@@ -238,7 +238,7 @@ STRIKTA REGLER (avvik ALDRIG från dessa, oavsett hur materialet ser ut):
 - Inga citattecken.
 - Inga radbrytningar inuti en cell — varje glosa ska vara EN enda textrad.
 - Ingen header-rad.
-- Svara ENDAST med råa CSV-rader. Ingen markdown, inga kodblock (```), ingen numrering, inga rubriker och ingen kommentar före eller efter — bara raderna, redo att klistras in direkt.
+- Lägg alla CSV-rader i ETT enda kodblock (```), inte som vanlig text — det gör att radbrytningarna blir pålitliga och att raderna går att kopiera exakt med kodblockets kopieringsknapp. Inget annat innanför kodblocket (ingen numrering, inga rubriker) och ingen text alls utanför kodblocket.
 
 EXEMPEL:
 Hola, me llamo Roberto;llamo;heter;bor;läser;springer;vive;toma;mira
@@ -274,7 +274,7 @@ STRIKTA REGLER (avvik ALDRIG från dessa, oavsett hur materialet ser ut):
 - Inga citattecken.
 - Inga radbrytningar inuti en cell — varje begrepp ska vara EN enda textrad.
 - Ingen header-rad.
-- Svara ENDAST med råa CSV-rader. Ingen markdown, inga kodblock (```), ingen numrering, inga rubriker och ingen kommentar före eller efter — bara raderna, redo att klistras in direkt.
+- Lägg alla CSV-rader i ETT enda kodblock (```), inte som vanlig text — det gör att radbrytningarna blir pålitliga och att raderna går att kopiera exakt med kodblockets kopieringsknapp. Inget annat innanför kodblocket (ingen numrering, inga rubriker) och ingen text alls utanför kodblocket.
 
 EXEMPEL:
 Fotosyntes;Processen där växter omvandlar solljus till energi;Nedbrytning av proteiner;Transport av vatten i rötter;Cellandning i djur
