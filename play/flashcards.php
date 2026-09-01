@@ -44,6 +44,7 @@ if (!$quizId) { header('Location: index.php'); exit; }
 
     <div class="flex justify-center gap-4">
         <button onclick="prevCard()" class="px-6 py-2 rounded-lg border text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">&larr; Föregående</button>
+        <button onclick="repeatWord()" class="px-4 py-2 rounded-lg border text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" title="Lyssna på ordet igen">🔁</button>
         <button onclick="nextCard()" class="px-6 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700">Nästa &rarr;</button>
     </div>
 </div>
@@ -104,6 +105,14 @@ function playCardTTS() {
     if (!item) return;
     if (quizType === 'glossary') speakGlossary(item.sentence, item.word, quizSettings.language);
     else speakText(item.concept || item.description, quizSettings.language);
+}
+
+function repeatWord() {
+    if (!quizSettings?.tts_enabled) return;
+    const item = items[currentIndex];
+    if (!item) return;
+    const word = quizType === 'glossary' ? item.word : (item.concept || item.description);
+    speakText(word, quizSettings.language);
 }
 
 function flipCard() {
