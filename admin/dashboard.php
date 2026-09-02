@@ -219,6 +219,14 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                         <span class="mr-1">🤖</span> Behöver du hjälp att skapa CSV? Klicka här för AI-prompt
                     </button>
                     <div id="ai-prompt-box" class="hidden mt-2 p-3 bg-purple-50 border border-purple-100 rounded-lg">
+                        <ol class="text-xs text-purple-900 list-decimal list-inside space-y-1 mb-3">
+                            <li>Klicka på "📋 Kopiera prompt" nedan.</li>
+                            <li>Gå till valfri AI-chatt (t.ex. ChatGPT, Claude eller Copilot) och klistra in.</li>
+                            <li>Tillsammans med prompten kan du ladda upp ett foto på alla glosorna, eller skriva/klistra in en lista med orden.</li>
+                            <li>Skicka till AI:n. Den visar då en lista med orden och översättningarna — skriv "ok" om den blev rätt.</li>
+                            <li>Du får då ett meddelande med CSV-text — kopiera det och klistra in det i fältet nedan.</li>
+                        </ol>
+                        <p class="text-xs font-bold text-purple-800 mb-2">PS: Kom ihåg att välja språk i inställningarna innan du skapar quizet.</p>
                         <div class="flex justify-between items-center mb-2">
                             <span class="text-xs font-bold text-purple-800">Kopiera denna prompt till ChatGPT/Claude:</span>
                             <button type="button" onclick="copyAiPrompt()" class="bg-purple-200 hover:bg-purple-300 text-purple-800 px-2 py-1 rounded text-xs transition">
