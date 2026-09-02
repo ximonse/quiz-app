@@ -98,6 +98,7 @@ function parseCSV($csvText, $type) {
         if ($type === 'glossary') {
             // mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3
             if (count($cols) < 6) continue;
+            if ($cols[0] === '' || $cols[1] === '' || $cols[2] === '') continue; // saknar mening/ord/översättning
             $item = [
                 'sentence' => $cols[0],
                 'word' => $cols[1],
@@ -109,6 +110,7 @@ function parseCSV($csvText, $type) {
         } else {
             // begrepp;beskrivning;fel1;fel2;fel3
             if (count($cols) < 5) continue;
+            if ($cols[0] === '' || $cols[1] === '') continue; // saknar begrepp/beskrivning
             $item = [
                 'concept' => $cols[0],
                 'description' => $cols[1],

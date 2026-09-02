@@ -83,6 +83,7 @@ function parseCSV($csvText, $type) {
         $cols = array_map('trim', explode(';', $line));
         if ($type === 'glossary') {
             if (count($cols) < 6) continue;
+            if ($cols[0] === '' || $cols[1] === '' || $cols[2] === '') continue; // saknar mening/ord/översättning
             $items[] = [
                 'sentence' => $cols[0], 'word' => $cols[1], 'translation' => $cols[2],
                 'wrong_options' => array_filter([$cols[3] ?? '', $cols[4] ?? '', $cols[5] ?? '']),
@@ -90,6 +91,7 @@ function parseCSV($csvText, $type) {
             ];
         } else {
             if (count($cols) < 5) continue;
+            if ($cols[0] === '' || $cols[1] === '') continue; // saknar begrepp/beskrivning
             $items[] = [
                 'concept' => $cols[0], 'description' => $cols[1],
                 'wrong_options' => array_filter([$cols[2] ?? '', $cols[3] ?? '', $cols[4] ?? ''])
