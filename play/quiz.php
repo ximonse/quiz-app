@@ -141,19 +141,19 @@ function App() {
 
     function handleAnswer(answer) {
         const currentSpelling = spellingChoice || spellingMode;
-        // Capture the question as asked BEFORE submitAnswer mutates the queue,
-        // so the feedback view can redraw the same prompt/options afterward.
-        const currentItem = engine.currentItem();
-        const currentQ = engine.getQuestion(currentItem);
-        const currentProgress = engine.getProgress();
+        // Reuse THIS render's already-computed q/progress instead of calling
+        // engine.getQuestion()/getProgress() again — buildOptions() reshuffles
+        // the option order on every call, so a fresh call here would capture
+        // a different button order than what's actually on screen, making the
+        // feedback view glow a different-looking arrangement than what was clicked.
         const base = {
             given: answer,
-            correctAnswer: currentQ.answer,
-            options: currentQ.options,
-            prompt: currentQ.prompt,
-            highlight: currentQ.highlight,
-            direction: currentProgress.direction,
-            phase: currentProgress.phase
+            correctAnswer: q.answer,
+            options: q.options,
+            prompt: q.prompt,
+            highlight: q.highlight,
+            direction: progress.direction,
+            phase: progress.phase
         };
         const result = engine.submitAnswer(answer, currentSpelling);
         setTextInput('');
