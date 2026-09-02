@@ -154,11 +154,61 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
     <!-- Header -->
     <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
         <div class="flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800">Hej <?= htmlspecialchars($teacherName) ?>!</h1>
-                <p class="text-gray-500 text-sm">Hantera dina quizzes</p>
+            <div class="flex items-center gap-2">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">Hej <?= htmlspecialchars($teacherName) ?>!</h1>
+                    <p class="text-gray-500 text-sm">Hantera dina quizzes</p>
+                </div>
+                <button type="button" onclick="toggleInfoModal()" title="Så funkar appen" class="w-7 h-7 shrink-0 flex items-center justify-center rounded-full bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold text-sm">i</button>
             </div>
             <a href="../index.php?logout=1" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">Logga ut</a>
+        </div>
+    </div>
+
+    <!-- Info-modal: hjälp för att komma igång -->
+    <div id="info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if (event.target === this) toggleInfoModal()">
+        <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-gray-800">Så funkar appen</h2>
+                <button type="button" onclick="toggleInfoModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="space-y-4 text-sm text-gray-700">
+                <div>
+                    <h3 class="font-bold text-gray-800 mb-1">📝 Skapa ett quiz</h3>
+                    <p>Välj Glosquiz (ord + översättning) eller Faktaquiz (begrepp + beskrivning), skriv en titel och klistra in CSV-data — eller använd 🤖-knappen för AI-hjälp att generera CSV:n åt dig.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-800 mb-1">⚙️ Inställningar</h3>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li><strong>Svarsläge:</strong> Flerval, Skrivsvar, eller Hybrid (flerval först, sedan skrivsvar).</li>
+                        <li><strong>Quizläge:</strong> <em>Träning</em> — eleven övar tills alla frågor klarats, får försöka om vid fel. <em>Test</em> — en genomgång utan omtag, med poäng vid slutet.</li>
+                        <li><strong>Rätt per fråga:</strong> hur många gånger i rad eleven måste svara rätt på en fråga innan den räknas som klar (gäller i Träning).</li>
+                        <li><strong>Omvänd riktning:</strong> efter första rundan körs en till runda åt andra hållet (t.ex. från översättning till ord).</li>
+                        <li><strong>Språk:</strong> styr rösten för uppläsning och vilket språk skrivsvar bedöms mot.</li>
+                        <li><strong>Stavningsläge:</strong> Generös (tillåter mindre stavfel), Exakt, eller Eleven väljer själv i quizet.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-800 mb-1">🔊 Uppläsning (TTS)</h3>
+                    <p>Läser upp meningen och ordet (glosquiz) eller frågan (faktaquiz) på valt språk. Eleven kan stänga av/på ljudet med 🔊/🔇-knappen uppe i quizet.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-800 mb-1">📇 Flashcards</h3>
+                    <p>Om aktiverat kan eleven bläddra igenom alla glosor som kort (fram/baksida) utan att bli bedömd — bra repetition inför ett test. Avmarkeras automatiskt om du väljer Quizläge "Test", men går att bocka i igen manuellt.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-800 mb-1">🔗 Elevlänk</h3>
+                    <p>Klicka på 📋-ikonen bredvid ett quiz i listan för att kopiera länken till eleverna. Eleven skriver in sitt namn och väljer sedan mellan Träning/Test och Flashcards, beroende på vad du aktiverat.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-800 mb-1">📊 Statistik</h3>
+                    <p>Klicka på 📊-ikonen för att se: antal genomförda quiz, snitträtt i procent, de svåraste frågorna (flest fel) och en lista över de senaste 20 resultaten med namn och poäng. Du kan även rensa alla resultat därifrån.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-800 mb-1">✏️ Redigera / 🗑️ Radera</h3>
+                    <p>Ändra inställningar eller uppdatera CSV-datan via ✏️. Radering (🗑️) är permanent och tar bort alla sparade elevresultat för det quizet.</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -560,6 +610,9 @@ function toggleReverseHybridFields() {
 }
 function toggleAiPrompt() {
     document.getElementById('ai-prompt-box').classList.toggle('hidden');
+}
+function toggleInfoModal() {
+    document.getElementById('info-modal').classList.toggle('hidden');
 }
 function copyAiPrompt() {
     const type = document.getElementById('type-input').value;
