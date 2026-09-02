@@ -67,13 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
                 'teacher_id' => $teacherId,
                 'settings' => [
                     'answer_mode' => $answerMode,
-                    'mc_count' => intval($_POST['mc_count'] ?? count($items)),
-                    'text_count' => intval($_POST['text_count'] ?? 0),
                     'required_correct' => max(1, intval($_POST['required_correct'] ?? 1)),
                     'reverse_enabled' => $reverseEnabled,
                     'reverse_answer_mode' => $reverseAnswerMode,
-                    'reverse_mc_count' => intval($_POST['reverse_mc_count'] ?? count($items)),
-                    'reverse_text_count' => intval($_POST['reverse_text_count'] ?? 0),
                     'reverse_required_correct' => max(1, intval($_POST['reverse_required_correct'] ?? 1)),
                     'quiz_mode' => $_POST['quiz_mode'] ?? 'training',
                     'tts_enabled' => isset($_POST['tts_enabled']),
@@ -365,10 +361,10 @@ Nu, invänta mitt material.</pre>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Svarsläge</label>
-                        <select name="answer_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm" onchange="toggleHybridFields()">
+                        <select name="answer_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                             <option value="multiple_choice" <?= oldSelected('answer_mode', 'multiple_choice', 'multiple_choice') ?>>Flerval</option>
                             <option value="text_only" <?= oldSelected('answer_mode', 'text_only', 'multiple_choice') ?>>Skrivsvar</option>
-                            <option value="hybrid" <?= oldSelected('answer_mode', 'hybrid', 'multiple_choice') ?>>Hybrid (flerval + skrivsvar)</option>
+                            <option value="hybrid" <?= oldSelected('answer_mode', 'hybrid', 'multiple_choice') ?>>Hybrid (alla ord som flerval, sedan alla som skrivsvar)</option>
                         </select>
                     </div>
                     <div>
@@ -377,14 +373,6 @@ Nu, invänta mitt material.</pre>
                             <option value="training" <?= oldSelected('quiz_mode', 'training', 'training') ?>>Träning (repetition)</option>
                             <option value="test" <?= oldSelected('quiz_mode', 'test', 'training') ?>>Test (en genomgång)</option>
                         </select>
-                    </div>
-                    <div id="mc-count-field" class="hidden">
-                        <label class="block text-xs text-gray-500 mb-1">Antal flerval</label>
-                        <input type="number" name="mc_count" min="1" value="<?= old('mc_count', '10') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
-                    </div>
-                    <div id="text-count-field" class="hidden">
-                        <label class="block text-xs text-gray-500 mb-1">Antal skrivsvar</label>
-                        <input type="number" name="text_count" min="1" value="<?= old('text_count', '5') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Rätt per fråga</label>
@@ -430,7 +418,7 @@ Nu, invänta mitt material.</pre>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Omvänt svarsläge</label>
-                        <select name="reverse_answer_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm" onchange="toggleReverseHybridFields()">
+                        <select name="reverse_answer_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                             <option value="multiple_choice" <?= oldSelected('reverse_answer_mode', 'multiple_choice', 'multiple_choice') ?>>Flerval</option>
                             <option value="text_only" <?= oldSelected('reverse_answer_mode', 'text_only', 'multiple_choice') ?>>Skrivsvar</option>
                             <option value="hybrid" <?= oldSelected('reverse_answer_mode', 'hybrid', 'multiple_choice') ?>>Hybrid</option>
@@ -439,14 +427,6 @@ Nu, invänta mitt material.</pre>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Rätt per fråga (omvänd)</label>
                         <input type="number" name="reverse_required_correct" min="1" max="10" value="<?= old('reverse_required_correct', '2') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
-                    </div>
-                    <div id="reverse-mc-count-field" class="hidden">
-                        <label class="block text-xs text-gray-500 mb-1">Antal flerval (omvänd)</label>
-                        <input type="number" name="reverse_mc_count" min="1" value="<?= old('reverse_mc_count', '10') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
-                    </div>
-                    <div id="reverse-text-count-field" class="hidden">
-                        <label class="block text-xs text-gray-500 mb-1">Antal skrivsvar (omvänd)</label>
-                        <input type="number" name="reverse_text_count" min="1" value="<?= old('reverse_text_count', '5') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
                     </div>
                 </div>
             </fieldset>
@@ -594,19 +574,9 @@ function onQuizModeChange() {
         document.getElementById('generate-flashcards-checkbox').checked = false;
     }
 }
-function toggleHybridFields() {
-    const mode = document.querySelector('select[name="answer_mode"]').value;
-    document.getElementById('mc-count-field').classList.toggle('hidden', mode !== 'hybrid');
-    document.getElementById('text-count-field').classList.toggle('hidden', mode !== 'hybrid');
-}
 function toggleReverseFields() {
     const enabled = document.querySelector('input[name="reverse_enabled"]').checked;
     document.getElementById('reverse-fields').classList.toggle('hidden', !enabled);
-}
-function toggleReverseHybridFields() {
-    const mode = document.querySelector('select[name="reverse_answer_mode"]').value;
-    document.getElementById('reverse-mc-count-field').classList.toggle('hidden', mode !== 'hybrid');
-    document.getElementById('reverse-text-count-field').classList.toggle('hidden', mode !== 'hybrid');
 }
 function toggleAiPrompt() {
     document.getElementById('ai-prompt-box').classList.toggle('hidden');
@@ -623,9 +593,7 @@ function copyAiPrompt() {
 // Vid ett sticky-återladdat formulär (efter ett misslyckat försök): visa
 // rätt typ-knapp/CSV-hint/inställningsfält utifrån de återställda värdena.
 selectType(document.getElementById('type-input').value, true);
-toggleHybridFields();
 toggleReverseFields();
-toggleReverseHybridFields();
 </script>
 </body>
 </html>

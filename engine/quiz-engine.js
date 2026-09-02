@@ -26,16 +26,6 @@ function QuizEngine(config) {
         return settings.answer_mode || 'multiple_choice';
     }
 
-    function getMcCount() {
-        if (direction === 'reverse') return settings.reverse_mc_count || items.length;
-        return settings.mc_count || items.length;
-    }
-
-    function getTextCount() {
-        if (direction === 'reverse') return settings.reverse_text_count || 0;
-        return settings.text_count || 0;
-    }
-
     function getRequiredCorrect() {
         if (isTest) return 1;
         const configured = direction === 'reverse'
@@ -60,14 +50,9 @@ function QuizEngine(config) {
             queue = shuffled.map((item, i) => ({ ...item, _index: items.indexOf(item), _phase: 'text' }));
             phase = 'text';
         } else {
-            // hybrid: mc_count items as MC, then text_count items as text
-            const mcCount = Math.min(getMcCount(), shuffled.length);
-            const textCount = Math.min(getTextCount(), shuffled.length);
-            const mcItems = shuffled.slice(0, mcCount).map(item => ({ ...item, _index: items.indexOf(item), _phase: 'mc' }));
-            const textItems = shuffled.slice(0, textCount).map(item => ({ ...item, _index: items.indexOf(item), _phase: 'text' }));
-            queue = mcItems;
-            // Store text items for phase 2
-            queue._textQueue = textItems;
+            // hybrid: alla glosor som flerval först, sedan alla glosor som skrivsvar
+            queue = shuffled.map(item => ({ ...item, _index: items.indexOf(item), _phase: 'mc' }));
+            queue._textQueue = shuffle([...items]).map(item => ({ ...item, _index: items.indexOf(item), _phase: 'text' }));
             phase = 'mc';
         }
 

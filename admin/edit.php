@@ -25,13 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Update settings
         $quiz['title'] = $title;
         $quiz['settings']['answer_mode'] = $_POST['answer_mode'] ?? 'multiple_choice';
-        $quiz['settings']['mc_count'] = intval($_POST['mc_count'] ?? count($quiz['items']));
-        $quiz['settings']['text_count'] = intval($_POST['text_count'] ?? 0);
         $quiz['settings']['required_correct'] = max(1, intval($_POST['required_correct'] ?? ($quiz['settings']['required_correct'] ?? 1)));
         $quiz['settings']['reverse_enabled'] = isset($_POST['reverse_enabled']);
         $quiz['settings']['reverse_answer_mode'] = $_POST['reverse_answer_mode'] ?? 'multiple_choice';
-        $quiz['settings']['reverse_mc_count'] = intval($_POST['reverse_mc_count'] ?? count($quiz['items']));
-        $quiz['settings']['reverse_text_count'] = intval($_POST['reverse_text_count'] ?? 0);
         $quiz['settings']['reverse_required_correct'] = max(1, intval($_POST['reverse_required_correct'] ?? ($quiz['settings']['reverse_required_correct'] ?? 1)));
         $quiz['settings']['quiz_mode'] = $_POST['quiz_mode'] ?? 'training';
         $quiz['settings']['tts_enabled'] = isset($_POST['tts_enabled']);
@@ -193,10 +189,10 @@ $s = $quiz['settings'];
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Svarsläge</label>
-                    <select name="answer_mode" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" onchange="toggleHybridFields()">
+                    <select name="answer_mode" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                         <option value="multiple_choice" <?= $s['answer_mode'] === 'multiple_choice' ? 'selected' : '' ?>>Flerval</option>
                         <option value="text_only" <?= $s['answer_mode'] === 'text_only' ? 'selected' : '' ?>>Skrivsvar</option>
-                        <option value="hybrid" <?= $s['answer_mode'] === 'hybrid' ? 'selected' : '' ?>>Hybrid</option>
+                        <option value="hybrid" <?= $s['answer_mode'] === 'hybrid' ? 'selected' : '' ?>>Hybrid (alla ord som flerval, sedan alla som skrivsvar)</option>
                     </select>
                 </div>
                 <div>
@@ -205,14 +201,6 @@ $s = $quiz['settings'];
                         <option value="training" <?= ($s['quiz_mode'] ?? 'training') === 'training' ? 'selected' : '' ?>>Träning</option>
                         <option value="test" <?= ($s['quiz_mode'] ?? '') === 'test' ? 'selected' : '' ?>>Test</option>
                     </select>
-                </div>
-                <div id="mc-count-field" class="<?= $s['answer_mode'] !== 'hybrid' ? 'hidden' : '' ?>">
-                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Antal flerval</label>
-                    <input type="number" name="mc_count" min="1" value="<?= $s['mc_count'] ?? 10 ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                </div>
-                <div id="text-count-field" class="<?= $s['answer_mode'] !== 'hybrid' ? 'hidden' : '' ?>">
-                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Antal skrivsvar</label>
-                    <input type="number" name="text_count" min="1" value="<?= $s['text_count'] ?? 5 ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                 </div>
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Rätt per fråga</label>
@@ -253,7 +241,7 @@ $s = $quiz['settings'];
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Omvänt svarsläge</label>
-                    <select name="reverse_answer_mode" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" onchange="toggleReverseHybridFields()">
+                    <select name="reverse_answer_mode" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                         <option value="multiple_choice" <?= ($s['reverse_answer_mode'] ?? 'multiple_choice') === 'multiple_choice' ? 'selected' : '' ?>>Flerval</option>
                         <option value="text_only" <?= ($s['reverse_answer_mode'] ?? '') === 'text_only' ? 'selected' : '' ?>>Skrivsvar</option>
                         <option value="hybrid" <?= ($s['reverse_answer_mode'] ?? '') === 'hybrid' ? 'selected' : '' ?>>Hybrid</option>
@@ -262,14 +250,6 @@ $s = $quiz['settings'];
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Rätt per fråga (omvänd)</label>
                     <input type="number" name="reverse_required_correct" min="1" max="10" value="<?= $s['reverse_required_correct'] ?? 1 ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                </div>
-                <div id="reverse-mc-count-field" class="<?= ($s['reverse_answer_mode'] ?? '') !== 'hybrid' ? 'hidden' : '' ?>">
-                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Antal flerval (omvänd)</label>
-                    <input type="number" name="reverse_mc_count" min="1" value="<?= $s['reverse_mc_count'] ?? 10 ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                </div>
-                <div id="reverse-text-count-field" class="<?= ($s['reverse_answer_mode'] ?? '') !== 'hybrid' ? 'hidden' : '' ?>">
-                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Antal skrivsvar (omvänd)</label>
-                    <input type="number" name="reverse_text_count" min="1" value="<?= $s['reverse_text_count'] ?? 5 ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                 </div>
             </div>
         </fieldset>
@@ -372,19 +352,9 @@ function onQuizModeChange() {
         document.getElementById('generate-flashcards-checkbox').checked = false;
     }
 }
-function toggleHybridFields() {
-    const mode = document.querySelector('select[name="answer_mode"]').value;
-    document.getElementById('mc-count-field').classList.toggle('hidden', mode !== 'hybrid');
-    document.getElementById('text-count-field').classList.toggle('hidden', mode !== 'hybrid');
-}
 function toggleReverseFields() {
     const enabled = document.querySelector('input[name="reverse_enabled"]').checked;
     document.getElementById('reverse-fields').classList.toggle('hidden', !enabled);
-}
-function toggleReverseHybridFields() {
-    const mode = document.querySelector('select[name="reverse_answer_mode"]').value;
-    document.getElementById('reverse-mc-count-field').classList.toggle('hidden', mode !== 'hybrid');
-    document.getElementById('reverse-text-count-field').classList.toggle('hidden', mode !== 'hybrid');
 }
 </script>
 </body>

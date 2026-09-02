@@ -47,13 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'teacher_id' => getCurrentTeacherID(),
                 'settings' => [
                     'answer_mode' => $answerMode,
-                    'mc_count' => intval($_POST['mc_count'] ?? count($items)),
-                    'text_count' => intval($_POST['text_count'] ?? 0),
                     'required_correct' => max(1, intval($_POST['required_correct'] ?? 2)),
                     'reverse_enabled' => $reverseEnabled,
                     'reverse_answer_mode' => $reverseAnswerMode,
-                    'reverse_mc_count' => intval($_POST['reverse_mc_count'] ?? count($items)),
-                    'reverse_text_count' => intval($_POST['reverse_text_count'] ?? 0),
                     'reverse_required_correct' => max(1, intval($_POST['reverse_required_correct'] ?? 2)),
                     'quiz_mode' => $_POST['quiz_mode'] ?? 'training',
                     'tts_enabled' => isset($_POST['tts_enabled']),
@@ -184,10 +180,10 @@ function parseCSV($csvText, $type) {
 
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Svarsläge</label>
-                    <select name="answer_mode" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" onchange="toggleHybridFields()">
+                    <select name="answer_mode" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                         <option value="multiple_choice" <?= oldSelected('answer_mode', 'multiple_choice', 'multiple_choice') ?>>Flerval</option>
                         <option value="text_only" <?= oldSelected('answer_mode', 'text_only', 'multiple_choice') ?>>Skrivsvar</option>
-                        <option value="hybrid" <?= oldSelected('answer_mode', 'hybrid', 'multiple_choice') ?>>Hybrid (flerval + skrivsvar)</option>
+                        <option value="hybrid" <?= oldSelected('answer_mode', 'hybrid', 'multiple_choice') ?>>Hybrid (alla ord som flerval, sedan alla som skrivsvar)</option>
                     </select>
                 </div>
 
@@ -197,16 +193,6 @@ function parseCSV($csvText, $type) {
                         <option value="training" <?= oldSelected('quiz_mode', 'training', 'training') ?>>Träning (repetition)</option>
                         <option value="test" <?= oldSelected('quiz_mode', 'test', 'training') ?>>Test (en genomgång)</option>
                     </select>
-                </div>
-
-                <div id="mc-count-field" class="hidden">
-                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Antal flerval</label>
-                    <input type="number" name="mc_count" min="1" value="<?= old('mc_count', '10') ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                </div>
-
-                <div id="text-count-field" class="hidden">
-                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Antal skrivsvar</label>
-                    <input type="number" name="text_count" min="1" value="<?= old('text_count', '5') ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                 </div>
 
                 <div>
@@ -257,7 +243,7 @@ function parseCSV($csvText, $type) {
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Omvänt svarsläge</label>
-                    <select name="reverse_answer_mode" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" onchange="toggleReverseHybridFields()">
+                    <select name="reverse_answer_mode" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                         <option value="multiple_choice" <?= oldSelected('reverse_answer_mode', 'multiple_choice', 'multiple_choice') ?>>Flerval</option>
                         <option value="text_only" <?= oldSelected('reverse_answer_mode', 'text_only', 'multiple_choice') ?>>Skrivsvar</option>
                         <option value="hybrid" <?= oldSelected('reverse_answer_mode', 'hybrid', 'multiple_choice') ?>>Hybrid</option>
@@ -266,14 +252,6 @@ function parseCSV($csvText, $type) {
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Rätt per fråga (omvänd)</label>
                     <input type="number" name="reverse_required_correct" min="1" max="10" value="<?= old('reverse_required_correct', '2') ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                </div>
-                <div id="reverse-mc-count-field" class="hidden">
-                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Antal flerval (omvänd)</label>
-                    <input type="number" name="reverse_mc_count" min="1" value="<?= old('reverse_mc_count', '10') ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                </div>
-                <div id="reverse-text-count-field" class="hidden">
-                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Antal skrivsvar (omvänd)</label>
-                    <input type="number" name="reverse_text_count" min="1" value="<?= old('reverse_text_count', '5') ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                 </div>
             </div>
         </fieldset>
@@ -312,19 +290,9 @@ function toggleTypeFields() {
     // TTS default: on for glossary, off for fact
     document.getElementById('tts-checkbox').checked = isGlossary;
 }
-function toggleHybridFields() {
-    const mode = document.querySelector('select[name="answer_mode"]').value;
-    document.getElementById('mc-count-field').classList.toggle('hidden', mode !== 'hybrid');
-    document.getElementById('text-count-field').classList.toggle('hidden', mode !== 'hybrid');
-}
 function toggleReverseFields() {
     const enabled = document.querySelector('input[name="reverse_enabled"]').checked;
     document.getElementById('reverse-fields').classList.toggle('hidden', !enabled);
-}
-function toggleReverseHybridFields() {
-    const mode = document.querySelector('select[name="reverse_answer_mode"]').value;
-    document.getElementById('reverse-mc-count-field').classList.toggle('hidden', mode !== 'hybrid');
-    document.getElementById('reverse-text-count-field').classList.toggle('hidden', mode !== 'hybrid');
 }
 
 // Vid ett sticky-återladdat formulär (efter ett misslyckat försök): visa/dölj
@@ -332,9 +300,7 @@ function toggleReverseHybridFields() {
 // (den styrs bara av typ-bytets onchange, inte av denna init).
 document.getElementById('csv-hint-glossary').classList.toggle('hidden', !document.querySelector('input[name="type"][value="glossary"]').checked);
 document.getElementById('csv-hint-fact').classList.toggle('hidden', document.querySelector('input[name="type"][value="glossary"]').checked);
-toggleHybridFields();
 toggleReverseFields();
-toggleReverseHybridFields();
 </script>
 </body>
 </html>
