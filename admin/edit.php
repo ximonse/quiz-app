@@ -103,26 +103,7 @@ function parseCSV($csvText, $type) {
     return $items;
 }
 
-// Convert items back to CSV for textarea display
-function itemsToCSV($items, $type) {
-    $lines = [];
-    foreach ($items as $item) {
-        if ($type === 'glossary') {
-            $parts = [$item['sentence'], $item['word'], $item['translation']];
-            $parts = array_merge($parts, $item['wrong_options'] ?? []);
-            $parts = array_merge($parts, $item['reverse_wrong_options'] ?? []);
-            $lines[] = implode(';', $parts);
-        } else {
-            $parts = [$item['concept'], $item['description']];
-            $parts = array_merge($parts, $item['wrong_options'] ?? []);
-            $lines[] = implode(';', $parts);
-        }
-    }
-    return implode("\n", $lines);
-}
-
 $s = $quiz['settings'];
-$csvText = itemsToCSV($quiz['items'], $quiz['type']);
 ?>
 <!DOCTYPE html>
 <html lang="sv">
@@ -144,7 +125,7 @@ $csvText = itemsToCSV($quiz['items'], $quiz['type']);
         <div class="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
 
-    <form method="POST" class="space-y-6 rounded-xl p-6" style="background: var(--card-bg); border: 1px solid var(--border)">
+    <form method="POST" onsubmit="return prepareSubmit();" class="space-y-6 rounded-xl p-6" style="background: var(--card-bg); border: 1px solid var(--border)">
         <?= csrfField() ?>
 
         <div>
@@ -153,10 +134,58 @@ $csvText = itemsToCSV($quiz['items'], $quiz['type']);
         </div>
 
         <div>
-            <label class="block text-sm font-medium mb-1" style="color: var(--text-primary)">
-                CSV-data <span class="text-xs font-normal" style="color: var(--text-secondary)">(lämna tomt för att behålla befintliga frågor)</span>
-            </label>
-            <textarea name="csv_data" rows="8" class="w-full px-3 py-2 border rounded-lg font-mono text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)"><?= htmlspecialchars($csvText) ?></textarea>
+            <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium" style="color: var(--text-primary)">Frågor (<?= count($quiz['items']) ?>)</label>
+                <button type="button" onclick="addItemRow()" class="text-xs px-2 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-700">+ Lägg till <?= $quiz['type'] === 'glossary' ? 'glosa' : 'fråga' ?></button>
+            </div>
+            <div id="items-editor" class="space-y-3">
+                <?php foreach ($quiz['items'] as $item): ?>
+                    <?php if ($quiz['type'] === 'glossary'): ?>
+                    <div class="item-row border rounded-lg p-3" style="border-color: var(--border)">
+                        <div class="flex items-start gap-2 mb-2">
+                            <input type="text" data-field="mening" value="<?= htmlspecialchars($item['sentence'] ?? '') ?>" placeholder="Mening" class="flex-1 px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <button type="button" onclick="removeItemRow(this)" title="Ta bort" class="text-red-500 hover:text-red-700 shrink-0 px-1">🗑️</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <input type="text" data-field="ord" value="<?= htmlspecialchars($item['word'] ?? '') ?>" placeholder="Ord" class="px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <input type="text" data-field="oversattning" value="<?= htmlspecialchars($item['translation'] ?? '') ?>" placeholder="Översättning" class="px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 mb-2">
+                            <input type="text" data-field="fel1" value="<?= htmlspecialchars($item['wrong_options'][0] ?? '') ?>" placeholder="Fel 1" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <input type="text" data-field="fel2" value="<?= htmlspecialchars($item['wrong_options'][1] ?? '') ?>" placeholder="Fel 2" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <input type="text" data-field="fel3" value="<?= htmlspecialchars($item['wrong_options'][2] ?? '') ?>" placeholder="Fel 3" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="text" data-field="ofel1" value="<?= htmlspecialchars($item['reverse_wrong_options'][0] ?? '') ?>" placeholder="Omvänt fel 1 (valfri)" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <input type="text" data-field="ofel2" value="<?= htmlspecialchars($item['reverse_wrong_options'][1] ?? '') ?>" placeholder="Omvänt fel 2 (valfri)" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <input type="text" data-field="ofel3" value="<?= htmlspecialchars($item['reverse_wrong_options'][2] ?? '') ?>" placeholder="Omvänt fel 3 (valfri)" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <div class="item-row border rounded-lg p-3" style="border-color: var(--border)">
+                        <div class="flex items-start gap-2 mb-2">
+                            <input type="text" data-field="begrepp" value="<?= htmlspecialchars($item['concept'] ?? '') ?>" placeholder="Begrepp" class="flex-1 px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <button type="button" onclick="removeItemRow(this)" title="Ta bort" class="text-red-500 hover:text-red-700 shrink-0 px-1">🗑️</button>
+                        </div>
+                        <textarea data-field="beskrivning" placeholder="Beskrivning" rows="2" class="w-full px-2 py-1 border rounded text-sm mb-2" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)"><?= htmlspecialchars($item['description'] ?? '') ?></textarea>
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="text" data-field="ffel1" value="<?= htmlspecialchars($item['wrong_options'][0] ?? '') ?>" placeholder="Fel 1" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <input type="text" data-field="ffel2" value="<?= htmlspecialchars($item['wrong_options'][1] ?? '') ?>" placeholder="Fel 2" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <input type="text" data-field="ffel3" value="<?= htmlspecialchars($item['wrong_options'][2] ?? '') ?>" placeholder="Fel 3" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="mt-3">
+                <button type="button" onclick="toggleBulkReplace()" class="text-xs text-purple-600 hover:text-purple-800 font-medium">Eller klistra in en ny CSV-lista (ersätter alla frågor ovan)</button>
+                <div id="bulk-replace-box" class="hidden mt-2">
+                    <textarea id="bulk-csv-textarea" rows="6" placeholder="Klistra in ny CSV här för att ersätta ALLA frågor ovan..." class="w-full px-3 py-2 border rounded-lg font-mono text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)"></textarea>
+                </div>
+            </div>
+
+            <input type="hidden" name="csv_data" id="csv_data_hidden">
         </div>
 
         <fieldset class="border rounded-lg p-4" style="border-color: var(--border)">
@@ -264,6 +293,78 @@ $csvText = itemsToCSV($quiz['items'], $quiz['type']);
 </div>
 
 <script>
+const QUIZ_TYPE = <?= json_encode($quiz['type']) ?>;
+const GLOSSARY_ROW_HTML = `
+    <div class="item-row border rounded-lg p-3" style="border-color: var(--border)">
+        <div class="flex items-start gap-2 mb-2">
+            <input type="text" data-field="mening" placeholder="Mening" class="flex-1 px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+            <button type="button" onclick="removeItemRow(this)" title="Ta bort" class="text-red-500 hover:text-red-700 shrink-0 px-1">🗑️</button>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mb-2">
+            <input type="text" data-field="ord" placeholder="Ord" class="px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+            <input type="text" data-field="oversattning" placeholder="Översättning" class="px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+        </div>
+        <div class="grid grid-cols-3 gap-2 mb-2">
+            <input type="text" data-field="fel1" placeholder="Fel 1" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+            <input type="text" data-field="fel2" placeholder="Fel 2" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+            <input type="text" data-field="fel3" placeholder="Fel 3" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+            <input type="text" data-field="ofel1" placeholder="Omvänt fel 1 (valfri)" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+            <input type="text" data-field="ofel2" placeholder="Omvänt fel 2 (valfri)" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+            <input type="text" data-field="ofel3" placeholder="Omvänt fel 3 (valfri)" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+        </div>
+    </div>`;
+const FACT_ROW_HTML = `
+    <div class="item-row border rounded-lg p-3" style="border-color: var(--border)">
+        <div class="flex items-start gap-2 mb-2">
+            <input type="text" data-field="begrepp" placeholder="Begrepp" class="flex-1 px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+            <button type="button" onclick="removeItemRow(this)" title="Ta bort" class="text-red-500 hover:text-red-700 shrink-0 px-1">🗑️</button>
+        </div>
+        <textarea data-field="beskrivning" placeholder="Beskrivning" rows="2" class="w-full px-2 py-1 border rounded text-sm mb-2" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)"></textarea>
+        <div class="grid grid-cols-3 gap-2">
+            <input type="text" data-field="ffel1" placeholder="Fel 1" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+            <input type="text" data-field="ffel2" placeholder="Fel 2" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+            <input type="text" data-field="ffel3" placeholder="Fel 3" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+        </div>
+    </div>`;
+const GLOSSARY_FIELDS = ['mening', 'ord', 'oversattning', 'fel1', 'fel2', 'fel3', 'ofel1', 'ofel2', 'ofel3'];
+const FACT_FIELDS = ['begrepp', 'beskrivning', 'ffel1', 'ffel2', 'ffel3'];
+
+function addItemRow() {
+    const container = document.getElementById('items-editor');
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = QUIZ_TYPE === 'glossary' ? GLOSSARY_ROW_HTML : FACT_ROW_HTML;
+    container.appendChild(wrapper.firstElementChild);
+}
+function removeItemRow(button) {
+    button.closest('.item-row').remove();
+}
+function toggleBulkReplace() {
+    document.getElementById('bulk-replace-box').classList.toggle('hidden');
+}
+function buildCsvFromRows() {
+    const fields = QUIZ_TYPE === 'glossary' ? GLOSSARY_FIELDS : FACT_FIELDS;
+    const rows = document.querySelectorAll('#items-editor .item-row');
+    const lines = [];
+    rows.forEach(row => {
+        const values = fields.map(f => {
+            const el = row.querySelector('[data-field="' + f + '"]');
+            return (el.value || '').trim().replace(/;/g, ',');
+        });
+        lines.push(values.join(';'));
+    });
+    return lines.join('\n');
+}
+function prepareSubmit() {
+    const bulkText = document.getElementById('bulk-csv-textarea').value.trim();
+    if (!bulkText && document.querySelectorAll('#items-editor .item-row').length === 0) {
+        alert('Du måste ha minst en fråga kvar. Lägg till en fråga eller klistra in en ny CSV-lista.');
+        return false;
+    }
+    document.getElementById('csv_data_hidden').value = bulkText || buildCsvFromRows();
+    return true;
+}
 function onQuizModeChange() {
     // Test-läge passar sällan ihop med flashcards (repetitionsverktyg) —
     // avmarkera som förvalt, men läraren kan fritt återaktivera det.
