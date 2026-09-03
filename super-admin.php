@@ -236,7 +236,7 @@ foreach ($stats as $quiz_stats) {
                                     </div>
                                     <p class="text-sm <?= $is_active ? 'text-gray-500' : 'text-gray-400' ?>">
                                         👤 <?= htmlspecialchars($quiz['teacher_name'] ?? 'Okänd') ?> •
-                                        <?= count($quiz['questions']) ?> frågor •
+                                        <?= count($quiz['questions'] ?? $quiz['items'] ?? []) ?> frågor •
                                         Skapad <?= date('Y-m-d', strtotime($quiz['created'])) ?>
                                         <?php if (!$is_active): ?>
                                             • <span class="text-red-500 font-medium">INAKTIV</span>
