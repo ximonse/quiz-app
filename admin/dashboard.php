@@ -221,7 +221,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
     <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
         <h2 class="text-lg font-bold text-gray-800 mb-4">Skapa nytt quiz</h2>
 
-        <form method="POST" class="space-y-4">
+        <form id="create-quiz-form" method="POST" class="space-y-4" onsubmit="return prepareCreateSubmit();">
             <?= csrfField() ?>
             <input type="hidden" name="action" value="create">
 
@@ -259,7 +259,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                 <label class="block text-sm font-medium text-gray-700 mb-1">CSV-data (semikolon-separerad)</label>
                 <div id="csv-hint-glossary" class="text-xs text-gray-500 mb-1">Format: mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3</div>
                 <div id="csv-hint-fact" class="text-xs text-gray-500 mb-1 hidden">Format: begrepp;beskrivning;fel1;fel2;fel3</div>
-                <textarea name="csv_data" required rows="6" class="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500" placeholder="Klistra in CSV här..."><?= old('csv_data') ?></textarea>
+                <textarea name="csv_data" rows="6" class="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500" placeholder="Klistra in CSV här..."><?= old('csv_data') ?></textarea>
 
                 <!-- AI Prompt Helper -->
                 <div class="mt-2">
@@ -355,6 +355,21 @@ EXEMPEL:
 Fotosyntes;Processen där växter omvandlar solljus till energi;Nedbrytning av proteiner;Transport av vatten i rötter;Cellandning i djur
 
 Nu, invänta mitt material.</pre>
+                    </div>
+                </div>
+
+                <!-- Manuell inmatning -->
+                <div class="mt-2">
+                    <button type="button" onclick="toggleManualBuilder()" class="flex items-center text-blue-600 hover:text-blue-800 font-medium text-xs">
+                        <span class="mr-1">🖊️</span> Eller bygg <span id="manual-builder-label-inline">glosorna</span> manuellt, rad för rad
+                    </button>
+                    <div id="manual-builder-box" class="hidden mt-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold text-blue-800"><span id="manual-builder-label">Glosor</span> (<span id="manual-builder-count">0</span>)</span>
+                            <button type="button" onclick="addItemRow()" class="text-xs px-2 py-1 rounded bg-blue-200 hover:bg-blue-300 text-blue-800 transition">+ Lägg till <span id="add-row-label">glosa</span></button>
+                        </div>
+                        <div id="items-editor" class="space-y-3"></div>
+                        <p class="text-xs text-gray-500 mt-2">Raderna byggs ihop till CSV-datan automatiskt när du skapar quizet — det du skriver i CSV-fältet ovan används bara om du inte lägger till några rader här.</p>
                     </div>
                 </div>
             </div>
@@ -567,9 +582,19 @@ function selectType(type, silent) {
     document.getElementById('csv-hint-fact').classList.toggle('hidden', type !== 'fact');
     document.getElementById('prompt-glossary').classList.toggle('hidden', type !== 'glossary');
     document.getElementById('prompt-fact').classList.toggle('hidden', type !== 'fact');
+    document.getElementById('manual-builder-label-inline').textContent = (type === 'glossary') ? 'glosorna' : 'frågorna';
+    document.getElementById('manual-builder-label').textContent = (type === 'glossary') ? 'Glosor' : 'Frågor';
+    document.getElementById('add-row-label').textContent = (type === 'glossary') ? 'glosa' : 'fråga';
     // silent=true (används vid sticky-återladdning) rör inte TTS-kryssrutan,
     // så ett återställt värde från ett tidigare (misslyckat) försök inte skrivs över.
     if (!silent) document.getElementById('tts-checkbox').checked = (type === 'glossary');
+    // Fälten skiljer sig åt mellan glos- och faktarader, så manuellt inlagda
+    // rader töms om läraren byter typ (samma mönster som CSV-fältets hint/prompt ovan).
+    const editor = document.getElementById('items-editor');
+    if (editor) {
+        editor.innerHTML = '';
+        updateManualBuilderCount();
+    }
 }
 function onQuizModeChange() {
     // Test-läge passar sällan ihop med flashcards (repetitionsverktyg) —
@@ -584,6 +609,88 @@ function toggleReverseFields() {
 }
 function toggleAiPrompt() {
     document.getElementById('ai-prompt-box').classList.toggle('hidden');
+}
+function toggleManualBuilder() {
+    document.getElementById('manual-builder-box').classList.toggle('hidden');
+}
+
+// Manuell radbyggare — samma fält/mönster som admin/edit.php använder för att
+// redigera ett befintligt quiz, återanvänt här för att bygga CSV-datan från grunden.
+const GLOSSARY_ROW_HTML = `
+    <div class="item-row border border-gray-200 rounded-lg p-3 bg-white">
+        <div class="flex items-start gap-2 mb-2">
+            <input type="text" data-field="mening" placeholder="Mening" class="flex-1 px-2 py-1 border border-gray-300 rounded text-sm">
+            <button type="button" onclick="removeItemRow(this)" title="Ta bort" class="text-red-500 hover:text-red-700 shrink-0 px-1">🗑️</button>
+        </div>
+        <div class="grid grid-cols-2 gap-2 mb-2">
+            <input type="text" data-field="ord" placeholder="Ord" class="px-2 py-1 border border-gray-300 rounded text-sm">
+            <input type="text" data-field="oversattning" placeholder="Översättning" class="px-2 py-1 border border-gray-300 rounded text-sm">
+        </div>
+        <div class="grid grid-cols-3 gap-2 mb-2">
+            <input type="text" data-field="fel1" placeholder="Fel 1" class="px-2 py-1 border border-gray-300 rounded text-xs">
+            <input type="text" data-field="fel2" placeholder="Fel 2" class="px-2 py-1 border border-gray-300 rounded text-xs">
+            <input type="text" data-field="fel3" placeholder="Fel 3" class="px-2 py-1 border border-gray-300 rounded text-xs">
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+            <input type="text" data-field="ofel1" placeholder="Omvänt fel 1 (valfri)" class="px-2 py-1 border border-gray-300 rounded text-xs">
+            <input type="text" data-field="ofel2" placeholder="Omvänt fel 2 (valfri)" class="px-2 py-1 border border-gray-300 rounded text-xs">
+            <input type="text" data-field="ofel3" placeholder="Omvänt fel 3 (valfri)" class="px-2 py-1 border border-gray-300 rounded text-xs">
+        </div>
+    </div>`;
+const FACT_ROW_HTML = `
+    <div class="item-row border border-gray-200 rounded-lg p-3 bg-white">
+        <div class="flex items-start gap-2 mb-2">
+            <input type="text" data-field="begrepp" placeholder="Begrepp" class="flex-1 px-2 py-1 border border-gray-300 rounded text-sm">
+            <button type="button" onclick="removeItemRow(this)" title="Ta bort" class="text-red-500 hover:text-red-700 shrink-0 px-1">🗑️</button>
+        </div>
+        <textarea data-field="beskrivning" placeholder="Beskrivning" rows="2" class="w-full px-2 py-1 border border-gray-300 rounded text-sm mb-2"></textarea>
+        <div class="grid grid-cols-3 gap-2">
+            <input type="text" data-field="ffel1" placeholder="Fel 1" class="px-2 py-1 border border-gray-300 rounded text-xs">
+            <input type="text" data-field="ffel2" placeholder="Fel 2" class="px-2 py-1 border border-gray-300 rounded text-xs">
+            <input type="text" data-field="ffel3" placeholder="Fel 3" class="px-2 py-1 border border-gray-300 rounded text-xs">
+        </div>
+    </div>`;
+const GLOSSARY_FIELDS = ['mening', 'ord', 'oversattning', 'fel1', 'fel2', 'fel3', 'ofel1', 'ofel2', 'ofel3'];
+const FACT_FIELDS = ['begrepp', 'beskrivning', 'ffel1', 'ffel2', 'ffel3'];
+
+function addItemRow() {
+    const container = document.getElementById('items-editor');
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = document.getElementById('type-input').value === 'glossary' ? GLOSSARY_ROW_HTML : FACT_ROW_HTML;
+    container.appendChild(wrapper.firstElementChild);
+    updateManualBuilderCount();
+}
+function removeItemRow(button) {
+    button.closest('.item-row').remove();
+    updateManualBuilderCount();
+}
+function updateManualBuilderCount() {
+    document.getElementById('manual-builder-count').textContent = document.querySelectorAll('#items-editor .item-row').length;
+}
+function buildCsvFromRows() {
+    const fields = document.getElementById('type-input').value === 'glossary' ? GLOSSARY_FIELDS : FACT_FIELDS;
+    const rows = document.querySelectorAll('#items-editor .item-row');
+    const lines = [];
+    rows.forEach(row => {
+        const values = fields.map(f => {
+            const el = row.querySelector('[data-field="' + f + '"]');
+            return (el.value || '').trim().replace(/;/g, ',');
+        });
+        lines.push(values.join(';'));
+    });
+    return lines.join('\n');
+}
+function prepareCreateSubmit() {
+    const textarea = document.querySelector('#create-quiz-form textarea[name="csv_data"]');
+    const rows = document.querySelectorAll('#items-editor .item-row');
+    if (rows.length > 0) {
+        textarea.value = buildCsvFromRows();
+    }
+    if (!textarea.value.trim()) {
+        alert('Fyll i CSV-data eller lägg till minst en rad manuellt.');
+        return false;
+    }
+    return true;
 }
 function toggleInfoModal() {
     document.getElementById('info-modal').classList.toggle('hidden');
