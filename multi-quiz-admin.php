@@ -371,6 +371,7 @@ REGLER:
 - "Översättning": Bara för språkglosor (annars tomt ;;).
 - "Fråga": Fråga där begreppet är svaret.
 - "Felsvar": 3 trovärdiga felalternativ.
+- Alla svarsalternativ (begrepp och felsvar) ska skrivas med liten bokstav, om inte ordet i sig ska ha stor bokstav (t.ex. egennamn eller platser).
 - Inga citattecken. Inga radbrytningar i celler.
 
 Nu, invänta mitt material.

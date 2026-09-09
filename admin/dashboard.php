@@ -308,6 +308,7 @@ STRIKTA REGLER (avvik ALDRIG från dessa, oavsett hur materialet ser ut):
 - Samma antal fält på ALLA rader, utan undantag.
 - Anpassa MENINGEN efter det redan bestämda ordet och översättningen — böj eller ändra ALDRIG "ord" eller "översättning" för att de ska passa en mening du redan skrivit. Om en mening du tänkt dig kräver en annan böjning, välj en annan mening istället.
 - Inga semikolon inuti något fält (byt ev. semikolon i meningen mot kommatecken).
+- Alla svarsalternativ ("översättning", "fel1-3", "ord", "omvänt_fel1-3") ska skrivas med liten bokstav, om inte ordet i sig ska ha stor bokstav (t.ex. egennamn eller platser).
 - Inga citattecken.
 - Inga radbrytningar inuti en cell — varje glosa ska vara EN enda textrad.
 - Ingen header-rad.
@@ -344,6 +345,7 @@ STRIKTA REGLER (avvik ALDRIG från dessa, oavsett hur materialet ser ut):
 - Exakt 5 fält per rad, separerade med exakt 4 semikolon (;). Aldrig fler, aldrig färre — även om något fält känns svårt att fylla i, hitta ändå på ett rimligt värde.
 - Samma antal fält på ALLA rader, utan undantag.
 - Inga semikolon inuti något fält (byt ev. semikolon i beskrivningen mot kommatecken).
+- Alla svarsalternativ ("beskrivning", "fel1-3") ska skrivas med liten bokstav, om inte ordet i sig ska ha stor bokstav (t.ex. egennamn eller platser).
 - Inga citattecken.
 - Inga radbrytningar inuti en cell — varje begrepp ska vara EN enda textrad.
 - Ingen header-rad.
