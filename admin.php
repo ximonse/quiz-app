@@ -1111,6 +1111,7 @@ REGLER:
 - Minst 2 svarsalternativ (1 rätt + 1 fel)
 - Max 10 svarsalternativ rekommenderat
 - Felaktiga alternativ ska vara trovärdiga men felaktiga
+- Alla svarsalternativ (rätt svar och fel alternativ) ska skrivas med liten bokstav, om inte ordet i sig ska ha stor bokstav (t.ex. egennamn eller platser)
 - Inga citattecken runt text
 - Inga radbrytningar i frågor/svar
 
@@ -1135,6 +1136,7 @@ REGLER:
 - Lägg alltid 3 felaktiga ord på målspråket (Fel ord 1-3) för omvänd träning
 - Felalternativen ska vara trovärdiga men inte för lika rätt svar
 - Återanvänd gärna andra ord från listan som felaktiga alternativ när det passar
+- Alla svarsalternativ (översättningar och ord) ska skrivas med liten bokstav, om inte ordet i sig ska ha stor bokstav (t.ex. egennamn eller platser)
 - Inga citattecken, inga radbrytningar
 
 EXEMPEL (Spanska → Svenska, men välj själv översättningsspråk):
@@ -1156,6 +1158,7 @@ REGLER:
 - Minst 2 svarsalternativ (1 rätt + 1 fel)
 - Max 10 svarsalternativ rekommenderat
 - Felaktiga alternativ ska vara trovärdiga men felaktiga
+- Alla svarsalternativ (rätt svar och fel alternativ) ska skrivas med liten bokstav, om inte ordet i sig ska ha stor bokstav (t.ex. egennamn eller platser)
 - Inga citattecken runt text
 - Inga radbrytningar i frågor/svar
 
