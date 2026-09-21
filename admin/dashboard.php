@@ -165,7 +165,6 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
             <div class="flex gap-2">
                 <a href="batch-import.php" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium">📎 Importera fler</a>
                 <a href="../multi-quiz-admin.php" class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-2 rounded-lg text-sm font-medium">🎯 Multi-Quiz</a>
-                <a href="../flashcards-admin.php" class="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded-lg text-sm font-medium">🗂️ Flashcards</a>
                 <a href="../index.php?logout=1" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">Logga ut</a>
             </div>
         </div>
