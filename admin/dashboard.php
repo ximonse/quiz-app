@@ -346,14 +346,14 @@ STRIKTA REGLER (avvik ALDRIG från dessa, oavsett hur materialet ser ut):
 - Exakt 5 fält per rad, separerade med exakt 4 semikolon (;). Aldrig fler, aldrig färre — även om något fält känns svårt att fylla i, hitta ändå på ett rimligt värde.
 - Samma antal fält på ALLA rader, utan undantag.
 - Inga semikolon inuti något fält (byt ev. semikolon i beskrivningen mot kommatecken).
-- Alla svarsalternativ ("beskrivning", "fel1-3") ska skrivas med liten bokstav, om inte ordet i sig ska ha stor bokstav (t.ex. egennamn eller platser).
+- "beskrivning" och "fel1-3" är hela meningar: börja med stor bokstav och avsluta med punkt.
 - Inga citattecken.
 - Inga radbrytningar inuti en cell — varje begrepp ska vara EN enda textrad.
 - Ingen header-rad.
 - Lägg alla CSV-rader i ETT enda kodblock (```), inte som vanlig text — det gör att radbrytningarna blir pålitliga och att raderna går att kopiera exakt med kodblockets kopieringsknapp. Inget annat innanför kodblocket (ingen numrering, inga rubriker) och ingen text alls utanför kodblocket.
 
 EXEMPEL:
-Fotosyntes;Processen där växter omvandlar solljus till energi;Nedbrytning av proteiner;Transport av vatten i rötter;Cellandning i djur
+Fotosyntes;Processen där växter omvandlar solljus till energi.;Nedbrytning av proteiner.;Transport av vatten i rötter.;Cellandning i djur.
 
 Nu, invänta mitt material.</pre>
                     </div>
