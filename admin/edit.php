@@ -25,6 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Update settings
         $quiz['title'] = $title;
         $quiz['settings']['answer_mode'] = $_POST['answer_mode'] ?? 'multiple_choice';
+        if ($quiz['type'] === 'fact') {
+            $quiz['settings']['question_direction'] = $_POST['question_direction'] ?? 'concept';
+        }
         $quiz['settings']['required_correct'] = max(1, intval($_POST['required_correct'] ?? ($quiz['settings']['required_correct'] ?? 1)));
         $quiz['settings']['reverse_enabled'] = isset($_POST['reverse_enabled']);
         $quiz['settings']['reverse_answer_mode'] = $_POST['reverse_answer_mode'] ?? 'multiple_choice';
@@ -197,6 +200,16 @@ $s = $quiz['settings'];
                         <option value="hybrid" <?= $s['answer_mode'] === 'hybrid' ? 'selected' : '' ?>>Hybrid (alla ord som flerval, sedan alla som skrivsvar)</option>
                     </select>
                 </div>
+                <?php if ($quiz['type'] === 'fact'): ?>
+                <div>
+                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Vad är frågan?</label>
+                    <select name="question_direction" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                        <option value="concept" <?= ($s['question_direction'] ?? 'concept') === 'concept' ? 'selected' : '' ?>>Begrepp → skriv/välj beskrivning</option>
+                        <option value="description" <?= ($s['question_direction'] ?? '') === 'description' ? 'selected' : '' ?>>Beskrivning → skriv/välj begrepp</option>
+                    </select>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary)">Vid Skrivsvar/Hybrid: välj "Beskrivning" om beskrivningarna är hela meningar — då skriver eleven det korta begreppet istället.</p>
+                </div>
+                <?php endif; ?>
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Quizläge</label>
                     <select name="quiz_mode" id="quiz-mode-select" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" onchange="onQuizModeChange()">

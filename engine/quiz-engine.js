@@ -10,7 +10,16 @@ function QuizEngine(config) {
     const isTest = settings.quiz_mode === 'test';
 
     // State
-    let direction = 'forward';       // 'forward' | 'reverse'
+    // Faktaquiz kan ställas in att fråga från beskrivningen istället för begreppet
+    // (settings.question_direction === 'description') — internt återanvänder vi
+    // samma 'reverse'-logik som redan finns för att vända fråga/svar, men som
+    // quizets EGEN primära riktning istället för en riktning som körs efter en
+    // första omgång. secondPassDone ser till att "Omvänd riktning" (reverse_enabled)
+    // fortfarande kan lägga till en andra omgång i den ANDRA riktningen, oavsett
+    // vilken riktning quizet startade i.
+    const startDirection = (quizType === 'fact' && settings.question_direction === 'description') ? 'reverse' : 'forward';
+    let direction = startDirection;  // 'forward' | 'reverse'
+    let secondPassDone = false;
     let phase = 'mc';                // 'mc' | 'text'  (for hybrid)
     let queue = [];
     let totalQuestions = 0;
@@ -179,11 +188,13 @@ function QuizEngine(config) {
             return { ...result, phaseChange: true, newPhase: 'text' };
         }
 
-        // Check direction transition (forward done → reverse)
-        if (queue.length === 0 && direction === 'forward' && settings.reverse_enabled && !isTest) {
-            direction = 'reverse';
+        // Check direction transition (primary pass done → the other direction).
+        // Flips exactly once, regardless of which direction the quiz started in.
+        if (queue.length === 0 && !secondPassDone && settings.reverse_enabled && !isTest) {
+            secondPassDone = true;
+            direction = direction === 'forward' ? 'reverse' : 'forward';
             buildQueue();
-            return { ...result, directionChange: true, newDirection: 'reverse' };
+            return { ...result, directionChange: true, newDirection: direction };
         }
 
         // Check completion
@@ -199,7 +210,7 @@ function QuizEngine(config) {
         const answered = correctCount + totalErrors;
         const requiredCorrect = getRequiredCorrect();
         const masteredCount = phaseItemIndices.filter(index => (masteryCounts[index] || 0) >= requiredCorrect).length;
-        return { correctCount, totalErrors, answered, totalQuestions, remaining: queue.length, direction, phase, flawless: totalErrors === 0, masteryCounts: { ...masteryCounts }, phaseItemIndices, requiredCorrect, masteredCount, phaseTotal: phaseItemIndices.length };
+        return { correctCount, totalErrors, answered, totalQuestions, remaining: queue.length, direction, secondPass: direction !== startDirection, phase, flawless: totalErrors === 0, masteryCounts: { ...masteryCounts }, phaseItemIndices, requiredCorrect, masteredCount, phaseTotal: phaseItemIndices.length };
     }
 
     function getResults() {

@@ -328,8 +328,10 @@ function App() {
                 </div>
             )}
 
-            {/* Direction indicator */}
-            {progress.direction === 'reverse' && (
+            {/* Direction indicator — visas bara när quizet faktiskt bytt riktning
+                (andra omgången), inte när "omvänt" bara råkar vara quizets
+                enda/primära riktning (t.ex. faktaquiz med beskrivning som fråga) */}
+            {progress.secondPass && (
                 <div className="text-center mb-2">
                     <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Omvänd riktning</span>
                 </div>

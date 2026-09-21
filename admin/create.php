@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $answerMode = $_POST['answer_mode'] ?? 'multiple_choice';
             $reverseEnabled = isset($_POST['reverse_enabled']);
             $reverseAnswerMode = $_POST['reverse_answer_mode'] ?? 'multiple_choice';
+            $questionDirection = $_POST['question_direction'] ?? 'concept';
 
             $quiz = [
                 'id' => $quizId,
@@ -47,6 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'teacher_id' => getCurrentTeacherID(),
                 'settings' => [
                     'answer_mode' => $answerMode,
+                    'question_direction' => $type === 'fact' ? $questionDirection : 'concept',
                     'required_correct' => max(1, intval($_POST['required_correct'] ?? 2)),
                     'reverse_enabled' => $reverseEnabled,
                     'reverse_answer_mode' => $reverseAnswerMode,
@@ -189,6 +191,15 @@ function parseCSV($csvText, $type) {
                     </select>
                 </div>
 
+                <div id="fact-direction-field" class="hidden">
+                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Vad är frågan?</label>
+                    <select name="question_direction" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                        <option value="concept" <?= oldSelected('question_direction', 'concept', 'concept') ?>>Begrepp → skriv/välj beskrivning</option>
+                        <option value="description" <?= oldSelected('question_direction', 'description', 'concept') ?>>Beskrivning → skriv/välj begrepp</option>
+                    </select>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary)">Vid Skrivsvar/Hybrid: välj "Beskrivning" om beskrivningarna är hela meningar — då skriver eleven det korta begreppet istället.</p>
+                </div>
+
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Quizläge</label>
                     <select name="quiz_mode" id="quiz-mode-select" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" onchange="onQuizModeChange()">
@@ -289,6 +300,7 @@ function toggleTypeFields() {
     const isGlossary = document.querySelector('input[name="type"][value="glossary"]').checked;
     document.getElementById('csv-hint-glossary').classList.toggle('hidden', !isGlossary);
     document.getElementById('csv-hint-fact').classList.toggle('hidden', isGlossary);
+    document.getElementById('fact-direction-field').classList.toggle('hidden', isGlossary);
     // TTS default: on for glossary, off for fact
     document.getElementById('tts-checkbox').checked = isGlossary;
 }
@@ -302,6 +314,7 @@ function toggleReverseFields() {
 // (den styrs bara av typ-bytets onchange, inte av denna init).
 document.getElementById('csv-hint-glossary').classList.toggle('hidden', !document.querySelector('input[name="type"][value="glossary"]').checked);
 document.getElementById('csv-hint-fact').classList.toggle('hidden', document.querySelector('input[name="type"][value="glossary"]').checked);
+document.getElementById('fact-direction-field').classList.toggle('hidden', document.querySelector('input[name="type"][value="glossary"]').checked);
 toggleReverseFields();
 </script>
 </body>
