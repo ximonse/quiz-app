@@ -54,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
         } else {
             $quizId = 'q_' . bin2hex(random_bytes(5));
             $answerMode = $_POST['answer_mode'] ?? 'multiple_choice';
+            $questionDirection = $_POST['question_direction'] ?? 'concept';
             $reverseEnabled = isset($_POST['reverse_enabled']);
             $reverseAnswerMode = $_POST['reverse_answer_mode'] ?? 'multiple_choice';
 
@@ -67,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
                 'teacher_id' => $teacherId,
                 'settings' => [
                     'answer_mode' => $answerMode,
+                    'question_direction' => $type === 'fact' ? $questionDirection : 'concept',
                     'required_correct' => max(1, intval($_POST['required_correct'] ?? 1)),
                     'reverse_enabled' => $reverseEnabled,
                     'reverse_answer_mode' => $reverseAnswerMode,
@@ -160,7 +162,11 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                 </div>
                 <button type="button" onclick="toggleInfoModal()" title="Så funkar appen" class="w-7 h-7 shrink-0 flex items-center justify-center rounded-full bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold text-sm">i</button>
             </div>
-            <a href="../index.php?logout=1" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">Logga ut</a>
+            <div class="flex gap-2">
+                <a href="batch-import.php" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium">📎 Importera fler</a>
+                <a href="../multi-quiz-admin.php" class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-2 rounded-lg text-sm font-medium">🎯 Multi-Quiz</a>
+                <a href="../index.php?logout=1" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">Logga ut</a>
+            </div>
         </div>
     </div>
 
@@ -386,6 +392,14 @@ Nu, invänta mitt material.</pre>
                             <option value="text_only" <?= oldSelected('answer_mode', 'text_only', 'multiple_choice') ?>>Skrivsvar</option>
                             <option value="hybrid" <?= oldSelected('answer_mode', 'hybrid', 'multiple_choice') ?>>Hybrid (alla ord som flerval, sedan alla som skrivsvar)</option>
                         </select>
+                    </div>
+                    <div id="fact-direction-field" class="hidden">
+                        <label class="block text-xs text-gray-500 mb-1">Vad är frågan?</label>
+                        <select name="question_direction" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                            <option value="concept" <?= oldSelected('question_direction', 'concept', 'concept') ?>>Begrepp → skriv/välj beskrivning</option>
+                            <option value="description" <?= oldSelected('question_direction', 'description', 'concept') ?>>Beskrivning → skriv/välj begrepp</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Vid Skrivsvar/Hybrid: välj "Beskrivning" om beskrivningarna är hela meningar — då skriver eleven det korta begreppet istället.</p>
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Quizläge</label>
@@ -630,6 +644,7 @@ function selectType(type, silent) {
     }
     document.getElementById('csv-hint-glossary').classList.toggle('hidden', type !== 'glossary');
     document.getElementById('csv-hint-fact').classList.toggle('hidden', type !== 'fact');
+    document.getElementById('fact-direction-field').classList.toggle('hidden', type !== 'fact');
     document.getElementById('prompt-glossary').classList.toggle('hidden', type !== 'glossary');
     document.getElementById('prompt-fact').classList.toggle('hidden', type !== 'fact');
     document.getElementById('manual-builder-label-inline').textContent = (type === 'glossary') ? 'glosorna' : 'frågorna';

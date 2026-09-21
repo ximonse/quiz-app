@@ -30,14 +30,20 @@ function QuizEngine(config) {
     let errors = [];                 // { item_index, given, correct }
     let sessionComplete = false;
 
+    // Vilka inställningar (svarsläge/rätt-per-fråga) som gäller styrs av om vi är
+    // i quizets PRIMÄRA riktning (startDirection) eller i andra passet efter ett
+    // riktningsbyte — INTE av om "direction" råkar heta 'forward' eller 'reverse'.
+    // (Ett faktaquiz med "Beskrivning" som fråga startar i 'reverse', men ska
+    // ändå använda answer_mode/required_correct, inte reverse_*, tills den
+    // eventuellt byter till den andra riktningen.)
     function getAnswerMode() {
-        if (direction === 'reverse') return settings.reverse_answer_mode || 'multiple_choice';
+        if (direction !== startDirection) return settings.reverse_answer_mode || 'multiple_choice';
         return settings.answer_mode || 'multiple_choice';
     }
 
     function getRequiredCorrect() {
         if (isTest) return 1;
-        const configured = direction === 'reverse'
+        const configured = direction !== startDirection
             ? settings.reverse_required_correct
             : settings.required_correct;
         return Math.max(1, Number(configured) || 1);

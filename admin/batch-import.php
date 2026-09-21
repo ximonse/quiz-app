@@ -1,14 +1,15 @@
 <?php
-// admin/create.php — Create new quiz (glossary or fact)
+// admin/batch-import.php — Skapa flera quiz på en gång från en uppladdad fil.
+// Motsvarar den gamla batch-importen i admin.php, men bygger v2:s
+// 'items'-schema (samma som admin/create.php) istället för det gamla
+// 'questions'-schemat, så quizen hamnar i samma format som allt annat i v2.
 require_once __DIR__ . '/../config.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 
 $csrfToken = getCsrfToken();
 $error = '';
-$success = '';
+$createdCount = null;
 
-// Håll formuläret ifyllt om ett POST-försök misslyckas (t.ex. CSV-parsefel),
-// så läraren slipper skriva om titel/CSV/inställningar från noll.
 function old($key, $default = '') {
     return htmlspecialchars($_POST[$key] ?? $default, ENT_QUOTES, 'UTF-8');
 }
@@ -20,109 +21,122 @@ function oldSelected($key, $value, $default) {
     return (($_POST[$key] ?? $default) === $value) ? 'selected' : '';
 }
 
+// Samma radformat som den manuella CSV-rutan i admin/create.php — bara
+// duplicerad lokalt (precis som create.php/edit.php redan gör var för sig)
+// för att hålla den här filen fristående.
+function parseCSVRows($csvText, $type) {
+    $lines = array_filter(array_map('trim', explode("\n", $csvText)));
+    $items = [];
+    foreach ($lines as $line) {
+        $cols = array_map('trim', explode(';', $line));
+        if ($type === 'glossary') {
+            if (count($cols) < 6) continue;
+            if ($cols[0] === '' || $cols[1] === '' || $cols[2] === '') continue;
+            $items[] = [
+                'sentence' => $cols[0],
+                'word' => $cols[1],
+                'translation' => $cols[2],
+                'wrong_options' => array_values(array_filter([$cols[3] ?? '', $cols[4] ?? '', $cols[5] ?? ''])),
+                'reverse_wrong_options' => array_values(array_filter([$cols[6] ?? '', $cols[7] ?? '', $cols[8] ?? '']))
+            ];
+        } else {
+            if (count($cols) < 5) continue;
+            if ($cols[0] === '' || $cols[1] === '') continue;
+            $items[] = [
+                'concept' => $cols[0],
+                'description' => $cols[1],
+                'wrong_options' => array_values(array_filter([$cols[2] ?? '', $cols[3] ?? '', $cols[4] ?? '']))
+            ];
+        }
+    }
+    return $items;
+}
+
+// Delar upp filen i block separerade av tomma rader. Första raden i varje
+// block är quizets titel, resten är datarader i samma format som den
+// manuella CSV-rutan.
+function splitIntoQuizBlocks($fileText) {
+    $blocks = preg_split("/\n\s*\n/", str_replace("\r\n", "\n", trim($fileText)));
+    $result = [];
+    foreach ($blocks as $block) {
+        $lines = array_values(array_filter(array_map('trim', explode("\n", $block)), fn($l) => $l !== ''));
+        if (count($lines) < 2) continue; // behöver minst en titel + en datarad
+        $title = array_shift($lines);
+        $result[] = ['title' => $title, 'csv' => implode("\n", $lines)];
+    }
+    return $result;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requireValidCsrf();
 
     $type = $_POST['type'] ?? '';
-    $title = trim($_POST['title'] ?? '');
-    $csvData = trim($_POST['csv_data'] ?? '');
-
-    if (!$title || !$csvData || !in_array($type, ['glossary', 'fact'])) {
-        $error = 'Fyll i alla fält.';
+    if (!in_array($type, ['glossary', 'fact'])) {
+        $error = 'Ogiltig quiz-typ.';
+    } elseif (!isset($_FILES['batch_file']) || $_FILES['batch_file']['error'] !== UPLOAD_ERR_OK) {
+        $error = 'Välj en fil att importera.';
     } else {
-        $items = parseCSV($csvData, $type);
-        if (empty($items)) {
-            $error = 'Kunde inte tolka CSV-data. Kontrollera formatet.';
+        $fileText = file_get_contents($_FILES['batch_file']['tmp_name']);
+        $blocks = splitIntoQuizBlocks($fileText);
+
+        if (empty($blocks)) {
+            $error = 'Kunde inte hitta några quiz i filen. Kontrollera formatet (titel-rad, sedan datarader, tom rad mellan varje quiz).';
         } else {
-            $quizId = 'q_' . bin2hex(random_bytes(5));
             $answerMode = $_POST['answer_mode'] ?? 'multiple_choice';
+            $questionDirection = $_POST['question_direction'] ?? 'concept';
             $reverseEnabled = isset($_POST['reverse_enabled']);
             $reverseAnswerMode = $_POST['reverse_answer_mode'] ?? 'multiple_choice';
-            $questionDirection = $_POST['question_direction'] ?? 'concept';
+            $teacherId = getCurrentTeacherID();
 
-            $quiz = [
-                'id' => $quizId,
-                'title' => $title,
-                'type' => $type,
-                'created' => date('Y-m-d H:i:s'),
-                'teacher_id' => getCurrentTeacherID(),
-                'settings' => [
-                    'answer_mode' => $answerMode,
-                    'question_direction' => $type === 'fact' ? $questionDirection : 'concept',
-                    'required_correct' => max(1, intval($_POST['required_correct'] ?? 2)),
-                    'reverse_enabled' => $reverseEnabled,
-                    'reverse_answer_mode' => $reverseAnswerMode,
-                    'reverse_required_correct' => max(1, intval($_POST['reverse_required_correct'] ?? 2)),
-                    'quiz_mode' => $_POST['quiz_mode'] ?? 'training',
-                    'tts_enabled' => isset($_POST['tts_enabled']),
-                    'language' => $_POST['language'] ?? 'sv',
-                    'spelling_mode' => $_POST['spelling_mode'] ?? 'student_choice',
-                    'time_lock' => null,
-                    'generate_flashcards' => isset($_POST['generate_flashcards']),
-                ],
-                'items' => $items,
-                'results' => []
-            ];
-
-            // Time lock
-            $opens = trim($_POST['time_lock_opens'] ?? '');
-            $closes = trim($_POST['time_lock_closes'] ?? '');
-            if ($opens || $closes) {
-                $quiz['settings']['time_lock'] = [
-                    'opens' => $opens ?: null,
-                    'closes' => $closes ?: null
+            $newQuizzes = [];
+            $skipped = [];
+            foreach ($blocks as $block) {
+                $items = parseCSVRows($block['csv'], $type);
+                if (empty($items)) {
+                    $skipped[] = $block['title'];
+                    continue;
+                }
+                $quizId = 'q_' . bin2hex(random_bytes(5));
+                $newQuizzes[$quizId] = [
+                    'id' => $quizId,
+                    'title' => $block['title'],
+                    'type' => $type,
+                    'created' => date('Y-m-d H:i:s'),
+                    'teacher_id' => $teacherId,
+                    'settings' => [
+                        'answer_mode' => $answerMode,
+                        'question_direction' => $type === 'fact' ? $questionDirection : 'concept',
+                        'required_correct' => max(1, intval($_POST['required_correct'] ?? 2)),
+                        'reverse_enabled' => $reverseEnabled,
+                        'reverse_answer_mode' => $reverseAnswerMode,
+                        'reverse_required_correct' => max(1, intval($_POST['reverse_required_correct'] ?? 2)),
+                        'quiz_mode' => $_POST['quiz_mode'] ?? 'training',
+                        'tts_enabled' => isset($_POST['tts_enabled']),
+                        'language' => $_POST['language'] ?? 'sv',
+                        'spelling_mode' => $_POST['spelling_mode'] ?? 'student_choice',
+                        'time_lock' => null,
+                        'generate_flashcards' => isset($_POST['generate_flashcards']),
+                    ],
+                    'items' => $items,
+                    'results' => []
                 ];
             }
 
-            updateJSONLocked(QUIZZES_FILE, function (&$lockedQuizzes) use ($quizId, $quiz) {
-                $lockedQuizzes[$quizId] = $quiz;
-            });
-
-            header('Location: dashboard.php');
-            exit;
+            if (empty($newQuizzes)) {
+                $error = 'Inget quiz kunde tolkas. Kontrollera formatet på datarader (' . ($type === 'glossary' ? 'mening;ord;översättning;fel1;fel2;fel3;...' : 'begrepp;beskrivning;fel1;fel2;fel3') . ').';
+            } else {
+                updateJSONLocked(QUIZZES_FILE, function (&$lockedQuizzes) use ($newQuizzes) {
+                    foreach ($newQuizzes as $id => $quiz) {
+                        $lockedQuizzes[$id] = $quiz;
+                    }
+                });
+                $createdCount = count($newQuizzes);
+                if (!empty($skipped)) {
+                    $error = 'Skapade ' . $createdCount . ' quiz. Kunde inte tolka: ' . implode(', ', $skipped) . ' (kontrollera datarader/format).';
+                }
+            }
         }
     }
-}
-
-function parseCSV($csvText, $type) {
-    $lines = array_filter(array_map('trim', explode("\n", $csvText)));
-    $items = [];
-
-    // Skip header if present
-    $first = strtolower($lines[0] ?? '');
-    if (str_contains($first, 'mening') || str_contains($first, 'begrepp')) {
-        array_shift($lines);
-    }
-
-    foreach ($lines as $line) {
-        $cols = array_map('trim', explode(';', $line));
-
-        if ($type === 'glossary') {
-            // mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3
-            if (count($cols) < 6) continue;
-            if ($cols[0] === '' || $cols[1] === '' || $cols[2] === '') continue; // saknar mening/ord/översättning
-            $item = [
-                'sentence' => $cols[0],
-                'word' => $cols[1],
-                'translation' => $cols[2],
-                'wrong_options' => array_filter([$cols[3] ?? '', $cols[4] ?? '', $cols[5] ?? '']),
-                'reverse_wrong_options' => array_filter([$cols[6] ?? '', $cols[7] ?? '', $cols[8] ?? ''])
-            ];
-            $items[] = $item;
-        } else {
-            // begrepp;beskrivning;fel1;fel2;fel3
-            if (count($cols) < 5) continue;
-            if ($cols[0] === '' || $cols[1] === '') continue; // saknar begrepp/beskrivning
-            $item = [
-                'concept' => $cols[0],
-                'description' => $cols[1],
-                'wrong_options' => array_filter([$cols[2] ?? '', $cols[3] ?? '', $cols[4] ?? ''])
-            ];
-            $items[] = $item;
-        }
-    }
-
-    return $items;
 }
 ?>
 <!DOCTYPE html>
@@ -130,7 +144,7 @@ function parseCSV($csvText, $type) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skapa Quiz</title>
+    <title>Importera flera quiz</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="../engine/themes.css">
 </head>
@@ -138,19 +152,21 @@ function parseCSV($csvText, $type) {
 <div class="max-w-2xl mx-auto p-4">
     <div class="flex items-center gap-4 mb-6">
         <a href="dashboard.php" class="text-blue-600 hover:underline text-sm">&larr; Tillbaka</a>
-        <h1 class="text-2xl font-bold" style="color: var(--text-primary)">Skapa Quiz</h1>
+        <h1 class="text-xl font-bold" style="color: var(--text-primary)">Importera flera quiz från fil</h1>
     </div>
 
+    <?php if ($createdCount !== null && !$error): ?>
+        <div class="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm">Skapade <?= $createdCount ?> quiz! <a href="dashboard.php" class="underline">Till Mina Quiz</a></div>
+    <?php endif; ?>
     <?php if ($error): ?>
         <div class="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
 
-    <form method="POST" class="space-y-6 rounded-xl p-6" style="background: var(--card-bg); border: 1px solid var(--border)">
+    <form method="POST" enctype="multipart/form-data" class="space-y-6 rounded-xl p-6" style="background: var(--card-bg); border: 1px solid var(--border)">
         <?= csrfField() ?>
 
-        <!-- Typ -->
         <div>
-            <label class="block text-sm font-medium mb-2" style="color: var(--text-primary)">Typ</label>
+            <label class="block text-sm font-medium mb-2" style="color: var(--text-primary)">Typ (samma för alla quiz i filen)</label>
             <div class="flex gap-4">
                 <label class="flex items-center gap-2 cursor-pointer">
                     <input type="radio" name="type" value="glossary" <?= oldSelected('type', 'glossary', 'glossary') ? 'checked' : '' ?> onchange="toggleTypeFields()">
@@ -163,25 +179,20 @@ function parseCSV($csvText, $type) {
             </div>
         </div>
 
-        <!-- Titel -->
         <div>
-            <label class="block text-sm font-medium mb-1" style="color: var(--text-primary)">Titel</label>
-            <input type="text" name="title" value="<?= old('title') ?>" required class="w-full px-3 py-2 border rounded-lg" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" placeholder="T.ex. Spanska vecka 12">
+            <label class="block text-sm font-medium mb-1" style="color: var(--text-primary)">Fil (.txt eller .csv)</label>
+            <div id="file-hint-glossary" class="text-xs mb-2" style="color: var(--text-secondary)">
+                Ett quiz per block: en titel-rad, sedan en datarad per glosa (<code>mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3</code>), tom rad mellan varje quiz.
+            </div>
+            <div id="file-hint-fact" class="text-xs mb-2 hidden" style="color: var(--text-secondary)">
+                Ett quiz per block: en titel-rad, sedan en datarad per begrepp (<code>begrepp;beskrivning;fel1;fel2;fel3</code>), tom rad mellan varje quiz.
+            </div>
+            <input type="file" name="batch_file" accept=".txt,.csv" required class="w-full text-sm" style="color: var(--text-primary)">
         </div>
 
-        <!-- CSV Data -->
-        <div>
-            <label class="block text-sm font-medium mb-1" style="color: var(--text-primary)">CSV-data (semikolon-separerad)</label>
-            <div id="csv-hint-glossary" class="text-xs mb-1" style="color: var(--text-secondary)">Format: mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3</div>
-            <div id="csv-hint-fact" class="text-xs mb-1 hidden" style="color: var(--text-secondary)">Format: begrepp;beskrivning;fel1;fel2;fel3</div>
-            <textarea name="csv_data" required rows="8" class="w-full px-3 py-2 border rounded-lg font-mono text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" placeholder="Klistra in CSV här..."><?= old('csv_data') ?></textarea>
-        </div>
-
-        <!-- Inställningar -->
         <fieldset class="border rounded-lg p-4" style="border-color: var(--border)">
-            <legend class="text-sm font-medium px-2" style="color: var(--text-primary)">Inställningar</legend>
+            <legend class="text-sm font-medium px-2" style="color: var(--text-primary)">Inställningar (gäller alla quiz i filen)</legend>
             <div class="grid grid-cols-2 gap-4">
-
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Svarsläge</label>
                     <select name="answer_mode" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
@@ -190,29 +201,24 @@ function parseCSV($csvText, $type) {
                         <option value="hybrid" <?= oldSelected('answer_mode', 'hybrid', 'multiple_choice') ?>>Hybrid (alla ord som flerval, sedan alla som skrivsvar)</option>
                     </select>
                 </div>
-
                 <div id="fact-direction-field" class="hidden">
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Vad är frågan?</label>
                     <select name="question_direction" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                         <option value="concept" <?= oldSelected('question_direction', 'concept', 'concept') ?>>Begrepp → skriv/välj beskrivning</option>
                         <option value="description" <?= oldSelected('question_direction', 'description', 'concept') ?>>Beskrivning → skriv/välj begrepp</option>
                     </select>
-                    <p class="text-xs mt-1" style="color: var(--text-secondary)">Vid Skrivsvar/Hybrid: välj "Beskrivning" om beskrivningarna är hela meningar — då skriver eleven det korta begreppet istället.</p>
                 </div>
-
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Quizläge</label>
-                    <select name="quiz_mode" id="quiz-mode-select" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" onchange="onQuizModeChange()">
+                    <select name="quiz_mode" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                         <option value="training" <?= oldSelected('quiz_mode', 'training', 'training') ?>>Träning (repetition)</option>
                         <option value="test" <?= oldSelected('quiz_mode', 'test', 'training') ?>>Test (en genomgång)</option>
                     </select>
                 </div>
-
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Rätt per fråga</label>
                     <input type="number" name="required_correct" min="1" max="10" value="<?= old('required_correct', '2') ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                 </div>
-
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Språk</label>
                     <select name="language" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
@@ -225,7 +231,6 @@ function parseCSV($csvText, $type) {
                         <option value="uk" <?= oldSelected('language', 'uk', 'sv') ?>>Ukrainska</option>
                     </select>
                 </div>
-
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Stavningsläge</label>
                     <select name="spelling_mode" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
@@ -234,8 +239,6 @@ function parseCSV($csvText, $type) {
                         <option value="puritan" <?= oldSelected('spelling_mode', 'puritan', 'student_choice') ?>>Exakt</option>
                     </select>
                 </div>
-
-                <!-- Checkboxes -->
                 <div class="col-span-2 flex flex-wrap gap-4">
                     <label class="flex items-center gap-2 text-sm cursor-pointer" style="color: var(--text-primary)">
                         <input type="checkbox" name="reverse_enabled" <?= oldChecked('reverse_enabled') ?> onchange="toggleReverseFields()"> Omvänd riktning
@@ -244,13 +247,12 @@ function parseCSV($csvText, $type) {
                         <input type="checkbox" name="tts_enabled" id="tts-checkbox" <?= oldChecked('tts_enabled', true) ?>> Uppläsning (TTS)
                     </label>
                     <label class="flex items-center gap-2 text-sm cursor-pointer" style="color: var(--text-primary)">
-                        <input type="checkbox" name="generate_flashcards" id="generate-flashcards-checkbox" <?= oldChecked('generate_flashcards', true) ?>> Generera flashcards
+                        <input type="checkbox" name="generate_flashcards" <?= oldChecked('generate_flashcards', true) ?>> Generera flashcards
                     </label>
                 </div>
             </div>
         </fieldset>
 
-        <!-- Omvänd riktning (dold tills aktiverad) -->
         <fieldset id="reverse-fields" class="border rounded-lg p-4 hidden" style="border-color: var(--border)">
             <legend class="text-sm font-medium px-2" style="color: var(--text-primary)">Omvänd riktning</legend>
             <div class="grid grid-cols-2 gap-4">
@@ -269,51 +271,24 @@ function parseCSV($csvText, $type) {
             </div>
         </fieldset>
 
-        <!-- Tidsspärr -->
-        <fieldset class="border rounded-lg p-4" style="border-color: var(--border)">
-            <legend class="text-sm font-medium px-2" style="color: var(--text-primary)">Tidsspärr (valfritt)</legend>
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Öppnar</label>
-                    <input type="datetime-local" name="time_lock_opens" value="<?= old('time_lock_opens') ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                </div>
-                <div>
-                    <label class="block text-xs mb-1" style="color: var(--text-secondary)">Stänger</label>
-                    <input type="datetime-local" name="time_lock_closes" value="<?= old('time_lock_closes') ?>" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                </div>
-            </div>
-        </fieldset>
-
-        <button type="submit" class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Skapa Quiz</button>
+        <button type="submit" class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Importera</button>
     </form>
 </div>
 
 <script>
-function onQuizModeChange() {
-    // Test-läge passar sällan ihop med flashcards (repetitionsverktyg) —
-    // avmarkera som förvalt, men läraren kan fritt återaktivera det.
-    if (document.getElementById('quiz-mode-select').value === 'test') {
-        document.getElementById('generate-flashcards-checkbox').checked = false;
-    }
-}
 function toggleTypeFields() {
     const isGlossary = document.querySelector('input[name="type"][value="glossary"]').checked;
-    document.getElementById('csv-hint-glossary').classList.toggle('hidden', !isGlossary);
-    document.getElementById('csv-hint-fact').classList.toggle('hidden', isGlossary);
+    document.getElementById('file-hint-glossary').classList.toggle('hidden', !isGlossary);
+    document.getElementById('file-hint-fact').classList.toggle('hidden', isGlossary);
     document.getElementById('fact-direction-field').classList.toggle('hidden', isGlossary);
-    // TTS default: on for glossary, off for fact
     document.getElementById('tts-checkbox').checked = isGlossary;
 }
 function toggleReverseFields() {
     const enabled = document.querySelector('input[name="reverse_enabled"]').checked;
     document.getElementById('reverse-fields').classList.toggle('hidden', !enabled);
 }
-
-// Vid ett sticky-återladdat formulär (efter ett misslyckat försök): visa/dölj
-// fälten rätt utifrån de återställda värdena, utan att röra TTS-kryssrutan
-// (den styrs bara av typ-bytets onchange, inte av denna init).
-document.getElementById('csv-hint-glossary').classList.toggle('hidden', !document.querySelector('input[name="type"][value="glossary"]').checked);
-document.getElementById('csv-hint-fact').classList.toggle('hidden', document.querySelector('input[name="type"][value="glossary"]').checked);
+document.getElementById('file-hint-glossary').classList.toggle('hidden', !document.querySelector('input[name="type"][value="glossary"]').checked);
+document.getElementById('file-hint-fact').classList.toggle('hidden', document.querySelector('input[name="type"][value="glossary"]').checked);
 document.getElementById('fact-direction-field').classList.toggle('hidden', document.querySelector('input[name="type"][value="glossary"]').checked);
 toggleReverseFields();
 </script>

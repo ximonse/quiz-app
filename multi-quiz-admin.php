@@ -237,7 +237,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     <p class="text-sm text-gray-600">Skapa flera quiz-varianter från samma data</p>
                 </div>
                 <div class="flex gap-2">
-                    <a href="admin.php" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition">
+                    <a href="admin/dashboard.php" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition">
                         ← Tillbaka till vanliga quiz
                     </a>
                     <a href="index.php?logout=1" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition">

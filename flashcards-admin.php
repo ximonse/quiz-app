@@ -225,7 +225,7 @@ foreach ($my_decks as $did => $deck) {
                     <p class="text-gray-500">Hej <?= htmlspecialchars($teacher_name) ?>! Hantera dina flashcard-decks här</p>
                 </div>
                 <div class="flex gap-2">
-                    <a href="admin.php" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                    <a href="admin/dashboard.php" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
                         📝 Quiz Admin
                     </a>
                     <a href="index.php?logout=1" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
