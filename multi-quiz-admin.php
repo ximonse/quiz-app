@@ -205,6 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multi-Quiz Admin - <?= htmlspecialchars($teacher_name) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         .compact-card {
             transition: all 0.2s ease;
@@ -634,6 +635,10 @@ Nu, invänta mitt material.
                                             class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
                                         📋 Kopiera länk
                                     </button>
+                                    <button onclick="showQrCode(studentUrl('<?= $mq['id'] ?>'), '<?= htmlspecialchars($mq['title'], ENT_QUOTES) ?>')"
+                                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg text-sm font-medium transition">
+                                        📱 QR
+                                    </button>
                                     <a href="multi-quiz-edit.php?id=<?= $mq['id'] ?>" 
                                        class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium text-center transition">
                                         ✏️ Redigera
@@ -659,12 +664,63 @@ Nu, invänta mitt material.
         </div>
     </div>
 
+    <!-- QR-kod modal -->
+    <div id="qr-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" onclick="if(event.target===this) closeQrModal()">
+        <div class="bg-white rounded-xl shadow-lg p-6 max-w-sm w-full mx-4 text-center">
+            <h3 id="qr-modal-title" class="text-lg font-bold text-gray-800 mb-3"></h3>
+            <div id="qr-modal-code" class="flex justify-center mb-3"></div>
+            <p id="qr-modal-url" class="text-xs text-gray-500 break-all mb-4"></p>
+            <div class="flex gap-2 justify-center">
+                <a id="qr-modal-download" download="quiz-qr.png" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-sm">
+                    Ladda ner
+                </a>
+                <button onclick="closeQrModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-1.5 rounded text-sm">
+                    Stäng
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        function studentUrl(mqId) {
+            return window.location.origin + window.location.pathname.replace('multi-quiz-admin.php', 'multi-quiz-student.php') + '?id=' + mqId;
+        }
+
         function copyStudentLink(mqId) {
-            const url = window.location.origin + window.location.pathname.replace('multi-quiz-admin.php', 'multi-quiz-student.php') + '?id=' + mqId;
+            const url = studentUrl(mqId);
             navigator.clipboard.writeText(url).then(() => {
                 alert('✅ Länk kopierad till urklipp!\n\n' + url);
             });
+        }
+
+        function showQrCode(url, title) {
+            const container = document.getElementById('qr-modal-code');
+            container.innerHTML = '';
+            new QRCode(container, {
+                text: url,
+                width: 220,
+                height: 220
+            });
+            document.getElementById('qr-modal-title').textContent = title || 'QR-kod';
+            document.getElementById('qr-modal-url').textContent = url;
+            document.getElementById('qr-modal').classList.remove('hidden');
+            document.getElementById('qr-modal').classList.add('flex');
+
+            setTimeout(() => {
+                const canvas = container.querySelector('canvas');
+                const downloadLink = document.getElementById('qr-modal-download');
+                if (canvas) {
+                    downloadLink.href = canvas.toDataURL('image/png');
+                } else {
+                    const img = container.querySelector('img');
+                    downloadLink.href = img ? img.src : '#';
+                }
+            }, 50);
+        }
+
+        function closeQrModal() {
+            document.getElementById('qr-modal').classList.add('hidden');
+            document.getElementById('qr-modal').classList.remove('flex');
         }
     </script>
 </body>

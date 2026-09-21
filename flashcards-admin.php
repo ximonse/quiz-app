@@ -213,6 +213,7 @@ foreach ($my_decks as $did => $deck) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flashcard Admin - <?= htmlspecialchars($teacher_name) ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen p-4">
     <div class="max-w-6xl mx-auto">
@@ -678,6 +679,10 @@ foreach ($my_decks as $did => $deck) {
                                             class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-1.5 rounded text-sm whitespace-nowrap">
                                         Kopiera
                                     </button>
+                                    <button onclick="showQrCode(deckUrl('<?= $did ?>'), '<?= htmlspecialchars($deck['title'], ENT_QUOTES) ?>')"
+                                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-1.5 rounded text-sm whitespace-nowrap">
+                                        📱 QR
+                                    </button>
                                     <a href="stats.php?flashcard_id=<?= $did ?>"
                                        class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1.5 rounded text-center text-sm whitespace-nowrap">
                                         Statistik
@@ -700,6 +705,23 @@ foreach ($my_decks as $did => $deck) {
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- QR-kod modal -->
+    <div id="qr-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" onclick="if(event.target===this) closeQrModal()">
+        <div class="bg-white rounded-xl shadow-lg p-6 max-w-sm w-full mx-4 text-center">
+            <h3 id="qr-modal-title" class="text-lg font-bold text-gray-800 mb-3"></h3>
+            <div id="qr-modal-code" class="flex justify-center mb-3"></div>
+            <p id="qr-modal-url" class="text-xs text-gray-500 break-all mb-4"></p>
+            <div class="flex gap-2 justify-center">
+                <a id="qr-modal-download" download="quiz-qr.png" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-sm">
+                    Ladda ner
+                </a>
+                <button onclick="closeQrModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-1.5 rounded text-sm">
+                    Stäng
+                </button>
+            </div>
         </div>
     </div>
 
@@ -785,11 +807,45 @@ foreach ($my_decks as $did => $deck) {
             form.submit();
         }
 
+        function deckUrl(deckId) {
+            return window.location.origin + window.location.pathname.replace('flashcards-admin.php', '') + 'q/flashcards.php?deck_id=' + deckId;
+        }
+
         function copyLink(deckId) {
-            const url = window.location.origin + window.location.pathname.replace('flashcards-admin.php', '') + 'q/flashcards.php?deck_id=' + deckId;
+            const url = deckUrl(deckId);
             navigator.clipboard.writeText(url).then(() => {
                 alert('Länk kopierad! ' + url);
             });
+        }
+
+        function showQrCode(url, title) {
+            const container = document.getElementById('qr-modal-code');
+            container.innerHTML = '';
+            new QRCode(container, {
+                text: url,
+                width: 220,
+                height: 220
+            });
+            document.getElementById('qr-modal-title').textContent = title || 'QR-kod';
+            document.getElementById('qr-modal-url').textContent = url;
+            document.getElementById('qr-modal').classList.remove('hidden');
+            document.getElementById('qr-modal').classList.add('flex');
+
+            setTimeout(() => {
+                const canvas = container.querySelector('canvas');
+                const downloadLink = document.getElementById('qr-modal-download');
+                if (canvas) {
+                    downloadLink.href = canvas.toDataURL('image/png');
+                } else {
+                    const img = container.querySelector('img');
+                    downloadLink.href = img ? img.src : '#';
+                }
+            }, 50);
+        }
+
+        function closeQrModal() {
+            document.getElementById('qr-modal').classList.add('hidden');
+            document.getElementById('qr-modal').classList.remove('flex');
         }
 
         function filterDecks() {
