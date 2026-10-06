@@ -50,7 +50,6 @@ if (!$quizId) { header('Location: index.php'); exit; }
 
     <div class="flex justify-center gap-4">
         <button onclick="prevCard()" class="px-6 py-2 rounded-lg border text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">&larr; Föregående</button>
-        <button onclick="repeatWord()" class="px-4 py-2 rounded-lg border text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" title="Lyssna på ordet igen">🔁</button>
         <button onclick="nextCard()" class="px-6 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700">Nästa &rarr;</button>
     </div>
 </div>
@@ -127,11 +126,6 @@ function speakBack(e) {
     const item = items[currentIndex];
     if (!item) return;
     speakText(item.translation || item.description, quizSettings?.language, true);
-}
-
-function repeatWord() {
-    const card = document.getElementById('card');
-    if (card.classList.contains('flipped')) speakBack(); else speakFront();
 }
 
 function flipCard() {
