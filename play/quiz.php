@@ -73,21 +73,10 @@ function App() {
 
     // Frågan som just nu visas (sätts i render) — används för uppläsning och
     // uppspelningsknappar så att alternativen läses i samma ordning som på skärmen.
-    const shownQRef = React.useRef(null);
 
     function factLang() { return quiz?.settings?.language; }
 
-    function playFactQuestion(force) {
-        const sq = shownQRef.current;
-        if (!sq) return;
-        speakQuestionWithOptions(sq.prompt, sq.options, factLang(), force);
-    }
-
-    // Faktaquiz: läs upp fråga + alternativ när en ny fråga visas.
-    React.useEffect(() => {
-        if (status !== 'playing' || !quiz || quiz.type !== 'fact' || !quiz.settings.tts_enabled) return;
-        playFactQuestion(false);
-    }, [status]);
+    // Faktaquiz läses bara upp när eleven trycker på en 🔊-knapp (ingen autouppspelning).
 
     function toggleMute() {
         const next = !muted;
@@ -272,7 +261,6 @@ function App() {
     const item = engine.currentItem();
     const q = engine.getQuestion(item);
     const progress = engine.getProgress();
-    shownQRef.current = q;
     const isFact = quiz.type === 'fact';
     const ttsBtnStyle = {background: 'var(--card-bg)', color: 'var(--text-secondary)', borderColor: 'var(--border)'};
 
@@ -359,11 +347,7 @@ function App() {
                     {renderPrompt(q.prompt, q.highlight, progress.direction, progress.phase)}
 
                     {isFact && quiz.settings.tts_enabled && (
-                        <div className="mt-3 flex gap-2">
-                            <button onClick={() => speakText(q.prompt, factLang(), true)} className="text-xs px-2 py-1 rounded border" style={ttsBtnStyle} title="Lyssna på frågan igen">🔊 Fråga</button>
-                            {q.options && <button onClick={() => speakOptions(q.options, factLang(), true)} className="text-xs px-2 py-1 rounded border" style={ttsBtnStyle} title="Lyssna på alla alternativ">🔊 Alla alternativ</button>}
-                            {q.options && <button onClick={() => playFactQuestion(true)} className="text-xs px-2 py-1 rounded border" style={ttsBtnStyle} title="Fråga och alternativ">🔁 Allt</button>}
-                        </div>
+                        <button onClick={() => speakText(q.prompt, factLang(), true)} className="mt-3 text-xs px-2 py-1 rounded border" style={ttsBtnStyle} title="Lyssna på frågan">🔊 Lyssna</button>
                     )}
 
                     {/* Multiple choice options */}
@@ -375,7 +359,7 @@ function App() {
                                         {opt}
                                     </button>
                                     {isFact && quiz.settings.tts_enabled && (
-                                        <button onClick={() => speakText(opt, factLang(), true)} className="px-2 rounded-lg border text-sm" style={ttsBtnStyle} title="Lyssna på alternativet">🔊</button>
+                                        <button onClick={() => speakText(opt, factLang(), true)} className="px-2 rounded-lg text-xs opacity-60 hover:opacity-100" style={{background: 'transparent', color: 'var(--text-secondary)'}} title="Lyssna på alternativet">🔊</button>
                                     )}
                                 </div>
                             ))}
