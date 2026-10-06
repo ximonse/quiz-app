@@ -356,7 +356,7 @@ function App() {
                                         {opt}
                                     </button>
                                     {isFact && quiz.settings.tts_enabled && (
-                                        <button onClick={() => speakText(opt, factLang(), true)} className="px-3 rounded-lg border text-base" style={ttsBtnStyle} aria-label="Lyssna på alternativet" title="Lyssna på alternativet">🔊</button>
+                                        <button onClick={() => speakText(opt, factLang(), true)} className="px-2 text-sm opacity-40 active:opacity-80" style={{background: 'transparent', color: 'var(--text-secondary)'}} aria-label="Lyssna på alternativet" title="Lyssna på alternativet">🔊</button>
                                     )}
                                 </div>
                             ))}
