@@ -71,9 +71,6 @@ function App() {
     const [opensAt, setOpensAt] = React.useState('');
     const [muted, setMuted] = React.useState(() => ttsIsMuted());
 
-    // Frågan som just nu visas (sätts i render) — används för uppläsning och
-    // uppspelningsknappar så att alternativen läses i samma ordning som på skärmen.
-
     function factLang() { return quiz?.settings?.language; }
 
     // Faktaquiz läses bara upp när eleven trycker på en 🔊-knapp (ingen autouppspelning).
