@@ -71,6 +71,24 @@ function App() {
     const [opensAt, setOpensAt] = React.useState('');
     const [muted, setMuted] = React.useState(() => ttsIsMuted());
 
+    // Frågan som just nu visas (sätts i render) — används för uppläsning och
+    // uppspelningsknappar så att alternativen läses i samma ordning som på skärmen.
+    const shownQRef = React.useRef(null);
+
+    function factLang() { return quiz?.settings?.language; }
+
+    function playFactQuestion(force) {
+        const sq = shownQRef.current;
+        if (!sq) return;
+        speakQuestionWithOptions(sq.prompt, sq.options, factLang(), force);
+    }
+
+    // Faktaquiz: läs upp fråga + alternativ när en ny fråga visas.
+    React.useEffect(() => {
+        if (status !== 'playing' || !quiz || quiz.type !== 'fact' || !quiz.settings.tts_enabled) return;
+        playFactQuestion(false);
+    }, [status]);
+
     function toggleMute() {
         const next = !muted;
         ttsSetMuted(next);
@@ -110,11 +128,9 @@ function App() {
                         // Omvänd riktning: läs alltid upp glosordet på målspråket (både
                         // flerval och skrivsvar) — det är uttalet eleven ska öva på här.
                         speakText(item.word, data.settings.language);
-                    } else if (data.type === 'glossary') {
-                        // Framåt + skrivsvar: frågan visas redan på svenska, inget att läsa upp.
-                    } else {
-                        speakText(q.prompt, data.settings.language);
                     }
+                    // Faktaquiz läses upp av effekten nedan, utifrån frågan som
+                    // faktiskt visas (alternativens ordning slumpas vid varje getQuestion).
                 }
             })
             .catch(() => setStatus('error'));
@@ -204,11 +220,8 @@ function App() {
             // Omvänd riktning: läs alltid upp glosordet på målspråket (både
             // flerval och skrivsvar) — det är uttalet eleven ska öva på här.
             speakText(item.word, quiz.settings.language);
-        } else if (quiz.type === 'glossary') {
-            // Framåt + skrivsvar: frågan visas redan på svenska, inget att läsa upp.
-        } else if (q) {
-            speakText(q.prompt, quiz.settings.language);
         }
+        // Faktaquiz läses upp av effekten ovan när frågan visats.
     }
 
     if (status === 'loading') return <div className="flex items-center justify-center min-h-screen"><p style={{color: 'var(--text-secondary)'}}>Laddar...</p></div>;
@@ -259,6 +272,9 @@ function App() {
     const item = engine.currentItem();
     const q = engine.getQuestion(item);
     const progress = engine.getProgress();
+    shownQRef.current = q;
+    const isFact = quiz.type === 'fact';
+    const ttsBtnStyle = {background: 'var(--card-bg)', color: 'var(--text-secondary)', borderColor: 'var(--border)'};
 
     function renderPrompt(promptText, highlightText, direction, phase) {
         if (quiz.type === 'glossary' && direction === 'forward' && phase !== 'text') {
@@ -342,13 +358,26 @@ function App() {
                 <div className="rounded-xl p-6 mb-4" style={{background: 'var(--card-bg)', border: '1px solid var(--border)'}}>
                     {renderPrompt(q.prompt, q.highlight, progress.direction, progress.phase)}
 
+                    {isFact && quiz.settings.tts_enabled && (
+                        <div className="mt-3 flex gap-2">
+                            <button onClick={() => speakText(q.prompt, factLang(), true)} className="text-xs px-2 py-1 rounded border" style={ttsBtnStyle} title="Lyssna på frågan igen">🔊 Fråga</button>
+                            {q.options && <button onClick={() => speakOptions(q.options, factLang(), true)} className="text-xs px-2 py-1 rounded border" style={ttsBtnStyle} title="Lyssna på alla alternativ">🔊 Alla alternativ</button>}
+                            {q.options && <button onClick={() => playFactQuestion(true)} className="text-xs px-2 py-1 rounded border" style={ttsBtnStyle} title="Fråga och alternativ">🔁 Allt</button>}
+                        </div>
+                    )}
+
                     {/* Multiple choice options */}
                     {q.options && (
                         <div className="mt-4 space-y-2">
                             {q.options.map((opt, i) => (
-                                <button key={i} onClick={() => handleAnswer(opt)} className="w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors hover:border-blue-400" style={{background: 'var(--card-bg)', color: 'var(--text-primary)', borderColor: 'var(--border)'}}>
-                                    {opt}
-                                </button>
+                                <div key={i} className="flex items-stretch gap-2">
+                                    <button onClick={() => handleAnswer(opt)} className="flex-1 text-left px-4 py-3 rounded-lg border text-sm transition-colors hover:border-blue-400" style={{background: 'var(--card-bg)', color: 'var(--text-primary)', borderColor: 'var(--border)'}}>
+                                        {opt}
+                                    </button>
+                                    {isFact && quiz.settings.tts_enabled && (
+                                        <button onClick={() => speakText(opt, factLang(), true)} className="px-2 rounded-lg border text-sm" style={ttsBtnStyle} title="Lyssna på alternativet">🔊</button>
+                                    )}
+                                </div>
                             ))}
                         </div>
                     )}

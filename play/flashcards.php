@@ -34,10 +34,16 @@ if (!$quizId) { header('Location: index.php'); exit; }
     <div class="card w-full h-64 mb-6" id="card" onclick="flipCard()">
         <div class="card-inner w-full h-full rounded-xl" style="background: var(--card-bg); border: 1px solid var(--border)">
             <div class="card-front text-center">
-                <p id="front-text" class="text-2xl font-bold" style="color: var(--text-primary)"></p>
+                <div>
+                    <p id="front-text" class="text-2xl font-bold" style="color: var(--text-primary)"></p>
+                    <button onclick="speakFront(event)" class="mt-3 text-xs px-2 py-1 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)" title="Lyssna på framsidan">🔊</button>
+                </div>
             </div>
             <div class="card-back text-center">
-                <p id="back-text" class="text-xl" style="color: var(--accent)"></p>
+                <div>
+                    <p id="back-text" class="text-xl" style="color: var(--accent)"></p>
+                    <button onclick="speakBack(event)" class="mt-3 text-xs px-2 py-1 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)" title="Lyssna på baksidan">🔊</button>
+                </div>
             </div>
         </div>
     </div>
@@ -104,19 +110,38 @@ function playCardTTS() {
     const item = items[currentIndex];
     if (!item) return;
     if (quizType === 'glossary') speakGlossary(item.sentence, item.word, quizSettings.language);
-    else speakText(item.concept || item.description, quizSettings.language);
+    else speakText(item.concept, quizSettings.language);
+}
+
+// Uppspelningsknapparna är uttryckliga användarval: de låter även när
+// automatisk uppläsning är avstängd (force=true).
+function speakFront(e) {
+    if (e) e.stopPropagation();
+    const item = items[currentIndex];
+    if (!item) return;
+    speakText(item.word || item.concept, quizSettings?.language, true);
+}
+
+function speakBack(e) {
+    if (e) e.stopPropagation();
+    const item = items[currentIndex];
+    if (!item) return;
+    speakText(item.translation || item.description, quizSettings?.language, true);
 }
 
 function repeatWord() {
-    if (!quizSettings?.tts_enabled) return;
-    const item = items[currentIndex];
-    if (!item) return;
-    const word = quizType === 'glossary' ? item.word : (item.concept || item.description);
-    speakText(word, quizSettings.language);
+    const card = document.getElementById('card');
+    if (card.classList.contains('flipped')) speakBack(); else speakFront();
 }
 
 function flipCard() {
-    document.getElementById('card').classList.toggle('flipped');
+    const card = document.getElementById('card');
+    card.classList.toggle('flipped');
+    // Läs upp baksidan när kortet vänds (om uppläsning är på)
+    if (card.classList.contains('flipped') && quizSettings?.tts_enabled) {
+        const item = items[currentIndex];
+        if (item) speakText(item.translation || item.description, quizSettings.language);
+    }
 }
 
 function nextCard() {

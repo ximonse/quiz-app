@@ -34,13 +34,16 @@ function whenVoicesReady(callback) {
     setTimeout(fire, 300);
 }
 
-function speakText(text, lang) {
-    if (!('speechSynthesis' in window) || ttsIsMuted()) return;
-    whenVoicesReady(() => speakTextNow(text, lang));
+// force=true: användaren tryckte själv på en uppspelningsknapp, då ska
+// uppläsningen ske även om automatisk uppläsning är avstängd (mute).
+function speakText(text, lang, force) {
+    if (!('speechSynthesis' in window) || !text) return;
+    if (!force && ttsIsMuted()) return;
+    whenVoicesReady(() => speakTextNow(text, lang, force));
 }
 
-function speakTextNow(text, lang) {
-    if (ttsIsMuted()) return;
+function speakTextNow(text, lang, force) {
+    if (!force && ttsIsMuted()) return;
     speechGeneration += 1;
     window.speechSynthesis.cancel();
 
@@ -65,10 +68,89 @@ function speakTextNow(text, lang) {
 
     if (voice) utterance.voice = voice;
     utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
+    speakAfterCancel(utterance);
+}
+
+// Chrome kan tappa en utterance som skickas direkt efter cancel(), och en
+// pausad kö (efter tidigare cancel) måste återupptas.
+function speakAfterCancel(utterance) {
+    const synth = window.speechSynthesis;
+    setTimeout(() => {
+        if (synth.paused) synth.resume();
+        synth.speak(utterance);
+    }, 60);
+}
+
+function findVoice(lang) {
+    if (selectedVoice) return selectedVoice;
+    const voices = window.speechSynthesis.getVoices();
+    const target = LANG_MAP[lang] || 'sv-SE';
+    return voices.find(v => v.lang === target)
+        || voices.find(v => v.lang.startsWith(target.substring(0, 2)))
+        || null;
+}
+
+const OPTION_LABELS = {
+    sv: ['ett', 'två', 'tre', 'fyra', 'fem', 'sex'],
+    en: ['one', 'two', 'three', 'four', 'five', 'six'],
+    es: ['uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis'],
+    fr: ['un', 'deux', 'trois', 'quatre', 'cinq', 'six'],
+    de: ['eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs']
+};
+
+// Läser upp en lista av delar i tur och ordning, med paus emellan.
+// parts: [{ text, lang }]. Avbryts av nästa speak*/stopSpeech-anrop.
+function speakSequence(parts, force) {
+    if (!('speechSynthesis' in window)) return;
+    if (!force && ttsIsMuted()) return;
+    const queue = parts.filter(p => p && p.text);
+    if (queue.length === 0) return;
+    whenVoicesReady(() => {
+        speechGeneration += 1;
+        const generation = speechGeneration;
+        window.speechSynthesis.cancel();
+        let i = 0;
+        const next = () => {
+            if (generation !== speechGeneration || i >= queue.length) return;
+            const part = queue[i++];
+            const u = new SpeechSynthesisUtterance(part.text);
+            u.lang = LANG_MAP[part.lang] || 'sv-SE';
+            u.rate = 0.9;
+            const voice = findVoice(part.lang);
+            if (voice) u.voice = voice;
+            const advance = () => setTimeout(next, 350);
+            u.onend = advance;
+            u.onerror = advance;
+            if (i === 1) speakAfterCancel(u); else window.speechSynthesis.speak(u);
+        };
+        next();
+    });
+}
+
+// Fråga följt av "alternativ ett", första alternativet, "alternativ två", ...
+// Alternativen läses på quizets språk, "alternativ N" på svenska.
+function speakQuestionWithOptions(prompt, options, lang, force) {
+    const labels = OPTION_LABELS.sv;
+    const parts = [{ text: prompt, lang }];
+    (options || []).forEach((opt, i) => {
+        parts.push({ text: 'Alternativ ' + (labels[i] || (i + 1)), lang: 'sv' });
+        parts.push({ text: opt, lang });
+    });
+    speakSequence(parts, force);
+}
+
+function speakOptions(options, lang, force) {
+    const labels = OPTION_LABELS.sv;
+    const parts = [];
+    (options || []).forEach((opt, i) => {
+        parts.push({ text: 'Alternativ ' + (labels[i] || (i + 1)), lang: 'sv' });
+        parts.push({ text: opt, lang });
+    });
+    speakSequence(parts, force);
 }
 
 function speakGlossary(sentence, word, lang) {
+    if (!sentence) { speakText(word, lang); return; }
     if (!('speechSynthesis' in window) || ttsIsMuted()) return;
     whenVoicesReady(() => speakGlossaryNow(sentence, word, lang));
 }
@@ -103,7 +185,7 @@ function speakGlossaryNow(sentence, word, lang) {
         }, 300);
     };
 
-    window.speechSynthesis.speak(u1);
+    speakAfterCancel(u1);
 }
 
 function stopSpeech() {
