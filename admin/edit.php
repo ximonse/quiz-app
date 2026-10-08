@@ -180,9 +180,12 @@ $s = $quiz['settings'];
             </div>
 
             <div class="mt-3">
-                <button type="button" onclick="toggleBulkReplace()" class="text-xs text-purple-600 hover:text-purple-800 font-medium">Eller klistra in en ny CSV-lista (ersätter alla frågor ovan)</button>
+                <button type="button" onclick="toggleBulkReplace()" class="text-xs text-purple-600 hover:text-purple-800 font-medium">Eller klistra in en CSV-lista</button>
                 <div id="bulk-replace-box" class="hidden mt-2">
-                    <textarea id="bulk-csv-textarea" rows="6" placeholder="Klistra in ny CSV här för att ersätta ALLA frågor ovan..." class="w-full px-3 py-2 border rounded-lg font-mono text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)"></textarea>
+                    <textarea id="bulk-csv-textarea" rows="6" placeholder="Klistra in CSV här..." class="w-full px-3 py-2 border rounded-lg font-mono text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)"></textarea>
+                    <label class="flex items-center gap-2 text-xs mt-2 cursor-pointer" style="color: var(--text-primary)">
+                        <input type="checkbox" id="append-mode-checkbox" checked> Lägg till som nya frågor (annars ersätts alla frågor ovan)
+                    </label>
                 </div>
             </div>
 
@@ -353,11 +356,18 @@ function buildCsvFromRows() {
 }
 function prepareSubmit() {
     const bulkText = document.getElementById('bulk-csv-textarea').value.trim();
+    const appendMode = document.getElementById('append-mode-checkbox').checked;
     if (!bulkText && document.querySelectorAll('#items-editor .item-row').length === 0) {
-        alert('Du måste ha minst en fråga kvar. Lägg till en fråga eller klistra in en ny CSV-lista.');
+        alert('Du måste ha minst en fråga kvar. Lägg till en fråga eller klistra in en CSV-lista.');
         return false;
     }
-    document.getElementById('csv_data_hidden').value = bulkText || buildCsvFromRows();
+    let csvData;
+    if (bulkText && appendMode) {
+        csvData = buildCsvFromRows() + '\n' + bulkText;
+    } else {
+        csvData = bulkText || buildCsvFromRows();
+    }
+    document.getElementById('csv_data_hidden').value = csvData;
     return true;
 }
 function onQuizModeChange() {
