@@ -118,6 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'spelling_mode' => $_POST['spelling_mode'] ?? 'student_choice',
                         'time_lock' => null,
                         'generate_flashcards' => isset($_POST['generate_flashcards']),
+                        'flashcard_mix_directions' => $type === 'fact' && isset($_POST['flashcard_mix_directions']),
                     ],
                     'items' => $items,
                     'results' => []
@@ -252,6 +253,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label class="flex items-center gap-2 text-sm cursor-pointer" style="color: var(--text-primary)">
                         <input type="checkbox" name="generate_flashcards" <?= oldChecked('generate_flashcards', true) ?>> Generera flashcards
                     </label>
+                    <label class="flex items-center gap-2 text-sm cursor-pointer hidden" id="flashcard-mix-field" style="color: var(--text-primary)">
+                        <input type="checkbox" name="flashcard_mix_directions" <?= oldChecked('flashcard_mix_directions') ?>> Blanda riktning i flashcards (begrepp→beskrivning och beskrivning→begrepp för varje kort)
+                    </label>
                 </div>
             </div>
         </fieldset>
@@ -284,6 +288,7 @@ function toggleTypeFields() {
     document.getElementById('file-hint-glossary').classList.toggle('hidden', !isGlossary);
     document.getElementById('file-hint-fact').classList.toggle('hidden', isGlossary);
     document.getElementById('fact-direction-field').classList.toggle('hidden', isGlossary);
+    document.getElementById('flashcard-mix-field').classList.toggle('hidden', isGlossary);
     document.getElementById('tts-checkbox').checked = isGlossary;
 }
 function toggleReverseFields() {
@@ -299,6 +304,7 @@ growBatchTextArea();
 document.getElementById('file-hint-glossary').classList.toggle('hidden', !document.querySelector('input[name="type"][value="glossary"]').checked);
 document.getElementById('file-hint-fact').classList.toggle('hidden', document.querySelector('input[name="type"][value="glossary"]').checked);
 document.getElementById('fact-direction-field').classList.toggle('hidden', document.querySelector('input[name="type"][value="glossary"]').checked);
+document.getElementById('flashcard-mix-field').classList.toggle('hidden', document.querySelector('input[name="type"][value="glossary"]').checked);
 toggleReverseFields();
 </script>
 </body>

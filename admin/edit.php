@@ -37,6 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $quiz['settings']['language'] = $_POST['language'] ?? 'sv';
         $quiz['settings']['spelling_mode'] = $_POST['spelling_mode'] ?? 'student_choice';
         $quiz['settings']['generate_flashcards'] = isset($_POST['generate_flashcards']);
+        if ($quiz['type'] === 'fact') {
+            $quiz['settings']['flashcard_mix_directions'] = isset($_POST['flashcard_mix_directions']);
+        }
 
         // Time lock
         $opens = trim($_POST['time_lock_opens'] ?? '');
@@ -251,6 +254,11 @@ $s = $quiz['settings'];
                     <label class="flex items-center gap-2 text-sm cursor-pointer" style="color: var(--text-primary)">
                         <input type="checkbox" name="generate_flashcards" id="generate-flashcards-checkbox" <?= ($s['generate_flashcards'] ?? true) ? 'checked' : '' ?>> Flashcards
                     </label>
+                    <?php if ($quiz['type'] === 'fact'): ?>
+                    <label class="flex items-center gap-2 text-sm cursor-pointer" style="color: var(--text-primary)">
+                        <input type="checkbox" name="flashcard_mix_directions" <?= !empty($s['flashcard_mix_directions']) ? 'checked' : '' ?>> Blanda riktning i flashcards (begrepp→beskrivning och beskrivning→begrepp för varje kort)
+                    </label>
+                    <?php endif; ?>
                 </div>
             </div>
         </fieldset>

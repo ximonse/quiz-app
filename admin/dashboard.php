@@ -79,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
                     'spelling_mode' => $_POST['spelling_mode'] ?? 'student_choice',
                     'time_lock' => null,
                     'generate_flashcards' => isset($_POST['generate_flashcards']),
+                    'flashcard_mix_directions' => $type === 'fact' && isset($_POST['flashcard_mix_directions']),
                 ],
                 'items' => $items,
                 'results' => []
@@ -442,6 +443,9 @@ Nu, invänta mitt material.</pre>
                         <label class="flex items-center gap-2 text-sm cursor-pointer text-gray-700">
                             <input type="checkbox" name="generate_flashcards" id="generate-flashcards-checkbox" <?= oldChecked('generate_flashcards', true) ?>> Generera flashcards
                         </label>
+                        <label class="flex items-center gap-2 text-sm cursor-pointer text-gray-700 hidden" id="flashcard-mix-field">
+                            <input type="checkbox" name="flashcard_mix_directions" <?= oldChecked('flashcard_mix_directions') ?>> Blanda riktning i flashcards (begrepp→beskrivning och beskrivning→begrepp för varje kort)
+                        </label>
                     </div>
                 </div>
             </fieldset>
@@ -657,6 +661,7 @@ function selectType(type, silent) {
     document.getElementById('csv-hint-glossary').classList.toggle('hidden', type !== 'glossary');
     document.getElementById('csv-hint-fact').classList.toggle('hidden', type !== 'fact');
     document.getElementById('fact-direction-field').classList.toggle('hidden', type !== 'fact');
+    document.getElementById('flashcard-mix-field').classList.toggle('hidden', type !== 'fact');
     document.getElementById('prompt-glossary').classList.toggle('hidden', type !== 'glossary');
     document.getElementById('prompt-fact').classList.toggle('hidden', type !== 'fact');
     document.getElementById('manual-builder-label-inline').textContent = (type === 'glossary') ? 'glosorna' : 'frågorna';
