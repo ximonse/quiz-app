@@ -69,11 +69,13 @@ fetch('../api/quiz-data.php?id=' + encodeURIComponent(QUIZ_ID))
         const baseItems = data.items || [];
         if (quizType === 'fact' && quizSettings?.flashcard_mix_directions) {
             // En gång från varje håll per begrepp: dubblera listan och tagga
-            // varje kopia med sin riktning, oavsett quizets question_direction.
-            items = shuffle(baseItems.flatMap(item => [
-                {...item, _dir: 'concept'},
-                {...item, _dir: 'description'}
-            ]));
+            // varje kopia med sin riktning och ursprungsindex, oavsett quizets
+            // question_direction.
+            const doubled = baseItems.flatMap((item, i) => [
+                {...item, _dir: 'concept', _origIndex: i},
+                {...item, _dir: 'description', _origIndex: i}
+            ]);
+            items = shuffleNoAdjacentDuplicates(doubled, c => c._origIndex);
         } else {
             items = shuffle(baseItems);
         }
@@ -99,6 +101,24 @@ function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+// Som shuffle(), men ser till att de två kopiorna av samma begrepp
+// (begrepp→beskrivning / beskrivning→begrepp) aldrig hamnar direkt efter
+// varandra, genom att byta plats med nästa icke-krockande kort vid behov.
+function shuffleNoAdjacentDuplicates(arr, keyFn) {
+    shuffle(arr);
+    for (let i = 1; i < arr.length; i++) {
+        if (keyFn(arr[i]) !== keyFn(arr[i - 1])) continue;
+        let swapWith = -1;
+        for (let j = i + 1; j < arr.length; j++) {
+            if (keyFn(arr[j]) !== keyFn(arr[i - 1])) { swapWith = j; break; }
+        }
+        if (swapWith !== -1) {
+            [arr[i], arr[swapWith]] = [arr[swapWith], arr[i]];
+        }
     }
     return arr;
 }
