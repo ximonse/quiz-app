@@ -489,6 +489,7 @@ Nu, invänta mitt material.</pre>
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-bold text-gray-800">Mina Quiz (<?= count($myQuizzes) ?>)</h2>
             <div class="flex items-center gap-2">
+                <input type="text" id="search-input" oninput="filterQuizzes()" placeholder="Sök..." class="text-sm px-2 py-1 border border-gray-300 rounded w-40">
                 <label class="text-xs text-gray-500">Sortera:</label>
                 <select id="sort-select" onchange="sortQuizzes()" class="text-sm px-2 py-1 border border-gray-300 rounded">
                     <option value="created-desc">Nyast först</option>
@@ -522,7 +523,8 @@ Nu, invänta mitt material.</pre>
                  data-created="<?= htmlspecialchars($created) ?>"
                  data-title="<?= htmlspecialchars($quiz['title']) ?>"
                  data-type="<?= $type ?>"
-                 data-subject="<?= $subject ?>">
+                 data-subject="<?= $subject ?>"
+                 data-tags="<?= $tags ?>">
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
                         <span class="font-medium text-gray-800 truncate"><?= htmlspecialchars($quiz['title']) ?></span>
@@ -629,6 +631,16 @@ function sortQuizzes() {
         }
     });
     rows.forEach(r => list.appendChild(r));
+}
+
+function filterQuizzes() {
+    const list = document.getElementById('quiz-list');
+    if (!list) return;
+    const query = document.getElementById('search-input').value.trim().toLowerCase();
+    list.querySelectorAll('.quiz-row').forEach(row => {
+        const haystack = [row.dataset.title, row.dataset.subject, row.dataset.tags].join(' ').toLowerCase();
+        row.style.display = (query !== '' && !haystack.includes(query)) ? 'none' : '';
+    });
 }
 
 function selectType(type, silent) {
