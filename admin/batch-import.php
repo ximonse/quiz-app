@@ -71,12 +71,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requireValidCsrf();
 
     $type = $_POST['type'] ?? '';
+    $hasFile = isset($_FILES['batch_file']) && $_FILES['batch_file']['error'] === UPLOAD_ERR_OK;
+    $pastedText = trim($_POST['batch_text'] ?? '');
     if (!in_array($type, ['glossary', 'fact'])) {
         $error = 'Ogiltig quiz-typ.';
-    } elseif (!isset($_FILES['batch_file']) || $_FILES['batch_file']['error'] !== UPLOAD_ERR_OK) {
-        $error = 'Välj en fil att importera.';
+    } elseif (!$hasFile && $pastedText === '') {
+        $error = 'Välj en fil eller klistra in text att importera.';
     } else {
-        $fileText = file_get_contents($_FILES['batch_file']['tmp_name']);
+        $fileText = $hasFile ? file_get_contents($_FILES['batch_file']['tmp_name']) : $pastedText;
         $blocks = splitIntoQuizBlocks($fileText);
 
         if (empty($blocks)) {
@@ -180,14 +182,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div>
-            <label class="block text-sm font-medium mb-1" style="color: var(--text-primary)">Fil (.txt eller .csv)</label>
+            <label class="block text-sm font-medium mb-1" style="color: var(--text-primary)">Fil eller inklistrad text</label>
             <div id="file-hint-glossary" class="text-xs mb-2" style="color: var(--text-secondary)">
                 Ett quiz per block: en titel-rad, sedan en datarad per glosa (<code>mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3</code>), tom rad mellan varje quiz.
             </div>
             <div id="file-hint-fact" class="text-xs mb-2 hidden" style="color: var(--text-secondary)">
                 Ett quiz per block: en titel-rad, sedan en datarad per begrepp (<code>begrepp;beskrivning;fel1;fel2;fel3</code>), tom rad mellan varje quiz.
             </div>
-            <input type="file" name="batch_file" accept=".txt,.csv" required class="w-full text-sm" style="color: var(--text-primary)">
+            <input type="file" name="batch_file" accept=".txt,.csv" class="w-full text-sm mb-2" style="color: var(--text-primary)">
+            <textarea name="batch_text" id="batch-text-area" rows="2" placeholder="...eller klistra in texten direkt här" class="w-full px-3 py-2 border rounded-lg font-mono text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" oninput="growBatchTextArea()"><?= old('batch_text') ?></textarea>
         </div>
 
         <fieldset class="border rounded-lg p-4" style="border-color: var(--border)">
@@ -287,6 +290,12 @@ function toggleReverseFields() {
     const enabled = document.querySelector('input[name="reverse_enabled"]').checked;
     document.getElementById('reverse-fields').classList.toggle('hidden', !enabled);
 }
+function growBatchTextArea() {
+    const el = document.getElementById('batch-text-area');
+    const lines = el.value.split('\n').length;
+    el.rows = Math.max(2, Math.min(20, lines + 1));
+}
+growBatchTextArea();
 document.getElementById('file-hint-glossary').classList.toggle('hidden', !document.querySelector('input[name="type"][value="glossary"]').checked);
 document.getElementById('file-hint-fact').classList.toggle('hidden', document.querySelector('input[name="type"][value="glossary"]').checked);
 document.getElementById('fact-direction-field').classList.toggle('hidden', document.querySelector('input[name="type"][value="glossary"]').checked);

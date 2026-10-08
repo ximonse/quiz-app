@@ -93,13 +93,21 @@ function shuffle(arr) {
     return arr;
 }
 
+function frontText(item) {
+    if (quizType === 'fact' && quizSettings?.question_direction === 'description') return item.description || '';
+    return item.word || item.concept || '';
+}
+function backText(item) {
+    if (quizType === 'fact' && quizSettings?.question_direction === 'description') return item.concept || '';
+    return item.translation || item.description || '';
+}
+
 function showCard() {
     const card = document.getElementById('card');
     card.classList.remove('flipped');
     const item = items[currentIndex];
-    // Front: word/concept, Back: translation/description
-    document.getElementById('front-text').textContent = item.word || item.concept || '';
-    document.getElementById('back-text').textContent = item.translation || item.description || '';
+    document.getElementById('front-text').textContent = frontText(item);
+    document.getElementById('back-text').textContent = backText(item);
     document.getElementById('counter').textContent = `${currentIndex + 1}/${items.length}`;
     playCardTTS();
 }
@@ -119,14 +127,14 @@ function speakFront(e) {
     if (e) e.stopPropagation();
     const item = items[currentIndex];
     if (!item) return;
-    speakText(item.word || item.concept, quizSettings?.language, true);
+    speakText(frontText(item), quizSettings?.language, true);
 }
 
 function speakBack(e) {
     if (e) e.stopPropagation();
     const item = items[currentIndex];
     if (!item) return;
-    speakText(item.translation || item.description, quizSettings?.language, true);
+    speakText(backText(item), quizSettings?.language, true);
 }
 
 function flipCard() {
@@ -136,7 +144,7 @@ function flipCard() {
     // faktaquiz, där uppläsning bara ska ske via 🔊-knapparna.
     if (card.classList.contains('flipped') && quizSettings?.tts_enabled && quizType !== 'fact') {
         const item = items[currentIndex];
-        if (item) speakText(item.translation || item.description, quizSettings.language);
+        if (item) speakText(backText(item), quizSettings.language);
     }
 }
 

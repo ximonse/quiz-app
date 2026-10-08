@@ -391,7 +391,7 @@ function App() {
                             {feedback.options.map((opt, i) => {
                                 const isGiven = opt === feedback.given;
                                 const isCorrectOpt = opt === feedback.correctAnswer;
-                                let cls = 'w-full text-left px-4 py-3 rounded-lg border text-sm';
+                                let cls = 'flex-1 text-left px-4 py-3 rounded-lg border text-sm';
                                 let style = {background: 'var(--card-bg)', color: 'var(--text-primary)', borderColor: 'var(--border)'};
                                 if (isGiven && feedback.correct) {
                                     cls += ' answer-correct-pulse';
@@ -400,7 +400,14 @@ function App() {
                                 } else if (isCorrectOpt && !feedback.correct) {
                                     cls += ' answer-correct-glow';
                                 }
-                                return <button key={i} disabled className={cls} style={style}>{opt}</button>;
+                                return (
+                                    <div key={i} className="flex items-stretch gap-2">
+                                        <button disabled className={cls} style={style}>{opt}</button>
+                                        {isFact && quiz.settings.tts_enabled && (
+                                            <button disabled aria-hidden="true" className="px-2 text-sm opacity-40" style={{background: 'transparent', color: 'var(--text-secondary)'}}>🔊</button>
+                                        )}
+                                    </div>
+                                );
                             })}
                         </div>
                     ) : (
