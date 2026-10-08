@@ -66,7 +66,17 @@ fetch('../api/quiz-data.php?id=' + encodeURIComponent(QUIZ_ID))
     .then(data => {
         quizSettings = data.settings;
         quizType = data.type;
-        items = shuffle(data.items || []);
+        const baseItems = data.items || [];
+        if (quizType === 'fact' && quizSettings?.flashcard_mix_directions) {
+            // En gång från varje håll per begrepp: dubblera listan och tagga
+            // varje kopia med sin riktning, oavsett quizets question_direction.
+            items = shuffle(baseItems.flatMap(item => [
+                {...item, _dir: 'concept'},
+                {...item, _dir: 'description'}
+            ]));
+        } else {
+            items = shuffle(baseItems);
+        }
         if (items.length > 0) showCard();
         document.getElementById('counter').textContent = `1/${items.length}`;
     });
@@ -94,12 +104,18 @@ function shuffle(arr) {
 }
 
 function frontText(item) {
-    if (quizType === 'fact' && quizSettings?.question_direction === 'description') return item.description || '';
-    return item.word || item.concept || '';
+    if (quizType === 'fact') {
+        const dir = item._dir || quizSettings?.question_direction || 'concept';
+        return dir === 'description' ? (item.description || '') : (item.concept || '');
+    }
+    return item.word || '';
 }
 function backText(item) {
-    if (quizType === 'fact' && quizSettings?.question_direction === 'description') return item.concept || '';
-    return item.translation || item.description || '';
+    if (quizType === 'fact') {
+        const dir = item._dir || quizSettings?.question_direction || 'concept';
+        return dir === 'description' ? (item.concept || '') : (item.description || '');
+    }
+    return item.translation || '';
 }
 
 function showCard() {
