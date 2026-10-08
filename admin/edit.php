@@ -180,9 +180,10 @@ $s = $quiz['settings'];
             </div>
 
             <div class="mt-3">
-                <button type="button" onclick="toggleBulkReplace()" class="text-xs text-purple-600 hover:text-purple-800 font-medium">Eller klistra in en CSV-lista</button>
+                <button type="button" onclick="toggleBulkReplace()" class="text-xs text-purple-600 hover:text-purple-800 font-medium">Eller klistra in/ladda upp en CSV-lista</button>
                 <div id="bulk-replace-box" class="hidden mt-2">
-                    <textarea id="bulk-csv-textarea" rows="2" placeholder="Klistra in CSV här..." class="w-full px-3 py-2 border rounded-lg font-mono text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" oninput="growBulkTextArea()"></textarea>
+                    <input type="file" id="bulk-csv-file" accept=".txt,.csv" onchange="loadBulkCsvFile(this)" class="w-full text-xs mb-2" style="color: var(--text-primary)">
+                    <textarea id="bulk-csv-textarea" rows="2" placeholder="...eller klistra in CSV här" class="w-full px-3 py-2 border rounded-lg font-mono text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" oninput="growBulkTextArea()"></textarea>
                     <label class="flex items-center gap-2 text-xs mt-2 cursor-pointer" style="color: var(--text-primary)">
                         <input type="checkbox" id="append-mode-checkbox" checked> Lägg till som nya frågor (annars ersätts alla frågor ovan)
                     </label>
@@ -345,6 +346,16 @@ function growBulkTextArea() {
     const el = document.getElementById('bulk-csv-textarea');
     const lines = el.value.split('\n').length;
     el.rows = Math.max(2, Math.min(20, lines + 1));
+}
+function loadBulkCsvFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        document.getElementById('bulk-csv-textarea').value = reader.result;
+        growBulkTextArea();
+    };
+    reader.readAsText(file);
 }
 function buildCsvFromRows() {
     const fields = QUIZ_TYPE === 'glossary' ? GLOSSARY_FIELDS : FACT_FIELDS;
