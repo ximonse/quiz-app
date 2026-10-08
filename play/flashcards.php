@@ -105,7 +105,8 @@ function showCard() {
 }
 
 function playCardTTS() {
-    if (!quizSettings?.tts_enabled) return;
+    // Faktaquiz läses bara upp när eleven trycker på en 🔊-knapp (ingen autouppspelning).
+    if (!quizSettings?.tts_enabled || quizType === 'fact') return;
     const item = items[currentIndex];
     if (!item) return;
     if (quizType === 'glossary') speakGlossary(item.sentence, item.word, quizSettings.language);
@@ -131,8 +132,9 @@ function speakBack(e) {
 function flipCard() {
     const card = document.getElementById('card');
     card.classList.toggle('flipped');
-    // Läs upp baksidan när kortet vänds (om uppläsning är på)
-    if (card.classList.contains('flipped') && quizSettings?.tts_enabled) {
+    // Läs upp baksidan när kortet vänds (om uppläsning är på) — men inte för
+    // faktaquiz, där uppläsning bara ska ske via 🔊-knapparna.
+    if (card.classList.contains('flipped') && quizSettings?.tts_enabled && quizType !== 'fact') {
         const item = items[currentIndex];
         if (item) speakText(item.translation || item.description, quizSettings.language);
     }
