@@ -409,6 +409,11 @@ function App() {
                 <div className="rounded-xl p-6 mb-4" style={{background: 'var(--card-bg)', border: '1px solid var(--border)'}}>
                     {renderPrompt(feedback.prompt, feedback.highlight, feedback.direction, feedback.phase)}
 
+                    {/* Osynlig kopia av frågans 🔊-knapp så att alternativen inte hoppar när den försvinner */}
+                    {quiz.settings.tts_enabled && (isFact || (isGlossary && feedback.direction === 'reverse')) && (
+                        <button disabled aria-hidden="true" tabIndex={-1} className="mt-3 text-xs px-2 py-1 rounded border" style={{...ttsBtnStyle, visibility: 'hidden'}}>🔊 Lyssna</button>
+                    )}
+
                     {feedback.options ? (
                         <div className="mt-4 space-y-2">
                             {feedback.options.map((opt, i) => {
