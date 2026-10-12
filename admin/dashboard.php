@@ -1,6 +1,7 @@
 <?php
 // admin/dashboard.php — Quiz list + create on one page
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../ai/quiz-service.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 
 $csrfToken = getCsrfToken();
@@ -83,6 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
                     'flashcard_mix_directions' => isset($_POST['flashcard_mix_directions']),
                 ],
                 'items' => $items,
+                'publication' => 'draft',
                 'results' => []
             ];
 
@@ -229,6 +231,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
     <!-- ═══════════ SKAPA QUIZ ═══════════ -->
     <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
         <h2 class="text-lg font-bold text-gray-800 mb-4">Skapa nytt quiz</h2>
+        <a href="image-edit.php" class="inline-block mb-4 px-3 py-2 border rounded-lg font-medium text-blue-700">Skapa bildvalsquiz</a>
 
         <form id="create-quiz-form" method="POST" class="space-y-4" onsubmit="return prepareCreateSubmit();">
             <?= csrfField() ?>
@@ -518,8 +521,10 @@ Nu, invänta mitt material.</pre>
         <?php else: ?>
         <div id="quiz-list" class="space-y-1">
             <?php foreach ($myQuizzes as $quiz):
+                $storedQuiz=$quiz; $quiz=aiEffectiveQuiz($quiz);
                 $type = $quiz['type'] ?? 'glossary';
-                $typeBadge = $type === 'glossary' ? 'glosquiz' : 'faktaquiz';
+                $typeBadge = $type === 'glossary' ? 'glosquiz' : ($type==='image_choice'?'bildvalsquiz':'faktaquiz');
+                $reviewState=aiReviewState($storedQuiz);
                 $badgeColor = $type === 'glossary' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
                 $itemCount = count($quiz['items'] ?? []);
                 $resultCount = count($quiz['results'] ?? []);
@@ -540,6 +545,7 @@ Nu, invänta mitt material.</pre>
                     <div class="flex items-center gap-2">
                         <span class="font-medium text-gray-800 truncate"><?= htmlspecialchars($quiz['title']) ?></span>
                         <span class="text-xs px-2 py-0.5 rounded-full <?= $badgeColor ?>"><?= $typeBadge ?></span>
+                        <?php if ($reviewState!=='published'): ?><span class="text-xs text-amber-800"><?= $reviewState==='draft'?'Opublicerat':'Ändringar att granska' ?></span><?php endif; ?>
                         <?php if ($subject): ?>
                             <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"><?= $subject ?></span>
                         <?php endif; ?>
@@ -552,9 +558,10 @@ Nu, invänta mitt material.</pre>
                     </div>
                 </div>
                 <div class="flex items-center gap-1 ml-4">
-                    <button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Kopiera elevlänk">📋</button>
+                    <?php if ($reviewState==='published'): ?><button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Kopiera elevlänk">📋</button>
                     <button onclick="showQrCode('<?= htmlspecialchars($playUrl) ?>', '<?= htmlspecialchars($quiz['title'], ENT_QUOTES) ?>')" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Visa QR-kod">📱</button>
-                    <a href="edit.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Redigera">✏️</a>
+                    <?php endif; ?><a href="review.php?id=<?= urlencode($quiz['id']) ?>" class="text-blue-700 text-sm"><?= $reviewState==='published'?'Granska':'Granska och publicera' ?></a>
+                    <a href="<?= $type==='image_choice'?'image-edit.php':'edit.php' ?>?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Redigera">✏️</a>
                     <a href="stats.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Statistik">📊</a>
                     <form method="POST" style="display:inline" onsubmit="return confirm('Radera detta quiz?')">
                         <?= csrfField() ?>

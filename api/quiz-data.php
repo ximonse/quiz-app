@@ -1,8 +1,10 @@
 <?php
 // api/quiz-data.php — Serve quiz data to student player
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../ai/quiz-service.php';
 
 header('Content-Type: application/json');
+header('Cache-Control: no-store');
 
 $quizId = $_GET['id'] ?? '';
 if (!$quizId) {
@@ -18,11 +20,12 @@ if (!isset($quizzes[$quizId])) {
     exit;
 }
 
-$quiz = $quizzes[$quizId];
+try { $quiz=aiStudentQuiz($quizzes[$quizId],isset($_GET['preview'])); }
+catch (QuizAiError $e) { aiJson(['error'=>$e->getMessage()],$e->status); exit; }
 $now = date('Y-m-d H:i');
 $status = 'open';
 
-if (!empty($quiz['settings']['time_lock'])) {
+if (!isset($_GET['preview']) && !empty($quiz['settings']['time_lock'])) {
     $lock = $quiz['settings']['time_lock'];
     if (!empty($lock['opens']) && $now < $lock['opens']) {
         $status = 'not_yet';

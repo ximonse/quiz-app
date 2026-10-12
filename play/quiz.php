@@ -56,6 +56,7 @@ if (!$quizId || !$studentName) {
 <div id="root"></div>
 
 <script type="text/babel">
+const PREVIEW = <?= isset($_GET['preview'])?'true':'false' ?>;
 const QUIZ_ID = <?= json_encode($quizId) ?>;
 const STUDENT_NAME = <?= json_encode($studentName) ?>;
 
@@ -100,9 +101,11 @@ function App() {
 
     // Load quiz
     React.useEffect(() => {
-        fetch('../api/quiz-data.php?id=' + encodeURIComponent(QUIZ_ID))
+        fetch('../api/quiz-data.php?id=' + encodeURIComponent(QUIZ_ID) + (PREVIEW?'&preview=1':''))
             .then(r => r.json())
             .then(data => {
+                if (data.error) throw new Error(data.error);
+                if (data.type==='image_choice') { window.location.replace('image-quiz.php'+window.location.search); return; }
                 if (data.status === 'not_yet') {
                     setOpensAt(data.opens);
                     setStatus('not_yet');
@@ -182,7 +185,7 @@ function App() {
 
         if (result.complete) {
             const results = engine.getResults();
-            fetch('../api/save-result.php', {
+            if (!PREVIEW) fetch('../api/save-result.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

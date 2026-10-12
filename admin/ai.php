@@ -23,7 +23,7 @@ function aiEscape($value) { return htmlspecialchars((string)$value,ENT_QUOTES,'U
 <link rel="stylesheet" href="../engine/themes.css"><style>
 body{font:16px system-ui;background:#f5f7fb;color:#172033;margin:0}main{max-width:760px;margin:auto;padding:24px}section{background:white;border:1px solid #dce2ec;border-radius:12px;padding:20px;margin:18px 0}input[type=text]{padding:10px;border:1px solid #aab6c8;border-radius:6px;width:95%}button{padding:10px 16px;background:#245bb2;color:white;border:0;border-radius:6px;cursor:pointer}code{overflow-wrap:anywhere}label{display:block;margin:12px 0}li{margin:16px 0}.error{color:#a31919}
 </style></head><body><main><a href="dashboard.php">← Mina quiz</a><h1>AI-koppling</h1>
-<p>Låt din AI hitta, läsa och skapa quiz. Visa frågorna och bilderna i ett Markdown-utkast och godkänn innan AI:n sparar. Varje nyckel gäller bara ditt lärarkonto, aldrig elevresultat.</p>
+<p>Låt din AI hitta, läsa och skapa quiz. AI:n sparar quiz för granskning. Justera och publicera i appen när du är nöjd. Be om Markdown-utkast först om du vill. Varje nyckel gäller bara ditt lärarkonto, aldrig elevresultat.</p>
 <?php if ($error): ?><p class="error"><?= aiEscape($error) ?></p><?php endif; ?>
 <?php if ($secret): ?><section><h2>Din nya nyckel</h2><p>Visas bara nu. Spara den i AI-tjänstens inställningar för kopplingen.</p><code><?= aiEscape($secret) ?></code></section><?php endif; ?>
 <section><h2>Skapa åtkomst</h2><form method="post"><?= csrfField() ?><input type="hidden" name="action" value="create">

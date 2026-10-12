@@ -21,7 +21,8 @@ if (!isset($quizzes[$quizId])) {
 }
 
 // Check time lock — don't save after closing
-$quiz = $quizzes[$quizId];
+require_once __DIR__.'/../ai/quiz-service.php';
+try { $quiz=aiStudentQuiz($quizzes[$quizId]); } catch (QuizAiError $e) { aiJson(['error'=>$e->getMessage()],$e->status); exit; }
 if (!empty($quiz['settings']['time_lock']['closes'])) {
     if (date('Y-m-d H:i') > $quiz['settings']['time_lock']['closes']) {
         echo json_encode(['saved' => false, 'reason' => 'training_only']);

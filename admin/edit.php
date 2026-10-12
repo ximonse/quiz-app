@@ -16,6 +16,8 @@ $csrfToken = getCsrfToken();
 $error = '';
 require_once __DIR__ . '/../ai/quiz-service.php';
 $editRevision = aiRevision($quiz);
+$quiz=aiEffectiveQuiz($quiz);
+if ($quiz['type']==='image_choice') { header('Location: image-edit.php?id='.urlencode($quizId)); exit; }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requireValidCsrf();
@@ -86,13 +88,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!hash_equals(aiRevision($current), $expectedRevision)) {
                     throw new QuizAiError('Quizet ändrades sedan du öppnade sidan. Ladda om innan du sparar.', 409);
                 }
-                $lockedQuizzes[$quizId]['title'] = $newTitle;
-                $lockedQuizzes[$quizId]['settings'] = $newSettings;
-                if ($newItems !== null) {
-                    $lockedQuizzes[$quizId]['items'] = $newItems;
-                }
+                $changes=['title'=>$newTitle,'settings'=>$newSettings];
+                if ($newItems!==null) $changes['items']=$newItems;
+                aiStageDocument($lockedQuizzes[$quizId],$changes);
             });
-            header('Location: dashboard.php');
+            header('Location: ../admin/review.php?id='.urlencode($quizId));
             exit;
             } catch (QuizAiError $e) { $error = $e->getMessage(); }
         }
@@ -143,7 +143,8 @@ $s = $quiz['settings'];
 <div class="max-w-2xl mx-auto p-4">
     <div class="flex items-center gap-4 mb-6">
         <a href="dashboard.php" class="text-blue-600 hover:underline text-sm">&larr; Tillbaka</a>
-        <a href="images.php?id=<?= urlencode($quizId) ?>" class="text-blue-600 hover:underline text-sm">Bilder till frågor</a>
+        <a href="images.php?id=<?= urlencode($quizId) ?>" class="text-blue-600 hover:underline text-sm">Infobild till frågan</a>
+        <a href="review.php?id=<?= urlencode($quizId) ?>">Granska och publicera</a>
         <h1 class="text-2xl font-bold" style="color: var(--text-primary)">Redigera: <?= htmlspecialchars($quiz['title']) ?></h1>
     </div>
 
@@ -323,7 +324,7 @@ $s = $quiz['settings'];
             </div>
         </fieldset>
 
-        <button type="submit" class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Spara ändringar</button>
+        <button type="submit" class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Spara för granskning</button>
     </form>
 </div>
 

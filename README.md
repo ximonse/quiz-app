@@ -1,6 +1,6 @@
 # 📚 Quiz App - Komplett dokumentation
 
-AI-koppling för att hitta, skapa och redigera quiz samt lägga till frågebilder: [anslutningsguide](docs/ai-connection.md).
+AI:n skapar som standard opublicerade quiz som läraren granskar, justerar och publicerar. Bildvalsquiz stöder 2–6 bilder med ett eller flera rätta svar. Alla frågor kan få en extra infobild i efterhand. Aktuell AI- och granskningsguide: [anslutningsguide](docs/ai-connection.md).
 
 En interaktiv quiz-app för lärare och elever med spaced repetition och statistikspårning.
 

@@ -70,6 +70,7 @@ let quizData = null;
 fetch('../api/quiz-data.php?id=' + encodeURIComponent(QUIZ_ID))
     .then(r => r.json())
     .then(data => {
+        if (data.error) { document.getElementById('quiz-title').textContent=data.error; document.querySelector('#name-screen form').hidden=true; return; }
         quizData = data;
         document.getElementById('quiz-title').textContent = data.title || 'Quiz';
         const savedName = sessionStorage.getItem('quiz-student-' + QUIZ_ID);
@@ -90,7 +91,7 @@ function enterQuiz(e) {
     document.getElementById('dash-title').textContent = quizData?.title || 'Quiz';
     document.getElementById('dash-name').textContent = name;
 
-    const base = 'quiz.php?id=' + encodeURIComponent(QUIZ_ID) + '&name=' + encodeURIComponent(name);
+    const base = (quizData?.type==='image_choice' ? 'image-quiz.php?id=' : 'quiz.php?id=') + encodeURIComponent(QUIZ_ID) + '&name=' + encodeURIComponent(name);
     document.getElementById('quiz-link').href = base;
 
     if (quizData?.settings?.generate_flashcards) {

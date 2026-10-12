@@ -75,7 +75,7 @@ if (count($results) > 0) {
         <?php foreach (array_slice($questionErrors, 0, 5, true) as $idx => $errorCount):
             $item = $items[$idx] ?? null;
             if (!$item) continue;
-            $label = $quiz['type'] === 'glossary' ? ($item['word'] ?? '?') : ($item['concept'] ?? '?');
+            $label = $quiz['type'] === 'glossary' ? ($item['word'] ?? '?') : ($item['concept'] ?? $item['question'] ?? '?');
             $pct = count($results) > 0 ? round(($errorCount / count($results)) * 100) : 0;
         ?>
         <div class="flex items-center justify-between py-1">

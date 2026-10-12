@@ -1,17 +1,20 @@
 <?php
 require_once __DIR__ . '/validation.php';
+require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/publication.php';
 function aiDocument(array $quiz): array {
     $keys = isset($quiz['items']) ? ['title','type','subject','grade','tags','settings','items'] : ['title','type','subject','grade','tags','questions'];
     return array_intersect_key($quiz, array_flip($keys));
 }
 function aiRevision(array $quiz): string {
-    return hash('sha256', json_encode(aiDocument($quiz), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+    return hash('sha256', json_encode([aiDocument(aiEffectiveQuiz($quiz)), aiReviewState($quiz), array_intersect_key(aiEffectiveQuiz($quiz),array_flip(['language','spelling_mode','answer_mode','quiz_mode','required_correct_phase1','required_correct_phase2','reverse_enabled','reverse_answer_mode','reverse_required_correct_phase1','reverse_required_correct_phase2']))], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
 }
 function aiOwn(array $quizzes, string $id, string $teacherId): array {
     if (!isset($quizzes[$id]) || ($quizzes[$id]['teacher_id'] ?? null) !== $teacherId) throw new QuizAiError('Quiz not found in your account.', 404);
     return $quizzes[$id];
 }
 function aiMarkdown(array $document): string {
+    if (($document['type']??'') === 'image_choice') return aiImageMarkdown($document);
     $text = '# ' . ($document['title'] ?? '') . "\n\n";
     foreach (($document['items'] ?? $document['questions'] ?? []) as $i => $item) {
         $legacy = isset($document['questions']); $reverse = !$legacy && ($document['settings']['question_direction'] ?? '') === 'description';
@@ -30,10 +33,11 @@ function aiMarkdown(array $document): string {
     return $text;
 }
 function aiView(array $quiz): array {
+    $stored=$quiz; $quiz=aiEffectiveQuiz($quiz); $state=aiReviewState($stored);
     $legacy = !isset($quiz['items']); $id = $quiz['id'];
-    return ['id'=>$id, 'revision'=>aiRevision($quiz), 'format'=>$legacy ? 'legacy' : 'v2', 'quiz'=>aiDocument($quiz),
-        'student_url'=>aiBaseUrl() . ($legacy ? '/q/' . rawurlencode($id) . '.html' : '/play/index.php?id=' . rawurlencode($id)),
-        'edit_url'=>aiBaseUrl() . ($legacy ? '/edit-quiz.php?quiz_id=' : '/admin/edit.php?id=') . rawurlencode($id),
+    return ['id'=>$id, 'revision'=>aiRevision($stored), 'publication'=>$state, 'review_url'=>aiBaseUrl().'/admin/review.php?id='.rawurlencode($id), 'format'=>$legacy ? 'legacy' : 'v2', 'quiz'=>aiDocument($quiz),
+        'student_url'=>$state==='published' ? aiBaseUrl() . ($legacy ? '/q/' . rawurlencode($id) . '.html' : '/play/index.php?id=' . rawurlencode($id)) : null,
+        'edit_url'=>aiBaseUrl() . ($legacy ? '/edit-quiz.php?quiz_id=' : ($quiz['type']==='image_choice' ? '/admin/image-edit.php?id=' : '/admin/edit.php?id=')) . rawurlencode($id),
         'markdown'=>aiMarkdown(aiDocument($quiz))];
 }
 function aiValidateLegacy(array $input, string $teacherId): array {
@@ -71,18 +75,19 @@ function aiSearch(array $actor, array $args): array {
     $found = [];
     foreach (aiRead(QUIZZES_FILE) as $id=>$quiz) {
         if (($quiz['teacher_id'] ?? '') !== $actor['teacher_id']) continue;
+        $quiz=aiEffectiveQuiz($quiz);
         $haystack = implode(' ', [$quiz['title'] ?? '', $quiz['subject'] ?? '', $quiz['tags'] ?? '', $id]);
         if ($query !== '' && preg_match('/' . preg_quote($query, '/') . '/iu', $haystack) !== 1) continue;
         $view = aiView($quiz);
         $found[] = ['id'=>$id,'title'=>$quiz['title'],'type'=>$quiz['type'] ?? 'fact','subject'=>$quiz['subject'] ?? '',
-            'question_count'=>count($quiz['items'] ?? $quiz['questions'] ?? []), 'format'=>$view['format'], 'revision'=>$view['revision'], 'student_url'=>$view['student_url']];
+            'question_count'=>count($quiz['items'] ?? $quiz['questions'] ?? []), 'format'=>$view['format'], 'publication'=>$view['publication'], 'review_url'=>$view['review_url'], 'revision'=>$view['revision'], 'student_url'=>$view['student_url']];
     }
     usort($found, fn($a,$b)=>strcmp($a['title'],$b['title'])); $total = count($found);
     return ['quizzes'=>array_slice($found,$offset,$limit),'total_count'=>$total,'has_more'=>$offset+$limit<$total,'next_offset'=>$offset+$limit<$total ? $offset+$limit : null];
 }
 function aiSave(array $actor, array $args, bool $create): array {
     aiRequireWrite($actor);
-    if (($args['approved'] ?? false) !== true) throw new QuizAiError('Show the complete Markdown draft and images to the user, then obtain explicit approval before saving.', 403);
+    // AI saves for teacher review; publication is only available in the authenticated app.
     if (!is_array($args['quiz'] ?? null)) throw new QuizAiError('Provide the complete quiz document.');
     $legacy = isset($args['quiz']['questions']);
     if ($create && $legacy) throw new QuizAiError('Create new quizzes with v2 items.');
@@ -101,14 +106,14 @@ function aiSave(array $actor, array $args, bool $create): array {
                 return aiView($prior);
             }
         }
-        if ($create) $quiz = ['id'=>$id, 'teacher_id'=>$actor['teacher_id'], 'created'=>date('Y-m-d H:i:s'), 'results'=>[]];
+        if ($create) $quiz = ['id'=>$id, 'teacher_id'=>$actor['teacher_id'], 'created'=>date('Y-m-d H:i:s'), 'results'=>[], 'publication'=>'draft'];
         else {
             $quiz = aiOwn($quizzes,$id,$actor['teacher_id']);
             if ($legacy !== !isset($quiz['items']) || $doc['type'] !== ($quiz['type'] ?? 'fact')) throw new QuizAiError('Keep the existing quiz format and type.');
-            if (!hash_equals(aiRevision($quiz),$revision)) throw new QuizAiError('Quiz changed since it was read. Read it again, show the updated draft and obtain approval.', 409);
+            if (!hash_equals(aiRevision($quiz),$revision)) throw new QuizAiError('Quiz changed since it was read. Read it again before saving another review version.', 409);
         }
         // Merge only the editable document; keep results, progress and unrelated fields.
-        $quiz = array_replace($quiz,$doc); $quiz['updated'] = date('Y-m-d H:i:s');
+        aiStageDocument($quiz,$doc); // Keep the currently published document available to students.
         $quiz['ai_requests'][$requestId] = ['hash'=>$requestHash,'create'=>$create];
         $quizzes[$id] = $quiz;
         return aiView($quiz);

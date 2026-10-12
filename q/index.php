@@ -38,6 +38,7 @@ if (isset($quiz['active']) && $quiz['active'] === false) {
     echo "Detta quiz är för tillfället inaktiverat av läraren.";
     exit;
 }
+unset($quiz['pending_document'], $quiz['ai_requests']);
 $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
 ?>
 <!DOCTYPE html>

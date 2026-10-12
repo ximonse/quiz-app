@@ -25,12 +25,13 @@ $quiz=['title'=>'Ramp och hävstång','type'=>'fact','items'=>[
     ['concept'=>'Vad använder en gungbräda?','description'=>'Hävstång','wrong_options'=>['Hjul','Skruv','Lutande plan']]
 ]];
 $args=['quiz'=>$quiz,'approved'=>true,'request_id'=>'create-test-0001'];
-rejects(fn()=>aiCall($actor,'quiz_create',array_replace($args,['approved'=>false])),403);
+check(!in_array('approved',aiTools()[3]['inputSchema']['required'],true),'AI creation still requires Markdown approval.');
 rejects(fn()=>aiCall($readonly,'quiz_create',$args),403);
 $preview=aiCall($actor,'quiz_preview',['quiz'=>$quiz]);
 check(!$preview['saved'] && count(aiRead(QUIZZES_FILE))===0,'Preview saved data.');
 $created=aiCall($actor,'quiz_create',$args);
-check(str_contains($created['student_url'],'/play/index.php?id=q_'),'Wrong student URL.');
+check($created['student_url']===null && $created['publication']==='draft' && str_contains($created['review_url'],'/admin/review.php?id=q_'),'New quiz was published instead of saved for review.');
+rejects(fn()=>aiStudentQuiz(aiRead(QUIZZES_FILE)[$created['id']]),403);
 check(str_contains($created['markdown'],'Rätt svar: Lutande plan'),'Missing answer in Markdown.');
 $repeat=aiCall($actor,'quiz_create',$args);
 check($created['id']===$repeat['id'] && count(aiRead(QUIZZES_FILE))===1,'Retry duplicated quiz.');
@@ -69,7 +70,9 @@ $legacy=['id'=>'aabbccdd','title'=>'Gammalt quiz','type'=>'fact','teacher_id'=>'
 aiUpdate(QUIZZES_FILE,function (&$quizzes) use ($legacy) { $quizzes[$legacy['id']]=$legacy; });
 $old=aiCall($actor,'quiz_get',['id'=>$legacy['id']]); $old['quiz']['title']='Ändrat gammalt quiz';
 $oldSaved=aiCall($actor,'quiz_update',['id'=>$legacy['id'],'revision'=>$old['revision'],'quiz'=>$old['quiz'],'approved'=>true,'request_id'=>'legacy-update-01']);
-check(str_ends_with($oldSaved['student_url'],'/q/aabbccdd.html'),'Legacy link changed.');
+check($oldSaved['publication']==='pending' && aiRead(QUIZZES_FILE)[$legacy['id']]['title']==='Gammalt quiz','Legacy edits changed the published version.');
+$oldPublished=aiPublishQuiz($legacy['id'],'teacher-a',$oldSaved['revision']);
+check(str_ends_with($oldPublished['student_url'],'/q/aabbccdd.html'),'Legacy link changed.');
 check(aiRead(QUIZZES_FILE)[$legacy['id']]['answer_mode']==='hybrid' && !isset(aiRead(QUIZZES_FILE)[$legacy['id']]['items']),'Legacy storage changed.');
 $_SERVER['REMOTE_ADDR']='127.0.0.1';
 $issued=aiIssueToken('teacher-a','Test key',true); $_SERVER['HTTP_AUTHORIZATION']='Bearer '.$issued['secret'];
@@ -84,4 +87,37 @@ rejects(fn()=>aiCall($actor,'quiz_create',array_replace($args,['request_id'=>'co
 check(file_get_contents(QUIZZES_FILE)==='{broken','Corrupt storage overwritten.');
 file_put_contents(QUIZZES_FILE,$before);
 check(aiCall($actor,'quiz_search',['query'=>'Godkänt','limit'=>1])['total_count']===1,'Search filter failed.');
-echo "PASS: $passed service checks, including auth, ownership, approval, retries, conflicts, images and legacy edits.\n";
+
+$draft=aiCall($actor,'quiz_get',['id'=>$created['id']]);
+rejects(fn()=>aiPublishQuiz($created['id'],'teacher-b',$draft['revision']),404);
+$published=aiPublishQuiz($created['id'],'teacher-a',$draft['revision']);
+check($published['publication']==='published' && $published['student_url']!==null,'Publication failed.');
+$edit=$published['quiz']; $edit['title']='Nya frågor under granskning';
+$pending=aiCall($actor,'quiz_update',['id'=>$created['id'],'revision'=>$published['revision'],'quiz'=>$edit,'request_id'=>'pending-edit-001']);
+check($pending['publication']==='pending' && $pending['student_url']===null,'Published edit was not staged.');
+check(aiStudentQuiz(aiRead(QUIZZES_FILE)[$created['id']])['title']==='Godkänt nytt namn','Student saw unreviewed changes.');
+check(aiCall($actor,'quiz_get',['id'=>$created['id']])['quiz']['title']==='Nya frågor under granskning','Teacher cannot read pending changes.');
+rejects(fn()=>aiPublishQuiz($created['id'],'teacher-a',$published['revision']),409);
+$republished=aiPublishQuiz($created['id'],'teacher-a',$pending['revision']);
+check(aiStudentQuiz(aiRead(QUIZZES_FILE)[$created['id']])['title']==='Nya frågor under granskning','Published edits were not visible.');
+check(count(aiRead(QUIZZES_FILE)[$created['id']]['results'])===1,'Publishing lost student results.');
+rejects(fn()=>aiCall($actor,'quiz_publish',['id'=>$created['id']]),404);
+$secondImage=aiStoreImage($png,'teacher-a');
+$pictureQuiz=['title'=>'Bildval','type'=>'image_choice','items'=>[['question'=>'Vilken visar en ramp?',
+    'choices'=>[['id'=>'a','image'=>['file'=>$uploaded['image'],'alt'=>'Bild A'],'correct'=>true],
+                ['id'=>'b','image'=>['file'=>$secondImage['image'],'alt'=>'Bild B'],'correct'=>false]]]]];
+$picture=aiCall($actor,'quiz_create',['quiz'=>$pictureQuiz,'request_id'=>'image-quiz-0001']);
+check($picture['publication']==='draft' && str_contains($picture['markdown'],'Bild 1 — **Rätt**'),'Image quiz creation/Markdown failed.');
+rejects(fn()=>aiStudentQuiz(aiRead(QUIZZES_FILE)[$picture['id']],true),403);
+$_SESSION['teacher_id']='teacher-a';
+check(aiStudentQuiz(aiRead(QUIZZES_FILE)[$picture['id']],true)['type']==='image_choice','Owner cannot preview draft.');
+unset($_SESSION['teacher_id']);
+$invalid=$pictureQuiz; $invalid['items'][0]['choices'][0]['correct']=false;
+rejects(fn()=>aiCall($actor,'quiz_preview',['quiz'=>$invalid]),400);
+$invalid=$pictureQuiz; $invalid['items'][0]['choices']=array_fill(0,7,$invalid['items'][0]['choices'][0]);
+rejects(fn()=>aiCall($actor,'quiz_preview',['quiz'=>$invalid]),400);
+$invalid=$pictureQuiz; $invalid['items'][0]['choices'][1]['id']='a';
+rejects(fn()=>aiCall($actor,'quiz_preview',['quiz'=>$invalid]),400);
+rejects(fn()=>aiCall($other,'quiz_preview',['quiz'=>$pictureQuiz]),400);
+
+echo "PASS: $passed service checks, including publication, draft isolation, ownership, retries, conflicts, image choices and legacy edits.\n";

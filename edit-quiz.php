@@ -63,6 +63,7 @@ if (!isset($quizzes[$quiz_id]) || (!$is_super_admin && $quizzes[$quiz_id]['teach
 $quiz = $quizzes[$quiz_id];
 require_once __DIR__ . '/ai/quiz-service.php';
 $edit_revision = aiRevision($quiz);
+$quiz=aiEffectiveQuiz($quiz); $quizzes[$quiz_id]=$quiz;
 
 // Hantera uppdatering
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_quiz') {
@@ -105,10 +106,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 throw new QuizAiError('Quizet finns inte.', 404);
             if (!hash_equals(aiRevision($current[$quiz_id]), $_POST['edit_revision'] ?? ''))
                 throw new QuizAiError('Quizet ändrades. Ladda om sidan innan du sparar.', 409);
-            $current[$quiz_id] = array_replace($current[$quiz_id], $editable);
+            aiStageDocument($current[$quiz_id],$editable);
         });
     } catch (QuizAiError $e) { http_response_code($e->status); echo htmlspecialchars($e->getMessage()); exit; }
-    $return_url = $is_super_admin ? 'super-admin.php?updated=1' : 'admin.php?updated=1';
+    $return_url = $is_super_admin ? 'super-admin.php?updated=1' : 'admin/review.php?id='.urlencode($quiz_id);
     header('Location: ' . $return_url);
     exit;
 }
