@@ -259,8 +259,11 @@ function App() {
     const q = engine.getQuestion(item);
     const progress = engine.getProgress();
     const isFact = quiz.type === 'fact';
-    // Alternativen läses upp när de är på quizets språk: faktaquiz, samt glosor i omvänd riktning (glosord).
-    const optionTts = quiz.settings.tts_enabled && (isFact || (quiz.type === 'glossary' && progress.direction === 'reverse'));
+    // Språk per sida: glosor har glosord/mening på quizets språk och översättning på svenska.
+    // Framåt: alternativen är svenska. Omvänt: prompten är svensk, alternativen glosord.
+    const isGlossary = quiz.type === 'glossary';
+    const optionLang = (isGlossary && progress.direction === 'forward') ? 'sv' : factLang();
+    const optionTts = quiz.settings.tts_enabled;
     const ttsBtnStyle = {background: 'var(--card-bg)', color: 'var(--text-secondary)', borderColor: 'var(--border)'};
 
     function renderPrompt(promptText, highlightText, direction, phase) {
@@ -345,6 +348,10 @@ function App() {
                 <div className="rounded-xl p-6 mb-4" style={{background: 'var(--card-bg)', border: '1px solid var(--border)'}}>
                     {renderPrompt(q.prompt, q.highlight, progress.direction, progress.phase)}
 
+                    {isGlossary && progress.direction === 'reverse' && quiz.settings.tts_enabled && (
+                        <button onClick={() => speakText(q.prompt, 'sv', true)} className="mt-3 text-xs px-2 py-1 rounded border" style={ttsBtnStyle} title="Lyssna på frågan">🔊 Lyssna</button>
+                    )}
+
                     {isFact && quiz.settings.tts_enabled && (
                         <button onClick={() => speakText(q.prompt, factLang(), true)} className="mt-3 text-xs px-2 py-1 rounded border" style={ttsBtnStyle} title="Lyssna på frågan">🔊 Lyssna</button>
                     )}
@@ -358,7 +365,7 @@ function App() {
                                         {opt}
                                     </button>
                                     {optionTts && (
-                                        <button onClick={() => speakText(opt, factLang(), true)} className="px-2 text-sm opacity-40 active:opacity-80" style={{background: 'transparent', color: 'var(--text-secondary)'}} aria-label="Lyssna på alternativet" title="Lyssna på alternativet">🔊</button>
+                                        <button onClick={() => speakText(opt, optionLang, true)} className="px-2 text-sm opacity-40 active:opacity-80" style={{background: 'transparent', color: 'var(--text-secondary)'}} aria-label="Lyssna på alternativet" title="Lyssna på alternativet">🔊</button>
                                     )}
                                 </div>
                             ))}

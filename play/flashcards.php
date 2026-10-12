@@ -42,7 +42,7 @@ if (!$quizId) { header('Location: index.php'); exit; }
             <div class="card-back text-center">
                 <div>
                     <p id="back-text" class="text-xl" style="color: var(--accent)"></p>
-                    <button id="speak-back" onclick="speakBack(event)" class="mt-3 text-xs px-2 py-1 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)" title="Lyssna på baksidan">🔊</button>
+                    <button onclick="speakBack(event)" class="mt-3 text-xs px-2 py-1 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)" title="Lyssna på baksidan">🔊</button>
                 </div>
             </div>
         </div>
@@ -144,8 +144,6 @@ function showCard() {
     const item = items[currentIndex];
     document.getElementById('front-text').textContent = frontText(item);
     document.getElementById('back-text').textContent = backText(item);
-    // Glosor på främmande språk: baksidan är svenska och ska inte läsas upp.
-    document.getElementById('speak-back').style.display = (quizType === 'glossary' && quizSettings?.language !== 'sv') ? 'none' : '';
     document.getElementById('counter').textContent = `${currentIndex + 1}/${items.length}`;
     playCardTTS();
 }
@@ -172,18 +170,14 @@ function speakBack(e) {
     if (e) e.stopPropagation();
     const item = items[currentIndex];
     if (!item) return;
-    speakText(backText(item), quizSettings?.language, true);
+    // Glosor: baksidan är den svenska översättningen.
+    speakText(backText(item), quizType === 'glossary' ? 'sv' : quizSettings?.language, true);
 }
 
 function flipCard() {
     const card = document.getElementById('card');
     card.classList.toggle('flipped');
-    // Glosor: baksidan är den svenska översättningen — läs bara upp den när
-    // quizet själv är på svenska. Faktaquiz läses bara via 🔊-knapparna.
-    if (card.classList.contains('flipped') && quizSettings?.tts_enabled && quizType === 'glossary' && quizSettings.language === 'sv') {
-        const item = items[currentIndex];
-        if (item) speakText(backText(item), quizSettings.language);
-    }
+    // Ingen automatisk uppläsning av baksidan: den läses bara via 🔊 (glosor: svensk röst).
 }
 
 function nextCard() {
