@@ -27,5 +27,6 @@ jobs:
               --exclude-glob data/images/ \
               --exclude-glob backup-*/ \
               --exclude-glob .claude/ \
+              --exclude-glob tests/ \
               ./ /customers/a/b/a/ximon.se/httpd.www/quiz-app/
           "

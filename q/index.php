@@ -1379,7 +1379,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                         <div className="rounded-xl shadow-lg p-8" style={{backgroundColor: 'var(--card-bg)'}}>
                             {currentQ.image && (
                                 <div className="mb-6">
-                                    <img src={`../data/images/${currentQ.image}`} alt="Frågebild" className="question-image" />
+                                    <img src={`../api/question-image.php?file=${encodeURIComponent(currentQ.image)}`} alt={currentQ.image_alt || "Frågebild"} className="question-image" />
                                 </div>
                             )}
                             {isGlossary ? (

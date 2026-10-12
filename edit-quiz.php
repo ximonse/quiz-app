@@ -61,6 +61,8 @@ if (!isset($quizzes[$quiz_id]) || (!$is_super_admin && $quizzes[$quiz_id]['teach
 }
 
 $quiz = $quizzes[$quiz_id];
+require_once __DIR__ . '/ai/quiz-service.php';
+$edit_revision = aiRevision($quiz);
 
 // Hantera uppdatering
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_quiz') {
@@ -92,7 +94,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if ($updated_questions && count($updated_questions) > 0) {
         $quizzes[$quiz_id]['questions'] = $updated_questions;
     }
-    writeJSON(QUIZZES_FILE, $quizzes);
+    $editable = array_intersect_key($quizzes[$quiz_id], array_flip([
+        'title', 'subject', 'grade', 'tags', 'language', 'spelling_mode', 'answer_mode', 'quiz_mode',
+        'required_correct_phase1', 'required_correct_phase2', 'reverse_enabled', 'reverse_answer_mode',
+        'reverse_required_correct_phase1', 'reverse_required_correct_phase2', 'questions'
+    ]));
+    try {
+        aiUpdate(QUIZZES_FILE, function (&$current) use ($quiz_id, $teacher_id, $is_super_admin, $editable) {
+            if (!isset($current[$quiz_id]) || (!$is_super_admin && ($current[$quiz_id]['teacher_id'] ?? null) !== $teacher_id))
+                throw new QuizAiError('Quizet finns inte.', 404);
+            if (!hash_equals(aiRevision($current[$quiz_id]), $_POST['edit_revision'] ?? ''))
+                throw new QuizAiError('Quizet ändrades. Ladda om sidan innan du sparar.', 409);
+            $current[$quiz_id] = array_replace($current[$quiz_id], $editable);
+        });
+    } catch (QuizAiError $e) { http_response_code($e->status); echo htmlspecialchars($e->getMessage()); exit; }
     $return_url = $is_super_admin ? 'super-admin.php?updated=1' : 'admin.php?updated=1';
     header('Location: ' . $return_url);
     exit;
@@ -241,6 +256,7 @@ $return_url = $is_super_admin ? 'super-admin.php' : 'admin.php';
         <div class="bg-white rounded-xl shadow-lg p-6">
             <h2 class="text-xl font-bold text-gray-800 mb-4">Frågor</h2>
 
+            <a href="admin/images.php?id=<?= urlencode($quiz_id) ?>" class="text-blue-600 hover:underline">Bilder till frågor</a>
             <div id="questions-container" class="space-y-4">
                 <!-- Fylls av JavaScript -->
             </div>
@@ -400,7 +416,7 @@ $return_url = $is_super_admin ? 'super-admin.php' : 'admin.php';
                                 <label class="block text-sm font-medium text-gray-700 mb-2">📷 Bild (valfri)</label>
                                 ${q.image ? `
                                     <div class="mb-2">
-                                        <img src="data/images/${escapeHtml(q.image)}" class="max-w-xs rounded shadow" style="max-height: 200px;">
+                                        <img src="api/question-image.php?file=${encodeURIComponent(q.image)}" class="max-w-xs rounded shadow" style="max-height: 200px;">
                                         <button onclick="removeImage(${index})" type="button" class="mt-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">
                                             🗑️ Ta bort bild
                                         </button>
@@ -455,7 +471,7 @@ $return_url = $is_super_admin ? 'super-admin.php' : 'admin.php';
                                 <label class="block text-sm font-medium text-gray-700 mb-2">📷 Bild (valfri)</label>
                                 ${q.image ? `
                                     <div class="mb-2">
-                                        <img src="data/images/${escapeHtml(q.image)}" class="max-w-xs rounded shadow" style="max-height: 200px;">
+                                        <img src="api/question-image.php?file=${encodeURIComponent(q.image)}" class="max-w-xs rounded shadow" style="max-height: 200px;">
                                         <button onclick="removeImage(${index})" type="button" class="mt-2 bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">
                                             🗑️ Ta bort bild
                                         </button>
@@ -610,6 +626,7 @@ $return_url = $is_super_admin ? 'super-admin.php' : 'admin.php';
             form.method = 'POST';
             form.innerHTML = `
                 <input type="hidden" name="action" value="update_quiz">
+                <input type="hidden" name="edit_revision" value="<?= $edit_revision ?>">
                 <input type="hidden" name="csrf_token" value="${csrfToken}">
                 <input type="hidden" name="title" value="${escapeHtml(title)}">
                 <input type="hidden" name="subject" value="${escapeHtml(document.getElementById('quiz_subject').value.trim())}">

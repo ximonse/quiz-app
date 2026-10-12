@@ -1,5 +1,7 @@
 # 📚 Quiz App - Komplett dokumentation
 
+AI-koppling för att hitta, skapa och redigera quiz samt lägga till frågebilder: [anslutningsguide](docs/ai-connection.md).
+
 En interaktiv quiz-app för lärare och elever med spaced repetition och statistikspårning.
 
 ## 🎯 Funktioner

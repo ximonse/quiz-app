@@ -14,6 +14,8 @@ if (!isset($quizzes[$quizId]) || ($quizzes[$quizId]['teacher_id'] ?? '') !== get
 $quiz = $quizzes[$quizId];
 $csrfToken = getCsrfToken();
 $error = '';
+require_once __DIR__ . '/../ai/quiz-service.php';
+$editRevision = aiRevision($quiz);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requireValidCsrf();
@@ -51,6 +53,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($csvData) {
             $parsedItems = parseCSV($csvData, $quiz['type']);
             if (!empty($parsedItems)) {
+                $images = json_decode($_POST['item_images'] ?? '[]', true);
+                if (!is_array($images)) $images = [];
+                foreach ($parsedItems as $i => &$parsedItem) {
+                    // Only retain an image from this quiz's original rows.
+                    $originalIndex = $images[$i] ?? null;
+                    if (is_int($originalIndex) && isset($quiz['items'][$originalIndex]['image'])) {
+                        $parsedItem['image'] = $quiz['items'][$originalIndex]['image'];
+                    }
+                    if ($quiz['type'] === 'fact' && is_int($originalIndex) && isset($quiz['items'][$originalIndex]['reverse_wrong_options'])) {
+                        $parsedItem['reverse_wrong_options'] = $quiz['items'][$originalIndex]['reverse_wrong_options'];
+                    }
+                }
+                unset($parsedItem);
                 $newItems = $parsedItems;
                 $quiz['items'] = $parsedItems;
             } else {
@@ -63,8 +78,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newSettings = $quiz['settings'];
             // Skriv bara title/settings/items — läs en färsk kopia under låset så
             // att t.ex. ett elevresultat som sparats samtidigt inte skrivs över.
-            updateJSONLocked(QUIZZES_FILE, function (&$lockedQuizzes) use ($quizId, $newTitle, $newSettings, $newItems) {
-                if (!isset($lockedQuizzes[$quizId])) return;
+            $teacherId = getCurrentTeacherID();
+            $expectedRevision = $_POST['edit_revision'] ?? '';
+            try {
+            updateJSONLocked(QUIZZES_FILE, function (&$lockedQuizzes) use ($quizId, $newTitle, $newSettings, $newItems, $teacherId, $expectedRevision) {
+                $current = aiOwn($lockedQuizzes, $quizId, $teacherId);
+                if (!hash_equals(aiRevision($current), $expectedRevision)) {
+                    throw new QuizAiError('Quizet ändrades sedan du öppnade sidan. Ladda om innan du sparar.', 409);
+                }
                 $lockedQuizzes[$quizId]['title'] = $newTitle;
                 $lockedQuizzes[$quizId]['settings'] = $newSettings;
                 if ($newItems !== null) {
@@ -73,30 +94,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
             header('Location: dashboard.php');
             exit;
+            } catch (QuizAiError $e) { $error = $e->getMessage(); }
         }
     }
 }
 
 // Same parseCSV function as create.php
 function parseCSV($csvText, $type) {
-    $lines = array_filter(array_map('trim', explode("\n", $csvText)));
+    $lines = array_values(array_filter(array_map('trim', explode("\n", $csvText))));
     $items = [];
     $first = strtolower($lines[0] ?? '');
-    if (str_contains($first, 'mening') || str_contains($first, 'begrepp')) array_shift($lines);
+    if (preg_match('/^(mening;ord;|begrepp;beskrivning;)/', $first)) array_shift($lines);
 
     foreach ($lines as $line) {
         $cols = array_map('trim', explode(';', $line));
         if ($type === 'glossary') {
-            if (count($cols) < 6) continue;
-            if ($cols[0] === '' || $cols[1] === '' || $cols[2] === '') continue; // saknar mening/ord/översättning
+            if (count($cols) < 6) return [];
+            if ($cols[0] === '' || $cols[1] === '' || $cols[2] === '') return []; // saknar mening/ord/översättning
             $items[] = [
                 'sentence' => $cols[0], 'word' => $cols[1], 'translation' => $cols[2],
                 'wrong_options' => array_filter([$cols[3] ?? '', $cols[4] ?? '', $cols[5] ?? '']),
                 'reverse_wrong_options' => array_filter([$cols[6] ?? '', $cols[7] ?? '', $cols[8] ?? ''])
             ];
         } else {
-            if (count($cols) < 5) continue;
-            if ($cols[0] === '' || $cols[1] === '') continue; // saknar begrepp/beskrivning
+            if (count($cols) < 5) return [];
+            if ($cols[0] === '' || $cols[1] === '') return []; // saknar begrepp/beskrivning
             $items[] = [
                 'concept' => $cols[0], 'description' => $cols[1],
                 'wrong_options' => array_filter([$cols[2] ?? '', $cols[3] ?? '', $cols[4] ?? ''])
@@ -121,6 +143,7 @@ $s = $quiz['settings'];
 <div class="max-w-2xl mx-auto p-4">
     <div class="flex items-center gap-4 mb-6">
         <a href="dashboard.php" class="text-blue-600 hover:underline text-sm">&larr; Tillbaka</a>
+        <a href="images.php?id=<?= urlencode($quizId) ?>" class="text-blue-600 hover:underline text-sm">Bilder till frågor</a>
         <h1 class="text-2xl font-bold" style="color: var(--text-primary)">Redigera: <?= htmlspecialchars($quiz['title']) ?></h1>
     </div>
 
@@ -130,6 +153,8 @@ $s = $quiz['settings'];
 
     <form method="POST" onsubmit="return prepareSubmit();" class="space-y-6 rounded-xl p-6" style="background: var(--card-bg); border: 1px solid var(--border)">
         <?= csrfField() ?>
+        <input type="hidden" name="edit_revision" value="<?= htmlspecialchars($editRevision) ?>">
+        <input type="hidden" name="item_images" id="item_images" value="[]">
 
         <div>
             <label class="block text-sm font-medium mb-1" style="color: var(--text-primary)">Titel</label>
@@ -142,9 +167,9 @@ $s = $quiz['settings'];
                 <button type="button" onclick="addItemRow()" class="text-xs px-2 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-700">+ Lägg till <?= $quiz['type'] === 'glossary' ? 'glosa' : 'fråga' ?></button>
             </div>
             <div id="items-editor" class="space-y-3">
-                <?php foreach ($quiz['items'] as $item): ?>
+                <?php foreach ($quiz['items'] as $itemIndex => $item): ?>
                     <?php if ($quiz['type'] === 'glossary'): ?>
-                    <div class="item-row border rounded-lg p-3" style="border-color: var(--border)">
+                    <div data-original-index="<?= $itemIndex ?>" class="item-row border rounded-lg p-3" style="border-color: var(--border)">
                         <div class="flex items-start gap-2 mb-2">
                             <input type="text" data-field="mening" value="<?= htmlspecialchars($item['sentence'] ?? '') ?>" placeholder="Mening" class="flex-1 px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                             <button type="button" onclick="removeItemRow(this)" title="Ta bort" class="text-red-500 hover:text-red-700 shrink-0 px-1">🗑️</button>
@@ -165,7 +190,7 @@ $s = $quiz['settings'];
                         </div>
                     </div>
                     <?php else: ?>
-                    <div class="item-row border rounded-lg p-3" style="border-color: var(--border)">
+                    <div data-original-index="<?= $itemIndex ?>" class="item-row border rounded-lg p-3" style="border-color: var(--border)">
                         <div class="flex items-start gap-2 mb-2">
                             <input type="text" data-field="begrepp" value="<?= htmlspecialchars($item['concept'] ?? '') ?>" placeholder="Begrepp" class="flex-1 px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
                             <button type="button" onclick="removeItemRow(this)" title="Ta bort" class="text-red-500 hover:text-red-700 shrink-0 px-1">🗑️</button>
@@ -394,6 +419,14 @@ function prepareSubmit() {
     } else {
         csvData = bulkText || buildCsvFromRows();
     }
+    const replacing = bulkText && !appendMode;
+    const originalImages = <?= json_encode(array_map(fn($item) => !empty($item['image']), $quiz['items'])) ?>;
+    if (replacing && originalImages.some(Boolean) && !confirm('Om du ersätter frågelistan med CSV tas de gamla frågornas bildkopplingar bort. Fortsätta?')) return false;
+    const imageRows = replacing ? [] : Array.from(document.querySelectorAll('#items-editor .item-row')).map(row => {
+        const value = row.getAttribute('data-original-index');
+        return value === null ? null : Number(value);
+    });
+    document.getElementById('item_images').value = JSON.stringify(imageRows);
     document.getElementById('csv_data_hidden').value = csvData;
     return true;
 }

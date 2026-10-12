@@ -141,8 +141,9 @@ function QuizEngine(config) {
                 wrongs = item.wrong_options || [];
             } else {
                 correct = item.concept;
+                wrongs = item.reverse_wrong_options || [];
                 // Fallback: use other concepts from items
-                wrongs = items.filter(i => i.concept !== item.concept).map(i => i.concept);
+                if (wrongs.length === 0) wrongs = items.filter(i => i.concept !== item.concept).map(i => i.concept);
                 wrongs = shuffle(wrongs).slice(0, 3);
             }
         }

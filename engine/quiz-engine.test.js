@@ -37,4 +37,13 @@ for (let i = 0; i < 3; i++) reverseEngine.submitAnswer(reverseEngine.getQuestion
 assert.ok(!reverseEngine.isComplete(), 'reverse phase must keep repeating until each item reaches its requirement');
 reverseEngine.submitAnswer(reverseEngine.getQuestion(reverseEngine.currentItem()).answer, 'easy');
 assert.ok(reverseEngine.isComplete(), 'reverse phase must complete after its own mastery requirement is met');
+
+const imageFactEngine = context.QuizEngine({
+  quizType: 'fact', settings: { quiz_mode: 'test', answer_mode: 'multiple_choice', question_direction: 'description' },
+  items: [{ concept: 'Lutande plan', description: 'En ramp', wrong_options: [], reverse_wrong_options: ['Hjul', 'Skruv', 'Hävstång'], image: { file: 'ai_test.png', alt: 'Ramp' } }]
+});
+const illustratedItem = imageFactEngine.currentItem();
+assert.strictEqual(illustratedItem.image.alt, 'Ramp', 'Question image survives queue creation');
+assert.deepStrictEqual(Array.from(imageFactEngine.getQuestion(illustratedItem).options).sort(), ['Hjul', 'Hävstång', 'Lutande plan', 'Skruv'].sort(), 'Reverse fact mode uses supplied distractors');
+
 console.log('quiz-engine tests passed');

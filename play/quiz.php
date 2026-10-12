@@ -360,6 +360,9 @@ function App() {
             {/* Question card */}
             {status === 'playing' && q && (
                 <div className="rounded-xl p-6 mb-4" style={{background: 'var(--card-bg)', border: '1px solid var(--border)'}}>
+                    {item.image && typeof item.image === 'object' && /^ai_[a-f0-9]{32}\.(png|jpg|webp|gif)$/.test(item.image.file) && (
+                        <img src={'../api/question-image.php?file=' + encodeURIComponent(item.image.file)} alt={item.image.alt || 'Frågebild'} className="w-full max-h-64 object-contain rounded-lg mb-4" onError={e => { e.currentTarget.hidden = true; }} />
+                    )}
                     {renderPrompt(q.prompt, q.highlight, progress.direction, progress.phase)}
 
                     {isGlossary && progress.direction === 'reverse' && quiz.settings.tts_enabled && (

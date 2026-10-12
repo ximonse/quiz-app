@@ -1,0 +1,116 @@
+<?php
+require_once __DIR__ . '/validation.php';
+function aiDocument(array $quiz): array {
+    $keys = isset($quiz['items']) ? ['title','type','subject','grade','tags','settings','items'] : ['title','type','subject','grade','tags','questions'];
+    return array_intersect_key($quiz, array_flip($keys));
+}
+function aiRevision(array $quiz): string {
+    return hash('sha256', json_encode(aiDocument($quiz), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+}
+function aiOwn(array $quizzes, string $id, string $teacherId): array {
+    if (!isset($quizzes[$id]) || ($quizzes[$id]['teacher_id'] ?? null) !== $teacherId) throw new QuizAiError('Quiz not found in your account.', 404);
+    return $quizzes[$id];
+}
+function aiMarkdown(array $document): string {
+    $text = '# ' . ($document['title'] ?? '') . "\n\n";
+    foreach (($document['items'] ?? $document['questions'] ?? []) as $i => $item) {
+        $legacy = isset($document['questions']); $reverse = !$legacy && ($document['settings']['question_direction'] ?? '') === 'description';
+        if ($legacy) { $prompt = $item['question']; $answer = $item['answer']; $wrongs = array_values(array_filter($item['options'] ?? [], fn($v) => $v !== $answer)); }
+        elseif ($document['type'] === 'glossary') { $prompt = $item['sentence'] . ' — ' . $item['word']; $answer = $item['translation']; $wrongs = $item['wrong_options']; }
+        else { $prompt = $reverse ? $item['description'] : $item['concept']; $answer = $reverse ? $item['concept'] : $item['description'];
+            $wrongs = $reverse ? (($item['reverse_wrong_options'] ?? []) ?: array_values(array_map(fn($v) => $v['concept'], array_filter($document['items'], fn($v) => $v['concept'] !== $answer)))) : $item['wrong_options']; }
+        $text .= '## ' . ($i+1) . '. ' . $prompt . "\n\n- **Rätt svar: " . $answer . "**\n";
+        foreach (array_slice($wrongs, 0, 3) as $wrong) $text .= '- ' . $wrong . "\n";
+        if (!empty($item['image'])) {
+            $image = is_array($item['image']) ? $item['image'] : ['file'=>$item['image'], 'alt'=>$item['image_alt'] ?? 'Frågebild'];
+            $text .= "\n![" . str_replace([']', "\n"], '', $image['alt']) . '](' . aiBaseUrl() . '/api/question-image.php?file=' . rawurlencode($image['file']) . ")\n";
+        }
+        $text .= "\n";
+    }
+    return $text;
+}
+function aiView(array $quiz): array {
+    $legacy = !isset($quiz['items']); $id = $quiz['id'];
+    return ['id'=>$id, 'revision'=>aiRevision($quiz), 'format'=>$legacy ? 'legacy' : 'v2', 'quiz'=>aiDocument($quiz),
+        'student_url'=>aiBaseUrl() . ($legacy ? '/q/' . rawurlencode($id) . '.html' : '/play/index.php?id=' . rawurlencode($id)),
+        'edit_url'=>aiBaseUrl() . ($legacy ? '/edit-quiz.php?quiz_id=' : '/admin/edit.php?id=') . rawurlencode($id),
+        'markdown'=>aiMarkdown(aiDocument($quiz))];
+}
+function aiValidateLegacy(array $input, string $teacherId): array {
+    if (array_diff(array_keys($input), ['title','type','subject','grade','tags','questions'])) throw new QuizAiError('Legacy edits support title, metadata and questions; settings remain unchanged.');
+    $items = [];
+    if (!is_array($input['questions'] ?? null) || !array_is_list($input['questions'])) throw new QuizAiError('Invalid questions.');
+    foreach ($input['questions'] as $q) {
+        if (!is_array($q) || array_diff(array_keys($q), ['question','answer','word','options','reverse_wrong_options','image','image_alt'])) throw new QuizAiError('Invalid legacy question fields.');
+        if (!is_array($q['options'] ?? null) || !array_is_list($q['options'])) throw new QuizAiError('Legacy options must be an array.');
+        $wrong = array_values(array_filter($q['options'] ?? [], fn($v) => $v !== ($q['answer'] ?? null)));
+        $item = ($input['type'] ?? '') === 'glossary' ? ['sentence'=>$q['question'] ?? '', 'word'=>$q['word'] ?? '', 'translation'=>$q['answer'] ?? ''] :
+            ['concept'=>$q['question'] ?? '', 'description'=>$q['answer'] ?? ''];
+        $item['wrong_options'] = $wrong; $item['reverse_wrong_options'] = $q['reverse_wrong_options'] ?? [];
+        $item['image'] = empty($q['image']) ? null : ['file'=>$q['image'], 'alt'=>$q['image_alt'] ?? 'Frågebild'];
+        $items[] = $item;
+    }
+    $modern = $input; unset($modern['questions']); $modern['items'] = $items;
+    $validated = aiValidateDocument($modern, $teacherId);
+    $out = array_intersect_key($validated, array_flip(['title','type','subject','grade','tags'])); $out['questions'] = [];
+    foreach ($validated['items'] as $item) {
+        $glossary = $validated['type'] === 'glossary';
+        $q = ['question'=>$item[$glossary ? 'sentence' : 'concept'], 'answer'=>$item[$glossary ? 'translation' : 'description'],
+            'options'=>array_merge([$item[$glossary ? 'translation' : 'description']], $item['wrong_options'])];
+        if ($glossary) $q['word'] = $item['word'];
+        $q['reverse_wrong_options'] = $item['reverse_wrong_options'];
+        if ($item['image']) { $q['image'] = $item['image']['file']; $q['image_alt'] = $item['image']['alt']; }
+        $out['questions'][] = $q;
+    }
+    return $out;
+}
+function aiSearch(array $actor, array $args): array {
+    $query = aiText($args['query'] ?? '', 'query', 200, false);
+    $limit = $args['limit'] ?? 20; $offset = $args['offset'] ?? 0;
+    if (!is_int($limit) || $limit < 1 || $limit > 50 || !is_int($offset) || $offset < 0) throw new QuizAiError('limit must be 1-50; offset must be nonnegative.');
+    $found = [];
+    foreach (aiRead(QUIZZES_FILE) as $id=>$quiz) {
+        if (($quiz['teacher_id'] ?? '') !== $actor['teacher_id']) continue;
+        $haystack = implode(' ', [$quiz['title'] ?? '', $quiz['subject'] ?? '', $quiz['tags'] ?? '', $id]);
+        if ($query !== '' && preg_match('/' . preg_quote($query, '/') . '/iu', $haystack) !== 1) continue;
+        $view = aiView($quiz);
+        $found[] = ['id'=>$id,'title'=>$quiz['title'],'type'=>$quiz['type'] ?? 'fact','subject'=>$quiz['subject'] ?? '',
+            'question_count'=>count($quiz['items'] ?? $quiz['questions'] ?? []), 'format'=>$view['format'], 'revision'=>$view['revision'], 'student_url'=>$view['student_url']];
+    }
+    usort($found, fn($a,$b)=>strcmp($a['title'],$b['title'])); $total = count($found);
+    return ['quizzes'=>array_slice($found,$offset,$limit),'total_count'=>$total,'has_more'=>$offset+$limit<$total,'next_offset'=>$offset+$limit<$total ? $offset+$limit : null];
+}
+function aiSave(array $actor, array $args, bool $create): array {
+    aiRequireWrite($actor);
+    if (($args['approved'] ?? false) !== true) throw new QuizAiError('Show the complete Markdown draft and images to the user, then obtain explicit approval before saving.', 403);
+    if (!is_array($args['quiz'] ?? null)) throw new QuizAiError('Provide the complete quiz document.');
+    $legacy = isset($args['quiz']['questions']);
+    if ($create && $legacy) throw new QuizAiError('Create new quizzes with v2 items.');
+    $doc = $legacy ? aiValidateLegacy($args['quiz'], $actor['teacher_id']) : aiValidateDocument($args['quiz'], $actor['teacher_id']);
+    $requestId = aiText($args['request_id'] ?? '', 'request_id', 100);
+    if (!preg_match('/^[A-Za-z0-9_-]{8,100}$/D', $requestId)) throw new QuizAiError('Use a unique request_id of 8-100 letters, digits, underscores or hyphens.');
+    $requestHash = hash('sha256', json_encode($doc, JSON_THROW_ON_ERROR));
+    $id = $create ? 'q_' . bin2hex(random_bytes(8)) : aiText($args['id'] ?? '', 'id', 100);
+    $revision = $create ? '' : aiText($args['revision'] ?? '', 'revision', 64);
+    return aiUpdate(QUIZZES_FILE, function (&$quizzes) use ($actor,$doc,$requestId,$requestHash,$id,$revision,$create,$legacy) {
+        foreach ($quizzes as $prior) {
+            $receipt = $prior['ai_requests'][$requestId] ?? null;
+            if (($prior['teacher_id'] ?? '') === $actor['teacher_id'] && $receipt) {
+                if ($receipt['hash'] !== $requestHash || $receipt['create'] !== $create || (!$create && $prior['id'] !== $id))
+                    throw new QuizAiError('request_id was already used for different content.', 409);
+                return aiView($prior);
+            }
+        }
+        if ($create) $quiz = ['id'=>$id, 'teacher_id'=>$actor['teacher_id'], 'created'=>date('Y-m-d H:i:s'), 'results'=>[]];
+        else {
+            $quiz = aiOwn($quizzes,$id,$actor['teacher_id']);
+            if ($legacy !== !isset($quiz['items']) || $doc['type'] !== ($quiz['type'] ?? 'fact')) throw new QuizAiError('Keep the existing quiz format and type.');
+            if (!hash_equals(aiRevision($quiz),$revision)) throw new QuizAiError('Quiz changed since it was read. Read it again, show the updated draft and obtain approval.', 409);
+        }
+        // Merge only the editable document; keep results, progress and unrelated fields.
+        $quiz = array_replace($quiz,$doc); $quiz['updated'] = date('Y-m-d H:i:s');
+        $quiz['ai_requests'][$requestId] = ['hash'=>$requestHash,'create'=>$create];
+        $quizzes[$id] = $quiz;
+        return aiView($quiz);
+    });
+}
