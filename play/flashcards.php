@@ -67,14 +67,12 @@ fetch('../api/quiz-data.php?id=' + encodeURIComponent(QUIZ_ID))
         quizSettings = data.settings;
         quizType = data.type;
         const baseItems = data.items || [];
-        if (quizType === 'fact' && quizSettings?.flashcard_mix_directions) {
-            // En gång från varje håll per begrepp: dubblera listan och tagga
-            // varje kopia med sin riktning och ursprungsindex, oavsett quizets
-            // question_direction.
-            const doubled = baseItems.flatMap((item, i) => [
-                {...item, _dir: 'concept', _origIndex: i},
-                {...item, _dir: 'description', _origIndex: i}
-            ]);
+        if (quizSettings?.flashcard_mix_directions) {
+            // En gång från varje håll per kort: dubblera listan och tagga varje kopia
+            // med sin riktning och ursprungsindex. Faktaquiz: concept/description,
+            // glosor: forward (glosord -> översättning) / reverse (översättning -> glosord).
+            const dirs = quizType === 'fact' ? ['concept', 'description'] : ['forward', 'reverse'];
+            const doubled = baseItems.flatMap((item, i) => dirs.map(d => ({...item, _dir: d, _origIndex: i})));
             items = shuffleNoAdjacentDuplicates(doubled, c => c._origIndex);
         } else {
             items = shuffle(baseItems);
@@ -123,19 +121,29 @@ function shuffleNoAdjacentDuplicates(arr, keyFn) {
     return arr;
 }
 
+// Glosor: glosord/mening är på quizets språk, översättningen alltid på svenska.
+function isGlossReverse(item) { return quizType === 'glossary' && item._dir === 'reverse'; }
 function frontText(item) {
     if (quizType === 'fact') {
         const dir = item._dir || quizSettings?.question_direction || 'concept';
         return dir === 'description' ? (item.description || '') : (item.concept || '');
     }
-    return item.word || '';
+    return isGlossReverse(item) ? (item.translation || '') : (item.word || '');
 }
 function backText(item) {
     if (quizType === 'fact') {
         const dir = item._dir || quizSettings?.question_direction || 'concept';
         return dir === 'description' ? (item.concept || '') : (item.description || '');
     }
-    return item.translation || '';
+    return isGlossReverse(item) ? (item.word || '') : (item.translation || '');
+}
+function frontLang(item) {
+    if (quizType !== 'glossary') return quizSettings?.language;
+    return isGlossReverse(item) ? 'sv' : quizSettings?.language;
+}
+function backLang(item) {
+    if (quizType !== 'glossary') return quizSettings?.language;
+    return isGlossReverse(item) ? quizSettings?.language : 'sv';
 }
 
 function showCard() {
@@ -153,8 +161,10 @@ function playCardTTS() {
     if (!quizSettings?.tts_enabled || quizType === 'fact') return;
     const item = items[currentIndex];
     if (!item) return;
-    if (quizType === 'glossary') speakGlossary(item.sentence, item.word, quizSettings.language);
-    else speakText(item.concept, quizSettings.language);
+    if (quizType === 'glossary') {
+        // Omvänt kort: framsidan är den svenska översättningen — svaret läses när kortet vänds.
+        if (!isGlossReverse(item)) speakGlossary(item.sentence, item.word, quizSettings.language);
+    }
 }
 
 // Uppspelningsknapparna är uttryckliga användarval: de låter även när
@@ -163,21 +173,25 @@ function speakFront(e) {
     if (e) e.stopPropagation();
     const item = items[currentIndex];
     if (!item) return;
-    speakText(frontText(item), quizSettings?.language, true);
+    speakText(frontText(item), frontLang(item), true);
 }
 
 function speakBack(e) {
     if (e) e.stopPropagation();
     const item = items[currentIndex];
     if (!item) return;
-    // Glosor: baksidan är den svenska översättningen.
-    speakText(backText(item), quizType === 'glossary' ? 'sv' : quizSettings?.language, true);
+    speakText(backText(item), backLang(item), true);
 }
 
 function flipCard() {
     const card = document.getElementById('card');
     card.classList.toggle('flipped');
-    // Ingen automatisk uppläsning av baksidan: den läses bara via 🔊 (glosor: svensk röst).
+    // Svaret läses automatiskt när det avslöjas, men bara om det är glosordet på
+    // målspråket (omvänt kort). Svensk baksida läses bara via 🔊.
+    if (card.classList.contains('flipped') && quizSettings?.tts_enabled && quizType === 'glossary') {
+        const item = items[currentIndex];
+        if (item && isGlossReverse(item)) speakText(backText(item), backLang(item));
+    }
 }
 
 function nextCard() {

@@ -110,11 +110,8 @@ function App() {
                     const q = eng.getQuestion(item);
                     if (data.type === 'glossary' && eng.currentDirection() === 'forward' && eng.currentPhase() !== 'text') {
                         speakGlossary(item.sentence, item.word, data.settings.language);
-                    } else if (data.type === 'glossary' && eng.currentDirection() === 'reverse') {
-                        // Omvänd riktning: läs alltid upp glosordet på målspråket (både
-                        // flerval och skrivsvar) — det är uttalet eleven ska öva på här.
-                        speakText(item.word, data.settings.language);
                     }
+                    // Omvänd riktning: prompten är svenska; svaret (glosordet) läses först när det avslöjats.
                     // Faktaquiz läses upp av effekten nedan, utifrån frågan som
                     // faktiskt visas (alternativens ordning slumpas vid varje getQuestion).
                 }
@@ -134,6 +131,10 @@ function App() {
     function showFeedback(payload, delay) {
         setFeedback(payload);
         setStatus('feedback');
+        // Omvänt glosquiz: svaret (glosordet, målspråket) läses upp först när det avslöjats.
+        if (quiz?.settings?.tts_enabled && quiz.type === 'glossary' && payload.direction === 'reverse') {
+            speakText(payload.correctAnswer, quiz.settings.language);
+        }
         setTimeout(() => {
             setFeedback(null);
             setStatus('playing');
@@ -202,10 +203,6 @@ function App() {
         if (!quiz?.settings?.tts_enabled || !item) return;
         if (quiz.type === 'glossary' && engine.currentDirection() === 'forward' && engine.currentPhase() !== 'text') {
             speakGlossary(item.sentence, item.word, quiz.settings.language);
-        } else if (quiz.type === 'glossary' && engine.currentDirection() === 'reverse') {
-            // Omvänd riktning: läs alltid upp glosordet på målspråket (både
-            // flerval och skrivsvar) — det är uttalet eleven ska öva på här.
-            speakText(item.word, quiz.settings.language);
         }
         // Faktaquiz läses upp av effekten ovan när frågan visats.
     }
