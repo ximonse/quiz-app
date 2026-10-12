@@ -259,6 +259,8 @@ function App() {
     const q = engine.getQuestion(item);
     const progress = engine.getProgress();
     const isFact = quiz.type === 'fact';
+    // Alternativen läses upp när de är på quizets språk: faktaquiz, samt glosor i omvänd riktning (glosord).
+    const optionTts = quiz.settings.tts_enabled && (isFact || (quiz.type === 'glossary' && progress.direction === 'reverse'));
     const ttsBtnStyle = {background: 'var(--card-bg)', color: 'var(--text-secondary)', borderColor: 'var(--border)'};
 
     function renderPrompt(promptText, highlightText, direction, phase) {
@@ -355,7 +357,7 @@ function App() {
                                     <button onClick={() => handleAnswer(opt)} className="flex-1 text-left px-4 py-3 rounded-lg border text-sm transition-colors hover:border-blue-400" style={{background: 'var(--card-bg)', color: 'var(--text-primary)', borderColor: 'var(--border)'}}>
                                         {opt}
                                     </button>
-                                    {isFact && quiz.settings.tts_enabled && (
+                                    {optionTts && (
                                         <button onClick={() => speakText(opt, factLang(), true)} className="px-2 text-sm opacity-40 active:opacity-80" style={{background: 'transparent', color: 'var(--text-secondary)'}} aria-label="Lyssna på alternativet" title="Lyssna på alternativet">🔊</button>
                                     )}
                                 </div>
@@ -403,7 +405,7 @@ function App() {
                                 return (
                                     <div key={i} className="flex items-stretch gap-2">
                                         <button disabled className={cls} style={style}>{opt}</button>
-                                        {isFact && quiz.settings.tts_enabled && (
+                                        {optionTts && (
                                             <button disabled aria-hidden="true" className="px-2 text-sm opacity-40" style={{background: 'transparent', color: 'var(--text-secondary)'}}>🔊</button>
                                         )}
                                     </div>

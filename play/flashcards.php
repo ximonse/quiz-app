@@ -42,7 +42,7 @@ if (!$quizId) { header('Location: index.php'); exit; }
             <div class="card-back text-center">
                 <div>
                     <p id="back-text" class="text-xl" style="color: var(--accent)"></p>
-                    <button onclick="speakBack(event)" class="mt-3 text-xs px-2 py-1 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)" title="Lyssna på baksidan">🔊</button>
+                    <button id="speak-back" onclick="speakBack(event)" class="mt-3 text-xs px-2 py-1 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)" title="Lyssna på baksidan">🔊</button>
                 </div>
             </div>
         </div>
@@ -144,6 +144,8 @@ function showCard() {
     const item = items[currentIndex];
     document.getElementById('front-text').textContent = frontText(item);
     document.getElementById('back-text').textContent = backText(item);
+    // Glosor på främmande språk: baksidan är svenska och ska inte läsas upp.
+    document.getElementById('speak-back').style.display = (quizType === 'glossary' && quizSettings?.language !== 'sv') ? 'none' : '';
     document.getElementById('counter').textContent = `${currentIndex + 1}/${items.length}`;
     playCardTTS();
 }
@@ -176,9 +178,9 @@ function speakBack(e) {
 function flipCard() {
     const card = document.getElementById('card');
     card.classList.toggle('flipped');
-    // Läs upp baksidan när kortet vänds (om uppläsning är på) — men inte för
-    // faktaquiz, där uppläsning bara ska ske via 🔊-knapparna.
-    if (card.classList.contains('flipped') && quizSettings?.tts_enabled && quizType !== 'fact') {
+    // Glosor: baksidan är den svenska översättningen — läs bara upp den när
+    // quizet själv är på svenska. Faktaquiz läses bara via 🔊-knapparna.
+    if (card.classList.contains('flipped') && quizSettings?.tts_enabled && quizType === 'glossary' && quizSettings.language === 'sv') {
         const item = items[currentIndex];
         if (item) speakText(backText(item), quizSettings.language);
     }
