@@ -11,8 +11,8 @@ if (!$quizId) { header('Location: index.php'); exit; }
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flashcards</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="../engine/themes.css">
-    <script src="../engine/tts.js"></script>
+    <link rel="stylesheet" href="../engine/themes.css?v=<?= filemtime(__DIR__ . '/../engine/themes.css') ?>">
+    <script src="../engine/tts.js?v=<?= filemtime(__DIR__ . '/../engine/tts.js') ?>"></script>
     <style>
         .card { perspective: 1000px; cursor: pointer; }
         .card-inner { transition: transform 0.5s; transform-style: preserve-3d; position: relative; }
@@ -136,6 +136,14 @@ function backText(item) {
         return dir === 'description' ? (item.concept || '') : (item.description || '');
     }
     return isGlossReverse(item) ? (item.word || '') : (item.translation || '');
+}
+// Faktaquiz: begreppet läses på svenska (förval) eller valt språk
+// (settings.concept_language === 'same'); beskrivningen alltid på valt språk.
+function factConceptLang(settings) {
+    return settings && settings.concept_language === 'same' ? settings.language : 'sv';
+}
+function factDescriptionLang(settings) {
+    return settings ? settings.language : 'sv';
 }
 function factDir(item) { return item._dir || quizSettings?.question_direction || 'concept'; }
 function frontLang(item) {

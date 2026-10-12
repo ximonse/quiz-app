@@ -18,7 +18,7 @@ if (!$quizId || !$studentName) {
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <link rel="stylesheet" href="../engine/themes.css">
+    <link rel="stylesheet" href="../engine/themes.css?v=<?= filemtime(__DIR__ . '/../engine/themes.css') ?>">
     <style>
         @keyframes answerPulseOnce {
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
@@ -48,9 +48,9 @@ if (!$quizId || !$studentName) {
             animation: answerGlowTwice 1.1s ease-in-out 0.35s 1 both;
         }
     </style>
-    <script src="../engine/validator.js"></script>
-    <script src="../engine/tts.js"></script>
-    <script src="../engine/quiz-engine.js"></script>
+    <script src="../engine/validator.js?v=<?= filemtime(__DIR__ . '/../engine/validator.js') ?>"></script>
+    <script src="../engine/tts.js?v=<?= filemtime(__DIR__ . '/../engine/tts.js') ?>"></script>
+    <script src="../engine/quiz-engine.js?v=<?= filemtime(__DIR__ . '/../engine/quiz-engine.js') ?>"></script>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
 <div id="root"></div>
@@ -58,6 +58,15 @@ if (!$quizId || !$studentName) {
 <script type="text/babel">
 const QUIZ_ID = <?= json_encode($quizId) ?>;
 const STUDENT_NAME = <?= json_encode($studentName) ?>;
+
+// Faktaquiz: begreppet läses på svenska (förval) eller valt språk
+// (settings.concept_language === 'same'); beskrivningen alltid på valt språk.
+function factConceptLang(settings) {
+    return settings && settings.concept_language === 'same' ? settings.language : 'sv';
+}
+function factDescriptionLang(settings) {
+    return settings ? settings.language : 'sv';
+}
 
 function App() {
     const [quiz, setQuiz] = React.useState(null);
