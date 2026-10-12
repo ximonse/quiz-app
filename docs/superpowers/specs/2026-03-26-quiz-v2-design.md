@@ -1,5 +1,7 @@
 # Quiz-app v2 — Design Spec
 
+> Historical design record. The replacement is implemented. The old Multi-Quiz application and its navigation have been removed; follow README.md and docs/ai-connection.md for current behavior.
+
 ## Bakgrund
 
 Nuvarande multiquiz har en komplex CSV-prompt som AI:er har svårt att generera korrekt. Koden är inkonsekvent med duplicerad logik, monolitiska filer (2000+ rader), och återkommande buggar i settings-validering och faslogik.

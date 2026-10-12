@@ -345,9 +345,6 @@ foreach ($my_quizzes as $qid => $quiz) {
                     <p class="text-gray-500">Hantera dina quizzes här</p>
                 </div>
                 <div class="flex gap-2">
-                    <a href="multi-quiz-admin.php" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg">
-                        🎯 Multi-Quiz
-                    </a>
                     <a href="flashcards-admin.php" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">
                         🗂️ Flashcard Admin
                     </a>

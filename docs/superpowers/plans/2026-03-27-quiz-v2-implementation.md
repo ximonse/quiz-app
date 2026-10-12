@@ -1,5 +1,7 @@
 # Quiz-app v2 Implementation Plan
 
+> Historical design record. The replacement is implemented. The old Multi-Quiz application and its navigation have been removed; follow README.md and docs/ai-connection.md for current behavior.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the monolithic multiquiz system with two clean quiz types (glossary + fact) sharing a common engine, with simplified CSV formats, time locks, compact admin UI, and student diplomas.
