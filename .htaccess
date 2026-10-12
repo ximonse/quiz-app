@@ -1,6 +1,9 @@
 RewriteEngine On
 RewriteBase /quiz-app/
 
+# Forward Bearer authentication to PHP on CGI/FastCGI hosting.
+RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 # Retired routes must stay unavailable even if an older SFTP upload remains.
 RewriteRule ^(?:multi-quiz-(?:admin|edit|stats|student|variant)\.php|api/save-multi-progress\.php)(?:/.*)?$ - [G,L,NC]
 ErrorDocument 410 "Den här äldre quizversionen har tagits bort. Använd vanliga faktaquiz eller glosquiz."
