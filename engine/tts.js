@@ -192,3 +192,12 @@ function stopSpeech() {
     speechGeneration += 1;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 }
+
+// Faktaquiz: begreppet läses på svenska (förval) eller valt språk
+// (settings.concept_language === 'same'); beskrivningen alltid på valt språk.
+function factConceptLang(settings) {
+    return settings && settings.concept_language === 'same' ? settings.language : 'sv';
+}
+function factDescriptionLang(settings) {
+    return settings ? settings.language : 'sv';
+}

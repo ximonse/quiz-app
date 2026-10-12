@@ -69,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
                 'settings' => [
                     'answer_mode' => $answerMode,
                     'question_direction' => $type === 'fact' ? $questionDirection : 'concept',
+                    'concept_language' => (($_POST['concept_language'] ?? 'sv') === 'same') ? 'same' : 'sv',
                     'required_correct' => max(1, intval($_POST['required_correct'] ?? 1)),
                     'reverse_enabled' => $reverseEnabled,
                     'reverse_answer_mode' => $reverseAnswerMode,
@@ -401,6 +402,12 @@ Nu, invänta mitt material.</pre>
                             <option value="description" <?= oldSelected('question_direction', 'description', 'concept') ?>>Beskrivning → skriv/välj begrepp</option>
                         </select>
                         <p class="text-xs text-gray-500 mt-1">Vid Skrivsvar/Hybrid: välj "Beskrivning" om beskrivningarna är hela meningar — då skriver eleven det korta begreppet istället.</p>
+                    <label class="block text-xs text-gray-500 mb-1 mt-2">Begreppet läses på</label>
+                    <select name="concept_language" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <option value="sv" <?= oldSelected('concept_language', 'sv', 'sv') ?>>Svenska</option>
+                        <option value="same" <?= oldSelected('concept_language', 'same', 'sv') ?>>Valt språk</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Läses begreppet på svenska eller på det valda språket? Beskrivningen läses alltid på det valda språket.</p>
                     </div>
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Quizläge</label>

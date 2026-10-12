@@ -72,6 +72,14 @@ function App() {
     const [muted, setMuted] = React.useState(() => ttsIsMuted());
 
     function factLang() { return quiz?.settings?.language; }
+    // Faktaquiz: språket beror på om texten är begrepp eller beskrivning.
+    // Framåt: prompt = begrepp, alternativ = beskrivningar. Omvänt tvärtom.
+    function factPromptLang(direction) {
+        return direction === 'reverse' ? factDescriptionLang(quiz?.settings) : factConceptLang(quiz?.settings);
+    }
+    function factOptionLang(direction) {
+        return direction === 'reverse' ? factConceptLang(quiz?.settings) : factDescriptionLang(quiz?.settings);
+    }
 
     // Faktaquiz läses bara upp när eleven trycker på en 🔊-knapp (ingen autouppspelning).
 
@@ -259,7 +267,7 @@ function App() {
     // Språk per sida: glosor har glosord/mening på quizets språk och översättning på svenska.
     // Framåt: alternativen är svenska. Omvänt: prompten är svensk, alternativen glosord.
     const isGlossary = quiz.type === 'glossary';
-    const optionLang = (isGlossary && progress.direction === 'forward') ? 'sv' : factLang();
+    const optionLang = isGlossary ? (progress.direction === 'forward' ? 'sv' : factLang()) : factOptionLang(progress.direction);
     const optionTts = quiz.settings.tts_enabled;
     const ttsBtnStyle = {background: 'var(--card-bg)', color: 'var(--text-secondary)', borderColor: 'var(--border)'};
 
@@ -350,7 +358,7 @@ function App() {
                     )}
 
                     {isFact && quiz.settings.tts_enabled && (
-                        <button onClick={() => speakText(q.prompt, factLang(), true)} className="mt-3 text-xs px-2 py-1 rounded border" style={ttsBtnStyle} title="Lyssna på frågan">🔊 Lyssna</button>
+                        <button onClick={() => speakText(q.prompt, factPromptLang(progress.direction), true)} className="mt-3 text-xs px-2 py-1 rounded border" style={ttsBtnStyle} title="Lyssna på frågan">🔊 Lyssna</button>
                     )}
 
                     {/* Multiple choice options */}

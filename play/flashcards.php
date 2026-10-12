@@ -137,11 +137,14 @@ function backText(item) {
     }
     return isGlossReverse(item) ? (item.word || '') : (item.translation || '');
 }
+function factDir(item) { return item._dir || quizSettings?.question_direction || 'concept'; }
 function frontLang(item) {
+    if (quizType === 'fact') return factDir(item) === 'description' ? factDescriptionLang(quizSettings) : factConceptLang(quizSettings);
     if (quizType !== 'glossary') return quizSettings?.language;
     return isGlossReverse(item) ? 'sv' : quizSettings?.language;
 }
 function backLang(item) {
+    if (quizType === 'fact') return factDir(item) === 'description' ? factConceptLang(quizSettings) : factDescriptionLang(quizSettings);
     if (quizType !== 'glossary') return quizSettings?.language;
     return isGlossReverse(item) ? quizSettings?.language : 'sv';
 }

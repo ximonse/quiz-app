@@ -108,6 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'settings' => [
                         'answer_mode' => $answerMode,
                         'question_direction' => $type === 'fact' ? $questionDirection : 'concept',
+                        'concept_language' => (($_POST['concept_language'] ?? 'sv') === 'same') ? 'same' : 'sv',
                         'required_correct' => max(1, intval($_POST['required_correct'] ?? 2)),
                         'reverse_enabled' => $reverseEnabled,
                         'reverse_answer_mode' => $reverseAnswerMode,
@@ -211,6 +212,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <option value="concept" <?= oldSelected('question_direction', 'concept', 'concept') ?>>Begrepp → skriv/välj beskrivning</option>
                         <option value="description" <?= oldSelected('question_direction', 'description', 'concept') ?>>Beskrivning → skriv/välj begrepp</option>
                     </select>
+                    <label class="block text-xs mb-1 mt-2" style="color: var(--text-secondary)">Begreppet läses på</label>
+                    <select name="concept_language" class="w-full px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                        <option value="sv" <?= oldSelected('concept_language', 'sv', 'sv') ?>>Svenska</option>
+                        <option value="same" <?= oldSelected('concept_language', 'same', 'sv') ?>>Valt språk</option>
+                    </select>
+                    <p class="text-xs mt-1" style="color: var(--text-secondary)">Läses begreppet på svenska eller på det valda språket? Beskrivningen läses alltid på det valda språket.</p>
                 </div>
                 <div>
                     <label class="block text-xs mb-1" style="color: var(--text-secondary)">Quizläge</label>
