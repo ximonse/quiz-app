@@ -23,7 +23,7 @@ Every text or image-choice question can have an optional information picture in 
 
 ## Image-choice quizzes
 
-Use `type: image_choice`. Each item has a spoken/written `question`, 2–6 `choices` with stable IDs, and optional `image` for an information picture. Each choice has `id`, `image: {file, alt}`, and boolean `correct`. At least one must be correct. Upload bytes first with `quiz_upload_image`; use the returned filename. The teacher can replace/add/remove pictures, edit descriptions/question text and toggle which pictures are correct in **Redigera bildfrågorna**.
+Use `type: image_choice`. Each item has a spoken/written `question`, 2–6 `choices` with stable IDs, and optional `image` for an information picture. Each choice has `id`, `image: {file, alt}`, and boolean `correct`. At least one must be correct. Upload bytes first with `quiz_upload_image`; use the returned filename. The teacher can replace/add/remove pictures, edit descriptions/question text and toggle which pictures are correct in **Redigera bildfrågorna**. Answer buttons have a landscape 4:3 viewport. When prompting any image-generating AI, request a separate landscape 4:3 image for each choice, without text labels and with the whole subject away from the edges. The editor can adjust the visible crop afterward; the original image file is retained.
 
 ```json
 {
