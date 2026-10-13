@@ -38,6 +38,14 @@ $result = [
     'errors' => $input['errors'] ?? []
 ];
 
+if (($quiz['type'] ?? '') === 'image_choice' && isset($input['choice_counts']) && is_array($input['choice_counts'])) {
+    $counts = $input['choice_counts'];
+    if (count(array_filter(['right', 'wrong', 'missed'], fn($key) =>
+        isset($counts[$key]) && is_int($counts[$key]) && $counts[$key] >= 0)) === 3) {
+        $result['choice_counts'] = array_intersect_key($counts, array_flip(['right', 'wrong', 'missed']));
+    }
+}
+
 updateJSONLocked(QUIZZES_FILE, function (&$lockedQuizzes) use ($quizId, $result) {
     if (!isset($lockedQuizzes[$quizId])) throw new RuntimeException('Quiz not found');
     $lockedQuizzes[$quizId]['results'][] = $result;

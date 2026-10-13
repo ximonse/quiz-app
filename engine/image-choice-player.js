@@ -28,8 +28,13 @@
         item.choices.forEach((choice,index)=>{
             const button=document.createElement('button'); button.className='choice'; button.dataset.id=choice.id;
             button.setAttribute('aria-pressed','false'); button.setAttribute('aria-label',`Bild ${index+1}: ${choice.image.alt}`);
-            button.append(imageNode(choice.image));
-            const status=document.createElement('span'); status.className='choice-status'; status.textContent=`Bild ${index+1}`; button.append(status);
+            const image=imageNode(choice.image);
+            const crop=choice.image.crop||{x:50,y:50,zoom:100};
+            image.style.setProperty('--crop-x',crop.x+'%');
+            image.style.setProperty('--crop-y',crop.y+'%');
+            image.style.setProperty('--crop-zoom',String(crop.zoom/100));
+            button.append(image);
+            const status=document.createElement('span'); status.className='choice-status'; button.append(status);
             button.addEventListener('click',()=>{
                 if (submitted) return;
                 if (multiple) {
@@ -46,7 +51,7 @@
         const result=engine.submit([...selected]); updateProgress();
         for (const button of $('choices').querySelectorAll('button')) {
             const state=result.statuses[button.dataset.id]; button.disabled=true;
-            if (state) { const label={correct:'✓ Rätt',wrong:'✕ Fel',missed:'! Missad'}[state]; button.classList.add(state); button.querySelector('.choice-status').textContent=label; button.setAttribute('aria-label',button.getAttribute('aria-label')+'. '+label); }
+            if (state) { const label={correct:'✓ Rätt!',wrong:'✕ Fel',missed:'✓ Rätt!'}[state]; button.classList.add(state); button.querySelector('.choice-status').textContent=label; button.setAttribute('aria-label',button.getAttribute('aria-label')+'. '+(state==='missed'?'Rätt svar, missat':label)); }
         }
         $('feedback').textContent=`${result.right} rätt · ${result.wrong} fel · ${result.missed} missade`;
         $('check').hidden=true; $('next').hidden=false;

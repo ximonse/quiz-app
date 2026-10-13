@@ -162,65 +162,6 @@ $s = $quiz['settings'];
             <input type="text" name="title" value="<?= htmlspecialchars($quiz['title']) ?>" required class="w-full px-3 py-2 border rounded-lg" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
         </div>
 
-        <div>
-            <div class="flex items-center justify-between mb-2">
-                <label class="block text-sm font-medium" style="color: var(--text-primary)">Frågor (<?= count($quiz['items']) ?>)</label>
-                <button type="button" onclick="addItemRow()" class="text-xs px-2 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-700">+ Lägg till <?= $quiz['type'] === 'glossary' ? 'glosa' : 'fråga' ?></button>
-            </div>
-            <div id="items-editor" class="space-y-3">
-                <?php foreach ($quiz['items'] as $itemIndex => $item): ?>
-                    <?php if ($quiz['type'] === 'glossary'): ?>
-                    <div data-original-index="<?= $itemIndex ?>" class="item-row border rounded-lg p-3" style="border-color: var(--border)">
-                        <div class="flex items-start gap-2 mb-2">
-                            <input type="text" data-field="mening" value="<?= htmlspecialchars($item['sentence'] ?? '') ?>" placeholder="Mening" class="flex-1 px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                            <button type="button" onclick="removeItemRow(this)" title="Ta bort" class="text-red-500 hover:text-red-700 shrink-0 px-1">🗑️</button>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 mb-2">
-                            <input type="text" data-field="ord" value="<?= htmlspecialchars($item['word'] ?? '') ?>" placeholder="Ord" class="px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                            <input type="text" data-field="oversattning" value="<?= htmlspecialchars($item['translation'] ?? '') ?>" placeholder="Översättning" class="px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                        </div>
-                        <div class="grid grid-cols-3 gap-2 mb-2">
-                            <input type="text" data-field="fel1" value="<?= htmlspecialchars($item['wrong_options'][0] ?? '') ?>" placeholder="Fel 1" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                            <input type="text" data-field="fel2" value="<?= htmlspecialchars($item['wrong_options'][1] ?? '') ?>" placeholder="Fel 2" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                            <input type="text" data-field="fel3" value="<?= htmlspecialchars($item['wrong_options'][2] ?? '') ?>" placeholder="Fel 3" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                        </div>
-                        <div class="grid grid-cols-3 gap-2">
-                            <input type="text" data-field="ofel1" value="<?= htmlspecialchars($item['reverse_wrong_options'][0] ?? '') ?>" placeholder="Omvänt fel 1 (valfri)" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                            <input type="text" data-field="ofel2" value="<?= htmlspecialchars($item['reverse_wrong_options'][1] ?? '') ?>" placeholder="Omvänt fel 2 (valfri)" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                            <input type="text" data-field="ofel3" value="<?= htmlspecialchars($item['reverse_wrong_options'][2] ?? '') ?>" placeholder="Omvänt fel 3 (valfri)" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                        </div>
-                    </div>
-                    <?php else: ?>
-                    <div data-original-index="<?= $itemIndex ?>" class="item-row border rounded-lg p-3" style="border-color: var(--border)">
-                        <div class="flex items-start gap-2 mb-2">
-                            <input type="text" data-field="begrepp" value="<?= htmlspecialchars($item['concept'] ?? '') ?>" placeholder="Begrepp" class="flex-1 px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                            <button type="button" onclick="removeItemRow(this)" title="Ta bort" class="text-red-500 hover:text-red-700 shrink-0 px-1">🗑️</button>
-                        </div>
-                        <textarea data-field="beskrivning" placeholder="Beskrivning" rows="2" class="w-full px-2 py-1 border rounded text-sm mb-2" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)"><?= htmlspecialchars($item['description'] ?? '') ?></textarea>
-                        <div class="grid grid-cols-3 gap-2">
-                            <input type="text" data-field="ffel1" value="<?= htmlspecialchars($item['wrong_options'][0] ?? '') ?>" placeholder="Fel 1" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                            <input type="text" data-field="ffel2" value="<?= htmlspecialchars($item['wrong_options'][1] ?? '') ?>" placeholder="Fel 2" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                            <input type="text" data-field="ffel3" value="<?= htmlspecialchars($item['wrong_options'][2] ?? '') ?>" placeholder="Fel 3" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
-                        </div>
-                    </div>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </div>
-
-            <div class="mt-3">
-                <button type="button" onclick="toggleBulkReplace()" class="text-xs text-purple-600 hover:text-purple-800 font-medium">Eller klistra in/ladda upp en CSV-lista</button>
-                <div id="bulk-replace-box" class="hidden mt-2">
-                    <input type="file" id="bulk-csv-file" accept=".txt,.csv" onchange="loadBulkCsvFile(this)" class="w-full text-xs mb-2" style="color: var(--text-primary)">
-                    <textarea id="bulk-csv-textarea" rows="2" placeholder="...eller klistra in CSV här" class="w-full px-3 py-2 border rounded-lg font-mono text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" oninput="growBulkTextArea()"></textarea>
-                    <label class="flex items-center gap-2 text-xs mt-2 cursor-pointer" style="color: var(--text-primary)">
-                        <input type="checkbox" id="append-mode-checkbox" checked> Lägg till som nya frågor (annars ersätts alla frågor ovan)
-                    </label>
-                </div>
-            </div>
-
-            <input type="hidden" name="csv_data" id="csv_data_hidden">
-        </div>
-
         <fieldset class="border rounded-lg p-4" style="border-color: var(--border)">
             <legend class="text-sm font-medium px-2" style="color: var(--text-primary)">Inställningar</legend>
             <div class="grid grid-cols-2 gap-4">
@@ -323,6 +264,65 @@ $s = $quiz['settings'];
                 </div>
             </div>
         </fieldset>
+
+        <div>
+            <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium" style="color: var(--text-primary)">Frågor (<?= count($quiz['items']) ?>)</label>
+                <button type="button" onclick="addItemRow()" class="text-xs px-2 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-700">+ Lägg till <?= $quiz['type'] === 'glossary' ? 'glosa' : 'fråga' ?></button>
+            </div>
+            <div id="items-editor" class="space-y-3">
+                <?php foreach ($quiz['items'] as $itemIndex => $item): ?>
+                    <?php if ($quiz['type'] === 'glossary'): ?>
+                    <div data-original-index="<?= $itemIndex ?>" class="item-row border rounded-lg p-3" style="border-color: var(--border)">
+                        <div class="flex items-start gap-2 mb-2">
+                            <input type="text" data-field="mening" value="<?= htmlspecialchars($item['sentence'] ?? '') ?>" placeholder="Mening" class="flex-1 px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <button type="button" onclick="removeItemRow(this)" title="Ta bort" class="text-red-500 hover:text-red-700 shrink-0 px-1">🗑️</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <input type="text" data-field="ord" value="<?= htmlspecialchars($item['word'] ?? '') ?>" placeholder="Ord" class="px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <input type="text" data-field="oversattning" value="<?= htmlspecialchars($item['translation'] ?? '') ?>" placeholder="Översättning" class="px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 mb-2">
+                            <input type="text" data-field="fel1" value="<?= htmlspecialchars($item['wrong_options'][0] ?? '') ?>" placeholder="Fel 1" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <input type="text" data-field="fel2" value="<?= htmlspecialchars($item['wrong_options'][1] ?? '') ?>" placeholder="Fel 2" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <input type="text" data-field="fel3" value="<?= htmlspecialchars($item['wrong_options'][2] ?? '') ?>" placeholder="Fel 3" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="text" data-field="ofel1" value="<?= htmlspecialchars($item['reverse_wrong_options'][0] ?? '') ?>" placeholder="Omvänt fel 1 (valfri)" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <input type="text" data-field="ofel2" value="<?= htmlspecialchars($item['reverse_wrong_options'][1] ?? '') ?>" placeholder="Omvänt fel 2 (valfri)" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <input type="text" data-field="ofel3" value="<?= htmlspecialchars($item['reverse_wrong_options'][2] ?? '') ?>" placeholder="Omvänt fel 3 (valfri)" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                        </div>
+                    </div>
+                    <?php else: ?>
+                    <div data-original-index="<?= $itemIndex ?>" class="item-row border rounded-lg p-3" style="border-color: var(--border)">
+                        <div class="flex items-start gap-2 mb-2">
+                            <input type="text" data-field="begrepp" value="<?= htmlspecialchars($item['concept'] ?? '') ?>" placeholder="Begrepp" class="flex-1 px-2 py-1 border rounded text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <button type="button" onclick="removeItemRow(this)" title="Ta bort" class="text-red-500 hover:text-red-700 shrink-0 px-1">🗑️</button>
+                        </div>
+                        <textarea data-field="beskrivning" placeholder="Beskrivning" rows="2" class="w-full px-2 py-1 border rounded text-sm mb-2" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)"><?= htmlspecialchars($item['description'] ?? '') ?></textarea>
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="text" data-field="ffel1" value="<?= htmlspecialchars($item['wrong_options'][0] ?? '') ?>" placeholder="Fel 1" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <input type="text" data-field="ffel2" value="<?= htmlspecialchars($item['wrong_options'][1] ?? '') ?>" placeholder="Fel 2" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                            <input type="text" data-field="ffel3" value="<?= htmlspecialchars($item['wrong_options'][2] ?? '') ?>" placeholder="Fel 3" class="px-2 py-1 border rounded text-xs" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)">
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="mt-3">
+                <button type="button" onclick="toggleBulkReplace()" class="text-xs text-purple-600 hover:text-purple-800 font-medium">Eller klistra in/ladda upp en CSV-lista</button>
+                <div id="bulk-replace-box" class="hidden mt-2">
+                    <input type="file" id="bulk-csv-file" accept=".txt,.csv" onchange="loadBulkCsvFile(this)" class="w-full text-xs mb-2" style="color: var(--text-primary)">
+                    <textarea id="bulk-csv-textarea" rows="2" placeholder="...eller klistra in CSV här" class="w-full px-3 py-2 border rounded-lg font-mono text-sm" style="background: var(--card-bg); color: var(--text-primary); border-color: var(--border)" oninput="growBulkTextArea()"></textarea>
+                    <label class="flex items-center gap-2 text-xs mt-2 cursor-pointer" style="color: var(--text-primary)">
+                        <input type="checkbox" id="append-mode-checkbox" checked> Lägg till som nya frågor (annars ersätts alla frågor ovan)
+                    </label>
+                </div>
+            </div>
+
+            <input type="hidden" name="csv_data" id="csv_data_hidden">
+        </div>
 
         <button type="submit" class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Spara för granskning</button>
     </form>

@@ -104,10 +104,15 @@ check(count(aiRead(QUIZZES_FILE)[$created['id']]['results'])===1,'Publishing los
 rejects(fn()=>aiCall($actor,'quiz_publish',['id'=>$created['id']]),404);
 $secondImage=aiStoreImage($png,'teacher-a');
 $pictureQuiz=['title'=>'Bildval','type'=>'image_choice','items'=>[['question'=>'Vilken visar en ramp?',
-    'choices'=>[['id'=>'a','image'=>['file'=>$uploaded['image'],'alt'=>'Bild A'],'correct'=>true],
+    'choices'=>[['id'=>'a','image'=>['file'=>$uploaded['image'],'alt'=>'Bild A','crop'=>['x'=>70,'y'=>25,'zoom'=>150]],'correct'=>true],
                 ['id'=>'b','image'=>['file'=>$secondImage['image'],'alt'=>'Bild B'],'correct'=>false]]]]];
 $picture=aiCall($actor,'quiz_create',['quiz'=>$pictureQuiz,'request_id'=>'image-quiz-0001']);
 check($picture['publication']==='draft' && str_contains($picture['markdown'],'Bild 1 — **Rätt**'),'Image quiz creation/Markdown failed.');
+check(aiCall($actor,'quiz_get',['id'=>$picture['id']])['quiz']['items'][0]['choices'][0]['image']['crop']===['x'=>70,'y'=>25,'zoom'=>150],
+    'Image crop was not preserved.');
+$invalidCrop=$pictureQuiz; $invalidCrop['items'][0]['choices'][0]['image']['crop']['zoom']=301;
+rejects(fn()=>aiCall($actor,'quiz_preview',['quiz'=>$invalidCrop]),400);
+
 rejects(fn()=>aiStudentQuiz(aiRead(QUIZZES_FILE)[$picture['id']],true),403);
 $_SESSION['teacher_id']='teacher-a';
 check(aiStudentQuiz(aiRead(QUIZZES_FILE)[$picture['id']],true)['type']==='image_choice','Owner cannot preview draft.');
