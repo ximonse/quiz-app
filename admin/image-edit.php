@@ -45,10 +45,10 @@ function editorEscape($v) { return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8
 <?php if (isset($_GET['saved'])): ?><p class="success" role="status">Sparat för granskning. Publicera när du är nöjd.</p><?php endif; ?>
 <form method="post" enctype="multipart/form-data" id="image-editor"><?= csrfField() ?><input type="hidden" name="revision" value="<?= $revision ?>"><input type="hidden" name="request_id" value="<?= bin2hex(random_bytes(16)) ?>"><input type="hidden" name="items_json" id="items-json">
 <label for="title">Titel</label><input id="title" name="title" type="text" required maxlength="300" value="<?= editorEscape($doc['title']) ?>">
-<div id="editor-questions"></div><button type="button" id="add-question" class="secondary">+ Lägg till fråga</button>
 <section class="question-card"><h2>Inställningar</h2><label><input type="checkbox" name="tts_enabled" <?= $doc['settings']['tts_enabled']?'checked':'' ?>> Läs upp frågan</label>
 <label for="quiz-mode">Quizläge</label><select id="quiz-mode" name="quiz_mode"><option value="training" <?= $doc['settings']['quiz_mode']==='training'?'selected':'' ?>>Träning med repetition</option><option value="test" <?= $doc['settings']['quiz_mode']==='test'?'selected':'' ?>>Test — en genomgång</option></select>
 <label for="required">Rätt per fråga i träning</label><input id="required" name="required_correct" type="number" min="1" max="10" value="<?= (int)$doc['settings']['required_correct'] ?>">
 <label for="language">Språk för uppläsning</label><select id="language" name="language"><?php foreach (['sv'=>'Svenska','en'=>'Engelska','es'=>'Spanska','de'=>'Tyska','fr'=>'Franska','uk'=>'Ukrainska'] as $code=>$label): ?><option value="<?= $code ?>" <?= $doc['settings']['language']===$code?'selected':'' ?>><?= $label ?></option><?php endforeach; ?></select></section>
+<div id="editor-questions"></div><button type="button" id="add-question" class="secondary">+ Lägg till fråga</button>
 <footer class="publish-bar"><button>Spara för granskning</button></footer></form></main>
 <script>const INITIAL_IMAGE_ITEMS=<?= json_encode($doc['items'],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>;</script><script src="../engine/image-choice-editor.js?v=<?= filemtime(__DIR__ . '/../engine/image-choice-editor.js') ?>"></script></body></html>
