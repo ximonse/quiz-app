@@ -15,11 +15,12 @@ function evaluateImageChoices(item, selectedIds) {
 function ImageChoiceEngine(items, settings = {}) {
     const queue = items.map((item,index) => ({...item, index}));
     const required = settings.quiz_mode === 'test' ? 1 : Math.max(1, settings.required_correct || 1);
-    const mastery = {}; const errors = []; let mastered = 0, attempts = 0, mistakes = 0;
+    const mastery = {}; const errors = []; const choiceCounts = {right:0,wrong:0,missed:0}; let mastered = 0, attempts = 0, mistakes = 0;
     function current() { return queue[0] || null; }
     function submit(selectedIds) {
         const item = current(); if (!item) throw new Error('Quiz complete');
         const result = evaluateImageChoices(item, selectedIds); attempts++;
+        choiceCounts.right += result.right; choiceCounts.wrong += result.wrong; choiceCounts.missed += result.missed;
         if (result.correct) {
             mastery[item.index] = (mastery[item.index] || 0) + 1;
             if (mastery[item.index] >= required) { mastered++; queue.shift(); }
@@ -33,7 +34,7 @@ function ImageChoiceEngine(items, settings = {}) {
         return result;
     }
     function progress() { return {mastered,total:items.length,attempts,mistakes,required,complete:queue.length===0}; }
-    function results() { return {score:mastered,total:attempts,errors:[...errors]}; }
+    function results() { return {score:mastered,total:attempts,errors:[...errors],choice_counts:{...choiceCounts}}; }
     return {current,submit,progress,results};
 }
 if (typeof module !== 'undefined') module.exports = {evaluateImageChoices,ImageChoiceEngine};

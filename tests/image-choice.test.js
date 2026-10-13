@@ -25,6 +25,7 @@ test('training repeats wrong questions and honors required correct repetitions',
     engine.submit(['ramp_a','ramp_b','ramp_c']); assert.equal(engine.progress().complete,true);
     assert.equal(engine.results().errors[0].missed,2);
     assert.equal(engine.results().score,1);
+    assert.deepEqual(engine.results().choice_counts,{right:7,wrong:0,missed:2});
 });
 test('single-choice test completes after one attempt and preserves input/info image',()=>{
     const single={question:'Vilken är en hävstång?',image:{file:'info.png',alt:'Infobild'},choices:[{id:'lever',correct:true},{id:'ramp',correct:false}]};
@@ -32,5 +33,6 @@ test('single-choice test completes after one attempt and preserves input/info im
     assert.equal(engine.current().image.alt,'Infobild'); engine.submit(['ramp']);
     assert.equal(engine.progress().complete,true); assert.equal(engine.results().score,0);
     assert.equal(engine.results().errors[0].selected_wrong,1); assert.equal(engine.results().errors[0].missed,1);
+    assert.deepEqual(engine.results().choice_counts,{right:0,wrong:1,missed:1});
     assert.equal(JSON.stringify(single),before);
 });

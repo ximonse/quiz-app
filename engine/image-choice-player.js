@@ -46,7 +46,7 @@
         const result=engine.submit([...selected]); updateProgress();
         for (const button of $('choices').querySelectorAll('button')) {
             const state=result.statuses[button.dataset.id]; button.disabled=true;
-            if (state) { const label={correct:'✓ Rätt',wrong:'✕ Fel',missed:'! Missad'}[state]; button.classList.add(state); button.querySelector('.choice-status').textContent=label; button.setAttribute('aria-label',button.getAttribute('aria-label')+'. '+label); }
+            if (state) { const label={correct:'✓ Rätt!',wrong:'✕ Fel',missed:'✓ Rätt!'}[state]; button.classList.add(state); button.querySelector('.choice-status').textContent=label; button.setAttribute('aria-label',button.getAttribute('aria-label')+'. '+(state==='missed'?'Rätt svar, missat':label)); }
         }
         $('feedback').textContent=`${result.right} rätt · ${result.wrong} fel · ${result.missed} missade`;
         $('check').hidden=true; $('next').hidden=false;

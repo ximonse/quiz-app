@@ -94,9 +94,18 @@ if (count($results) > 0) {
         <?php else: ?>
             <div class="space-y-1">
             <?php foreach (array_reverse(array_slice($results, -20)) as $r): ?>
-                <div class="flex items-center justify-between py-1">
-                    <span class="text-sm" style="color: var(--text-primary)"><?= htmlspecialchars($r['student_name']) ?></span>
-                    <div class="flex items-center gap-2">
+                <div class="flex items-center justify-between gap-3 py-2 border-b" style="border-color: var(--border)">
+                    <div>
+                        <div class="text-sm" style="color: var(--text-primary)"><?= htmlspecialchars($r['student_name']) ?></div>
+                        <?php if ($quiz['type'] === 'image_choice'): ?>
+                            <?php if (isset($r['choice_counts']['right'], $r['choice_counts']['wrong'], $r['choice_counts']['missed'])): ?>
+                                <div class="text-xs" style="color: var(--text-secondary)">Bildval: <?= (int)$r['choice_counts']['right'] ?> rätt · <?= (int)$r['choice_counts']['wrong'] ?> fel · <?= (int)$r['choice_counts']['missed'] ?> missade</div>
+                            <?php else: ?>
+                                <div class="text-xs" style="color: var(--text-secondary)">Bildval: uppdelning saknas för äldre resultat</div>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
                         <span class="text-sm font-medium" style="color: var(--accent)"><?= $r['score'] ?>/<?= $r['total'] ?></span>
                         <span class="text-xs" style="color: var(--text-secondary)"><?= date('j/n H:i', strtotime($r['timestamp'])) ?></span>
                     </div>
