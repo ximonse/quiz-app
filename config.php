@@ -12,7 +12,11 @@ $super_admin_password = getenv('SUPER_ADMIN_PASSWORD');
 if ($super_admin_password === false || $super_admin_password === '') {
     $local_config = __DIR__ . '/config.local.php';
     if (file_exists($local_config)) {
+        // Stray output (blanksteg runt PHP-taggarna) i config.local.php får inte hamna i svaren,
+        // t.ex. före PNG-signaturen i bilder.
+        ob_start();
         require $local_config;
+        ob_end_clean();
     }
 }
 if (!defined('SUPER_ADMIN_PASSWORD')) {

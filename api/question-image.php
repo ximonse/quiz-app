@@ -7,6 +7,7 @@ if (!is_string($name) || !preg_match('/^(ai_[a-f0-9]{32}|img_[a-f0-9]{8})\.(png|
 }
 $info=@getimagesize(IMAGE_DIR.$name);
 if (!$info || !in_array($info['mime'],['image/png','image/jpeg','image/webp','image/gif'],true)) { http_response_code(404); exit; }
+while (ob_get_level() > 0) ob_end_clean(); // inga stray-tecken före bildbytes
 header('Content-Type: '.$info['mime']); header('X-Content-Type-Options: nosniff');
 header('Cache-Control: public, max-age=86400');
 header('Content-Security-Policy: default-src \'none\'; sandbox');
