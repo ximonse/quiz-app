@@ -28,8 +28,13 @@
         item.choices.forEach((choice,index)=>{
             const button=document.createElement('button'); button.className='choice'; button.dataset.id=choice.id;
             button.setAttribute('aria-pressed','false'); button.setAttribute('aria-label',`Bild ${index+1}: ${choice.image.alt}`);
-            button.append(imageNode(choice.image));
-            const status=document.createElement('span'); status.className='choice-status'; status.textContent=`Bild ${index+1}`; button.append(status);
+            const image=imageNode(choice.image);
+            const crop=choice.image.crop||{x:50,y:50,zoom:100};
+            image.style.setProperty('--crop-x',crop.x+'%');
+            image.style.setProperty('--crop-y',crop.y+'%');
+            image.style.setProperty('--crop-zoom',String(crop.zoom/100));
+            button.append(image);
+            const status=document.createElement('span'); status.className='choice-status'; button.append(status);
             button.addEventListener('click',()=>{
                 if (submitted) return;
                 if (multiple) {

@@ -33,5 +33,15 @@ function aiValidateImage($image, string $teacherId): ?array {
     }
     if ((!aiImageName($name) && !$legacyOwned) || ($owner !== $teacherId && !$legacyOwned) || !is_file(IMAGE_DIR . $name))
         throw new QuizAiError('Upload the image with this teacher account first.');
-    return ['file' => $name, 'alt' => aiText($image['alt'] ?? '', 'image.alt', 500)];
+    $validated = ['file' => $name, 'alt' => aiText($image['alt'] ?? '', 'image.alt', 500)];
+    if (isset($image['crop'])) {
+        $crop = $image['crop'];
+        if (!is_array($crop) || array_diff(array_keys($crop), ['x', 'y', 'zoom'])) throw new QuizAiError('Invalid image crop.');
+        foreach (['x'=>[0,100], 'y'=>[0,100], 'zoom'=>[100,300]] as $key=>$range) {
+            if (!isset($crop[$key]) || !is_int($crop[$key]) || $crop[$key] < $range[0] || $crop[$key] > $range[1])
+                throw new QuizAiError('Invalid image crop.');
+        }
+        $validated['crop'] = ['x'=>$crop['x'], 'y'=>$crop['y'], 'zoom'=>$crop['zoom']];
+    }
+    return $validated;
 }
