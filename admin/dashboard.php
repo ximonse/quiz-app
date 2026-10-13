@@ -13,14 +13,15 @@ $success = '';
 // Håll formuläret ifyllt om ett POST-försök misslyckas (t.ex. CSV-parsefel),
 // så läraren slipper skriva om titel/CSV/inställningar från noll.
 function old($key, $default = '') {
-    return htmlspecialchars($_POST[$key] ?? $default, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars(($GLOBALS['error'] && ($_POST['action'] ?? '') === 'create') ? ($_POST[$key] ?? $default) : $default, ENT_QUOTES, 'UTF-8');
 }
 function oldChecked($key, $defaultOnGet = false) {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') return $defaultOnGet ? 'checked' : '';
+    if (!$GLOBALS['error'] || ($_POST['action'] ?? '') !== 'create') return $defaultOnGet ? 'checked' : '';
     return isset($_POST[$key]) ? 'checked' : '';
 }
 function oldSelected($key, $value, $default) {
-    return (($_POST[$key] ?? $default) === $value) ? 'selected' : '';
+    $selected = ($GLOBALS['error'] && ($_POST['action'] ?? '') === 'create') ? ($_POST[$key] ?? $default) : $default;
+    return ($selected === $value) ? 'selected' : '';
 }
 
 // --- Handle delete ---
@@ -168,7 +169,6 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
             </div>
             <div class="flex gap-2">
                 <a href="batch-import.php" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium">📎 Importera fler</a>
-                <a href="ai.php" class="text-blue-700 hover:underline text-sm">AI-koppling</a>
                 <a href="../index.php?logout=1" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">Logga ut</a>
             </div>
         </div>
@@ -532,7 +532,7 @@ Nu, invänta mitt material.</pre>
                 $subject = htmlspecialchars($quiz['subject'] ?? '');
                 $tags = htmlspecialchars($quiz['tags'] ?? '');
                 $created = $quiz['created'] ?? '';
-                $createdShort = $created ? date('j/n', strtotime($created)) : '';
+                $createdDate = $created ? date('Y-m-d', strtotime($created)) : '';
                 $playUrl = '../play/index.php?id=' . urlencode($quiz['id']);
             ?>
             <div class="quiz-row flex items-center justify-between px-4 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 transition"
@@ -554,7 +554,7 @@ Nu, invänta mitt material.</pre>
                         <?php endif; endforeach; endif; ?>
                     </div>
                     <div class="text-xs text-gray-500">
-                        <?= $itemCount ?> <?= $itemWord ?> &middot; <?= $createdShort ?> &middot; <?= $resultCount ?> resultat
+                        <?= $itemCount ?> <?= $itemWord ?> &middot; <?= htmlspecialchars($createdDate) ?> &middot; <?= $resultCount ?> resultat
                     </div>
                 </div>
                 <div class="flex items-center gap-1 ml-4">
@@ -574,6 +574,9 @@ Nu, invänta mitt material.</pre>
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
+    </div>
+    <div class="flex justify-center pb-6">
+        <a href="ai.php" class="inline-block px-4 py-2 rounded-lg bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 font-medium text-sm">ai-api</a>
     </div>
 </div>
 
