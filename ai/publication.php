@@ -12,12 +12,16 @@ function aiStageDocument(array &$quiz, array $document): void {
     else $quiz = array_replace($quiz, $document);
     $quiz['updated'] = date('Y-m-d H:i:s');
 }
+function aiPublishDocument(array $quiz, string $revision): array {
+    if (!hash_equals(aiRevision($quiz),$revision)) throw new QuizAiError('Quizet ändrades. Granska den nya versionen innan du publicerar.',409);
+    $quiz=aiEffectiveQuiz($quiz); unset($quiz['pending_document']);
+    $quiz['publication']='published'; $quiz['published_at']=date('Y-m-d H:i:s');
+    return $quiz;
+}
 function aiPublishQuiz(string $id, string $teacherId, string $revision): array {
     return aiUpdate(QUIZZES_FILE, function (&$quizzes) use ($id,$teacherId,$revision) {
         $quiz=aiOwn($quizzes,$id,$teacherId);
-        if (!hash_equals(aiRevision($quiz),$revision)) throw new QuizAiError('Quizet ändrades. Granska den nya versionen innan du publicerar.',409);
-        $quiz=aiEffectiveQuiz($quiz); unset($quiz['pending_document']);
-        $quiz['publication']='published'; $quiz['published_at']=date('Y-m-d H:i:s');
+        $quiz=aiPublishDocument($quiz,$revision);
         $quizzes[$id]=$quiz; return aiView($quiz);
     });
 }

@@ -101,7 +101,42 @@ rejects(fn()=>aiPublishQuiz($created['id'],'teacher-a',$published['revision']),4
 $republished=aiPublishQuiz($created['id'],'teacher-a',$pending['revision']);
 check(aiStudentQuiz(aiRead(QUIZZES_FILE)[$created['id']])['title']==='Nya frågor under granskning','Published edits were not visible.');
 check(count(aiRead(QUIZZES_FILE)[$created['id']]['results'])===1,'Publishing lost student results.');
-rejects(fn()=>aiCall($actor,'quiz_publish',['id'=>$created['id']]),404);
+rejects(fn()=>aiCall($actor,'quiz_publish',['id'=>$created['id']]),400);
+// MCP publication is explicit, owner-scoped, revision-safe and retry-safe.
+check(!in_array('quiz_publish',array_column(aiTools(false),'name'),true),'Read-only token advertises publication.');
+$target=aiCall($actor,'quiz_create',['quiz'=>$quiz,'request_id'=>'publish-target-01']);
+$publishArgs=['id'=>$target['id'],'revision'=>$target['revision'],'approved'=>true,'request_id'=>'publish-request-01'];
+rejects(fn()=>aiCall($readonly,'quiz_publish',$publishArgs),403);
+rejects(fn()=>aiCall($other,'quiz_publish',$publishArgs),404);
+foreach ([false,1,'true',null] as $approval) rejects(fn()=>aiCall($actor,'quiz_publish',array_replace($publishArgs,['approved'=>$approval])),403);
+rejects(fn()=>aiCall($actor,'quiz_publish',array_replace($publishArgs,['revision'=>'bad'])),400);
+rejects(fn()=>aiCall($actor,'quiz_publish',array_replace($publishArgs,['request_id'=>'bad'])),400);
+$beforePublish=aiRead(QUIZZES_FILE)[$target['id']];
+rejects(fn()=>aiCall($actor,'quiz_publish',array_replace($publishArgs,['revision'=>str_repeat('0',64)])),409);
+check(aiRead(QUIZZES_FILE)[$target['id']]===$beforePublish,'Rejected publication mutated data.');
+aiUpdate(QUIZZES_FILE,function (&$quizzes) use ($target) {
+    $quizzes[$target['id']]['results']=[['student_name'=>'Private publish result']];
+    $quizzes[$target['id']]['custom_field']='keep';
+});
+$toolPublished=aiCall($actor,'quiz_publish',$publishArgs);
+check($toolPublished['publication']==='published' && $toolPublished['student_url']!==null,'MCP publication did not return student link.');
+check(!str_contains(json_encode($toolPublished),'Private publish result'),'MCP publication leaked student data.');
+$storedPublished=aiRead(QUIZZES_FILE)[$target['id']];
+check(count($storedPublished['results'])===1 && $storedPublished['custom_field']==='keep','MCP publication lost unrelated data.');
+$publishRetry=aiCall($actor,'quiz_publish',$publishArgs);
+check($publishRetry['revision']===$toolPublished['revision'] && aiRead(QUIZZES_FILE)[$target['id']]===$storedPublished,'Publication retry changed data.');
+rejects(fn()=>aiCall($actor,'quiz_publish',array_replace($publishArgs,['revision'=>$toolPublished['revision']])),409);
+rejects(fn()=>aiCall($actor,'quiz_publish',array_replace($publishArgs,['id'=>$created['id']])),409);
+$laterDoc=$toolPublished['quiz']; $laterDoc['title']='Not approved later edit';
+$later=aiCall($actor,'quiz_update',['id'=>$target['id'],'revision'=>$toolPublished['revision'],'quiz'=>$laterDoc,'request_id'=>'publish-later-edit']);
+$laterStored=aiRead(QUIZZES_FILE)[$target['id']];
+check(aiCall($actor,'quiz_publish',$publishArgs)['publication']==='pending' && aiRead(QUIZZES_FILE)[$target['id']]===$laterStored,'Retry published later unapproved changes.');
+rejects(fn()=>aiCall($actor,'quiz_publish',array_replace($publishArgs,['request_id'=>'publish-stale-request'])),409);
+$laterPublished=aiCall($actor,'quiz_publish',['id'=>$target['id'],'revision'=>$later['revision'],'approved'=>true,'request_id'=>'publish-later-request']);
+check($laterPublished['quiz']['title']===$laterDoc['title'] && !isset(aiRead(QUIZZES_FILE)[$target['id']]['pending_document']),'MCP failed to publish pending edits.');
+$legacyRead=aiCall($actor,'quiz_get',['id'=>$legacy['id']]);
+$legacyToolPublished=aiCall($actor,'quiz_publish',['id'=>$legacy['id'],'revision'=>$legacyRead['revision'],'approved'=>true,'request_id'=>'publish-legacy-request']);
+check(str_ends_with($legacyToolPublished['student_url'],'/q/aabbccdd.html') && !isset(aiRead(QUIZZES_FILE)[$legacy['id']]['items']),'MCP publication changed legacy format or URL.');
 $secondImage=aiStoreImage($png,'teacher-a');
 $pictureQuiz=['title'=>'Bildval','type'=>'image_choice','items'=>[['question'=>'Vilken visar en ramp?',
     'choices'=>[['id'=>'a','image'=>['file'=>$uploaded['image'],'alt'=>'Bild A','crop'=>['x'=>70,'y'=>25,'zoom'=>150]],'correct'=>true],
@@ -124,5 +159,7 @@ rejects(fn()=>aiCall($actor,'quiz_preview',['quiz'=>$invalid]),400);
 $invalid=$pictureQuiz; $invalid['items'][0]['choices'][1]['id']='a';
 rejects(fn()=>aiCall($actor,'quiz_preview',['quiz'=>$invalid]),400);
 rejects(fn()=>aiCall($other,'quiz_preview',['quiz'=>$pictureQuiz]),400);
+$picturePublished=aiCall($actor,'quiz_publish',['id'=>$picture['id'],'revision'=>$picture['revision'],'approved'=>true,'request_id'=>'publish-image-request']);
+check($picturePublished['publication']==='published' && aiStudentQuiz(aiRead(QUIZZES_FILE)[$picture['id']])['type']==='image_choice','MCP image quiz publication failed.');
 
 echo "PASS: $passed service checks, including publication, draft isolation, ownership, retries, conflicts, image choices and legacy edits.\n";

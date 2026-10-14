@@ -85,9 +85,33 @@ function aiSearch(array $actor, array $args): array {
     usort($found, fn($a,$b)=>strcmp($a['title'],$b['title'])); $total = count($found);
     return ['quizzes'=>array_slice($found,$offset,$limit),'total_count'=>$total,'has_more'=>$offset+$limit<$total,'next_offset'=>$offset+$limit<$total ? $offset+$limit : null];
 }
+function aiPublish(array $actor, array $args): array {
+    aiRequireWrite($actor);
+    if (($args['approved'] ?? null) !== true) throw new QuizAiError('Publishing requires explicit user approval (approved: true).',403);
+    $id=aiText($args['id'] ?? '', 'id',100);
+    $revision=aiText($args['revision'] ?? '', 'revision',64);
+    if (!preg_match('/^[a-f0-9]{64}$/D',$revision)) throw new QuizAiError('Provide the revision returned by quiz_get.');
+    $requestId=aiText($args['request_id'] ?? '', 'request_id',100);
+    if (!preg_match('/^[A-Za-z0-9_-]{8,100}$/D',$requestId)) throw new QuizAiError('Use a unique request_id of 8-100 letters, digits, underscores or hyphens.');
+    return aiUpdate(QUIZZES_FILE,function (&$quizzes) use ($actor,$id,$revision,$requestId) {
+        $quiz=aiOwn($quizzes,$id,$actor['teacher_id']);
+        foreach ($quizzes as $prior) {
+            $receipt=$prior['ai_publications'][$requestId] ?? null;
+            if (($prior['teacher_id'] ?? '') !== $actor['teacher_id'] || !$receipt) continue;
+            if ($prior['id'] !== $id || $receipt['revision'] !== $revision)
+                throw new QuizAiError('request_id was already used for a different publication.',409);
+            // A retry must never publish edits staged after this request succeeded.
+            return aiView($quiz);
+        }
+        $quiz=aiPublishDocument($quiz,$revision);
+        $quiz['ai_publications'][$requestId]=['revision'=>$revision];
+        $quizzes[$id]=$quiz;
+        return aiView($quiz);
+    });
+}
 function aiSave(array $actor, array $args, bool $create): array {
     aiRequireWrite($actor);
-    // AI saves for teacher review; publication is only available in the authenticated app.
+    // Saves remain unpublished; explicitly approved publication is a separate operation.
     if (!is_array($args['quiz'] ?? null)) throw new QuizAiError('Provide the complete quiz document.');
     $legacy = isset($args['quiz']['questions']);
     if ($create && $legacy) throw new QuizAiError('Create new quizzes with v2 items.');
