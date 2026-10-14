@@ -1,6 +1,7 @@
 <?php
 // api/save-result.php — Save student quiz results
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/browser-ids.php';
 
 header('Content-Type: application/json');
 
@@ -32,6 +33,7 @@ if (!empty($quiz['settings']['time_lock']['closes'])) {
 
 $result = [
     'student_name' => substr(trim($input['student_name']), 0, 50),
+    'browser_id' => browserIdFromInput($input['browser_id'] ?? null),
     'timestamp' => date('Y-m-d H:i:s'),
     'score' => intval($input['score']),
     'total' => intval($input['total']),

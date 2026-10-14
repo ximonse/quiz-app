@@ -49,6 +49,7 @@ if (count($results) > 0) {
 <div class="max-w-3xl mx-auto p-4">
     <div class="flex items-center gap-4 mb-6">
         <a href="dashboard.php" class="text-blue-600 hover:underline text-sm">&larr; Tillbaka</a>
+        <a href="browser-ids.php" class="text-blue-600 hover:underline text-sm">Namn per webbläsare</a>
         <h1 class="text-2xl font-bold" style="color: var(--text-primary)">📊 <?= htmlspecialchars($quiz['title']) ?></h1>
     </div>
 

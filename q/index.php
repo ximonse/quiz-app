@@ -38,7 +38,7 @@ if (isset($quiz['active']) && $quiz['active'] === false) {
     echo "Detta quiz är för tillfället inaktiverat av läraren.";
     exit;
 }
-unset($quiz['pending_document'], $quiz['ai_requests']);
+unset($quiz['pending_document'], $quiz['ai_requests'], $quiz['results']);
 $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
 ?>
 <!DOCTYPE html>
@@ -49,6 +49,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title><?= htmlspecialchars($quiz['title']) ?> - Quiz</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../engine/browser-id.js?v=<?= filemtime(__DIR__ . '/../engine/browser-id.js') ?>"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -952,6 +953,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     const statsData = {
                         quiz_id: quizData.id,
                         student_name: studentName,
+                        browser_id: getQuizBrowserId(),
                         completed: true,
                         time_seconds: timer,
                         total_errors: errorCount,

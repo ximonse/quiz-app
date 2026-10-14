@@ -44,6 +44,7 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title><?= htmlspecialchars($deck['title']) ?> - Flashcards</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../engine/browser-id.js?v=<?= filemtime(__DIR__ . '/../engine/browser-id.js') ?>"></script>
     <style>
         :root {
             --bg-from: #f0f9ff;
@@ -502,6 +503,7 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     const statsData = {
                         deck_id: deckData.id,
                         student_name: studentName,
+                        browser_id: getQuizBrowserId(),
                         completed: true,
                         time_seconds: timer,
                         card_grades: cardGrades,

@@ -1,6 +1,7 @@
 <?php
 header('Content-Type: application/json');
 require_once '../config.php';
+require_once '../includes/browser-ids.php';
 
 // Läs inkommande JSON
 $input = json_decode(file_get_contents('php://input'), true);
@@ -42,6 +43,7 @@ if ($completed) {
 // Lägg till detta försök
 $stats[$quiz_id]['attempts'][] = [
     'student_name' => $student_name,
+    'browser_id' => browserIdFromInput($input['browser_id'] ?? null),
     'timestamp' => date('Y-m-d H:i:s'),
     'completed' => $completed,
     'time_seconds' => $time_seconds,

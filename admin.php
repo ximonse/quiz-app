@@ -344,7 +344,8 @@ foreach ($my_quizzes as $qid => $quiz) {
                     <h1 class="text-3xl font-bold text-gray-800">👋 Hej <?= htmlspecialchars($teacher_name) ?>!</h1>
                     <p class="text-gray-500">Hantera dina quizzes här</p>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex flex-wrap gap-2">
+                    <a href="admin/browser-ids.php" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg">👥 Elevnamn</a>
                     <a href="flashcards-admin.php" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">
                         🗂️ Flashcard Admin
                     </a>
