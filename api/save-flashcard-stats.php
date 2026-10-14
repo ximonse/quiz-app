@@ -1,5 +1,6 @@
 <?php
 require_once '../config.php';
+require_once '../includes/browser-ids.php';
 
 header('Content-Type: application/json');
 
@@ -65,6 +66,7 @@ $stats[$deck_id]['avg_grade'] = round(($total_grade + $avg_grade) / $stats[$deck
 // Spara försök
 $stats[$deck_id]['attempts'][] = [
     'student_name' => $student_name,
+    'browser_id' => browserIdFromInput($input['browser_id'] ?? null),
     'timestamp' => date('Y-m-d H:i:s'),
     'completed' => $completed,
     'time_seconds' => $time_seconds,

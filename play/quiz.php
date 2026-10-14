@@ -19,6 +19,7 @@ if (!$quizId || !$studentName) {
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <link rel="stylesheet" href="../engine/themes.css?v=<?= filemtime(__DIR__ . '/../engine/themes.css') ?>">
+    <script src="../engine/browser-id.js?v=<?= filemtime(__DIR__ . '/../engine/browser-id.js') ?>"></script>
     <style>
         @keyframes answerPulseOnce {
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
@@ -191,6 +192,7 @@ function App() {
                 body: JSON.stringify({
                     quiz_id: QUIZ_ID,
                     student_name: STUDENT_NAME,
+                    browser_id: getQuizBrowserId(),
                     score: results.score,
                     total: results.total,
                     errors: results.errors

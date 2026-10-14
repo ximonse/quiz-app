@@ -196,9 +196,12 @@ if (isset($quiz_stats['attempts']) && is_array($quiz_stats['attempts'])) {
                         <?php endif; ?>
                     </p>
                 </div>
-                <a href="<?= $is_flashcard ? 'flashcards-admin.php' : ($is_super_admin ? 'super-admin.php' : 'admin.php') ?>" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
-                    Tillbaka
-                </a>
+                <div class="flex flex-wrap gap-2">
+                    <?php if (!$is_super_admin): ?><a href="admin/browser-ids.php" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg">Namn per webbläsare</a><?php endif; ?>
+                    <a href="<?= $is_flashcard ? 'flashcards-admin.php' : ($is_super_admin ? 'super-admin.php' : 'admin.php') ?>" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                        Tillbaka
+                    </a>
+                </div>
             </div>
         </div>
 

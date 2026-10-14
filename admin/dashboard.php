@@ -159,7 +159,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
 
     <!-- Header -->
     <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-        <div class="flex justify-between items-center">
+        <div class="flex flex-wrap justify-between items-center gap-3">
             <div class="flex items-center gap-2">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-800">Hej <?= htmlspecialchars($teacherName) ?>!</h1>
@@ -167,7 +167,8 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                 </div>
                 <button type="button" onclick="toggleInfoModal()" title="Så funkar appen" class="w-7 h-7 shrink-0 flex items-center justify-center rounded-full bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold text-sm">i</button>
             </div>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
+                <a href="browser-ids.php" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium">👥 Elevnamn</a>
                 <a href="batch-import.php" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium">📎 Importera fler</a>
                 <a href="../index.php?logout=1" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">Logga ut</a>
             </div>

@@ -62,6 +62,7 @@ if (!$quizId) {
     </div>
 </div>
 
+<script src="../engine/browser-id.js?v=<?= filemtime(__DIR__ . '/../engine/browser-id.js') ?>"></script>
 <script>
 const QUIZ_ID = <?= json_encode($quizId) ?>;
 let quizData = null;
@@ -85,6 +86,7 @@ function enterQuiz(e) {
     const name = document.getElementById('name-input').value.trim();
     if (!name) return;
     sessionStorage.setItem('quiz-student-' + QUIZ_ID, name);
+    getQuizBrowserId();
 
     document.getElementById('name-screen').classList.add('hidden');
     document.getElementById('dashboard').classList.remove('hidden');
