@@ -9,3 +9,4 @@ requireValidCsrf(true);
 $input=json_decode(file_get_contents('php://input'),true);
 try { if (!is_array($input)) throw new DomainException('Ogiltig aktivitet.'); classroomRecord($student,$input); echo json_encode(['saved'=>true]); }
 catch (DomainException $e) { http_response_code(403); echo json_encode(['error'=>$e->getMessage()],JSON_UNESCAPED_UNICODE); }
+catch (RuntimeException $e) { http_response_code(503); echo json_encode(['error'=>'Övningen kunde inte sparas. Försök igen.'],JSON_UNESCAPED_UNICODE); }

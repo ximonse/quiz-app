@@ -26,6 +26,7 @@ Existing anonymous history is not automatically assigned to pupils from names or
 ## Validation
 
 - python tests/classroom-http.test.py: isolated temporary app copy and synthetic accounts, including ownership, classes/groups, both login routes, PIN limits/reset, partial/completed activity, status privacy, materials and removal.
+- Add --robots to run 32 synthetic pupils against four PHP server processes sharing fixture-only data and sessions. The suite checks simultaneous quiz/card activity, partial work, reconnection snapshots, duplicate/out-of-order requests, cross-group isolation, shared-device changes, reset/removal and all 128 legacy result saves.
 - Add --serve to leave the synthetic fixture running for browser QA until interrupted. No real data or config.local.php is copied.
 - node --test tests/classroom-tracker.test.js: partial progress, unique card flips, offline retry, in-flight updates.
 - Existing PHP service, browser-ID and quiz-engine suites remain applicable.

@@ -1,5 +1,5 @@
 """Synthetic, isolated HTTP checks. Never reads local accounts, quizzes or config.local.php.
-Run: python tests/classroom-http.test.py [--serve]
+Run: python tests/classroom-http.test.py [--robots] [--serve]
 """
 import http.cookiejar
 import json
@@ -65,6 +65,7 @@ try:
     for name in ['config.php', 'index.php', 'admin.php', 'flashcards-admin.php', 'stats.php']:
         shutil.copy2(root / name, fixture / name)
     (fixture / 'data/materials').mkdir(parents=True)
+    (fixture / 'sessions').mkdir()
     shutil.copytree(root / 'student', fixture / 'student')
     (fixture / 'seed.php').write_text('''<?php
 require __DIR__.'/config.php';
@@ -92,7 +93,7 @@ return false;
         port = sock.getsockname()[1]
     base = f'http://127.0.0.1:{port}'
     log = open(fixture / 'server.log', 'w', encoding='utf-8')
-    server = subprocess.Popen(['php', '-d', 'upload_max_filesize=20M', '-d', 'post_max_size=22M', '-S', f'127.0.0.1:{port}', '-t', str(fixture), str(fixture/'router.php')], cwd=fixture, stdout=log, stderr=log)
+    server = subprocess.Popen(['php', '-d', 'session.save_path=' + str(fixture/'sessions'), '-d', 'upload_max_filesize=20M', '-d', 'post_max_size=22M', '-S', f'127.0.0.1:{port}', '-t', str(fixture), str(fixture/'router.php')], cwd=fixture, stdout=log, stderr=log)
     for _ in range(80):
         try:
             urllib.request.urlopen(base+'/student/').close()
@@ -226,6 +227,9 @@ return false;
     check('Hej Kim Test' in req(blocked,'/student/',form={'csrf_token':token,'code':kim['code'],'pin':kim_new_pin})[1], 'Teacher reset did not unlock login')
     req(blocked,'/student/',form={'csrf_token':token,'action':'logout'})
     check('Elevinloggning' in req(blocked,'/student/')[1], 'Logout failed')
+    if '--robots' in sys.argv:
+        from classroom_robots import run_robots
+        run_robots(fixture)
     log.flush()
     server_log=(fixture/'server.log').read_text('utf-8')
     check(not any(x in server_log for x in ['PHP Warning','PHP Fatal','PHP Parse']), 'PHP runtime warning: '+server_log[-2500:])
