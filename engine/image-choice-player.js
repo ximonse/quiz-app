@@ -49,6 +49,7 @@
     function check() {
         if (submitted) return; submitted=true;
         const result=engine.submit([...selected]); updateProgress();
+        window.ClassroomTracker?.answer(result.correct, engine.progress().complete);
         for (const button of $('choices').querySelectorAll('button')) {
             const state=result.statuses[button.dataset.id]; button.disabled=true;
             if (state) { const label={correct:'✓ Rätt!',wrong:'✕ Fel',missed:'✓ Rätt!'}[state]; button.classList.add(state); button.querySelector('.choice-status').textContent=label; button.setAttribute('aria-label',button.getAttribute('aria-label')+'. '+(state==='missed'?'Rätt svar, missat':label)); }
@@ -62,7 +63,7 @@
         $('quiz-title').textContent='Klart!'; $('progress').textContent=`${root.dataset.name}: ${results.score} rätt av ${results.total} besvarade frågor.`;
         if (preview) { $('preview-label').textContent='Förhandsvisning · inget elevresultat sparades'; return; }
         try {
-            const response=await fetch('../api/save-result.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({quiz_id:root.dataset.id,student_name:root.dataset.name,browser_id:getQuizBrowserId(),...results})});
+            const response=await fetch('../api/save-result.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({quiz_id:root.dataset.id,student_name:root.dataset.name,student_id:window.classroomContext?.student_id||null,browser_id:getQuizBrowserId(),...results})});
             const saved=await response.json();
             if (saved.reason==='training_only') { $('preview-label').textContent='Träning · inget testresultat sparades'; return; }
             if (!response.ok || !saved.saved) throw new Error('Resultatet kunde inte sparas.');

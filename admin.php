@@ -346,6 +346,7 @@ foreach ($my_quizzes as $qid => $quiz) {
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <a href="admin/browser-ids.php" class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg">👥 Elevnamn</a>
+                    <a href="admin/classes.php" class="bg-blue-600 text-white px-4 py-2 rounded-lg">Klasser och uppgifter</a>
                     <a href="flashcards-admin.php" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">
                         🗂️ Flashcard Admin
                     </a>

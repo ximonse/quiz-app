@@ -2,9 +2,11 @@
 header('Content-Type: application/json');
 require_once '../config.php';
 require_once '../includes/browser-ids.php';
+require_once __DIR__.'/../includes/classroom.php';
 
 // Läs inkommande JSON
 $input = json_decode(file_get_contents('php://input'), true);
+if (is_array($input)) classroomResultIdentity($input);
 
 if (!$input || !isset($input['quiz_id'])) {
     http_response_code(400);
@@ -13,7 +15,7 @@ if (!$input || !isset($input['quiz_id'])) {
 }
 
 $quiz_id = $input['quiz_id'];
-$student_name = $input['student_name'] ?? 'Okänd';
+$student_name = classroomStudent()['name'] ?? $input['student_name'] ?? 'Okänd';
 $completed = $input['completed'] ?? false;
 $time_seconds = $input['time_seconds'] ?? 0;
 $total_errors = $input['total_errors'] ?? 0;
@@ -42,6 +44,7 @@ if ($completed) {
 
 // Lägg till detta försök
 $stats[$quiz_id]['attempts'][] = [
+    'student_id' => classroomStudent()['id'] ?? null,
     'student_name' => $student_name,
     'browser_id' => browserIdFromInput($input['browser_id'] ?? null),
     'timestamp' => date('Y-m-d H:i:s'),

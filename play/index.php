@@ -1,6 +1,9 @@
 <?php
 // play/index.php — Student entry: name input + activity dashboard
+require_once __DIR__.'/../config.php';
+require_once __DIR__.'/../includes/classroom.php';
 $quizId = $_GET['id'] ?? '';
+classroomPlayer($quizId,'quiz');
 if (!$quizId) {
     echo '<p>Ingen quiz angiven.</p>';
     exit;
@@ -17,6 +20,7 @@ if (!$quizId) {
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)] flex items-center justify-center">
 <div id="app" class="max-w-md w-full mx-auto p-4">
+<?php classroomPlayerBar(); ?>
     <!-- Name input -->
     <div id="name-screen" class="rounded-xl p-8 text-center" style="background: var(--card-bg); border: 1px solid var(--border)">
         <h1 class="text-2xl font-bold mb-6" style="color: var(--text-primary)" id="quiz-title">Quiz</h1>
@@ -74,7 +78,7 @@ fetch('../api/quiz-data.php?id=' + encodeURIComponent(QUIZ_ID))
         if (data.error) { document.getElementById('quiz-title').textContent=data.error; document.querySelector('#name-screen form').hidden=true; return; }
         quizData = data;
         document.getElementById('quiz-title').textContent = data.title || 'Quiz';
-        const savedName = sessionStorage.getItem('quiz-student-' + QUIZ_ID);
+        const savedName = <?= json_encode(classroomStudent()['name'] ?? null, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?> || sessionStorage.getItem('quiz-student-' + QUIZ_ID);
         if (savedName) {
             document.getElementById('name-input').value = savedName;
             enterQuiz();
@@ -93,7 +97,7 @@ function enterQuiz(e) {
     document.getElementById('dash-title').textContent = quizData?.title || 'Quiz';
     document.getElementById('dash-name').textContent = name;
 
-    const base = (quizData?.type==='image_choice' ? 'image-quiz.php?id=' : 'quiz.php?id=') + encodeURIComponent(QUIZ_ID) + '&name=' + encodeURIComponent(name);
+    const base = (quizData?.type==='image_choice' ? 'image-quiz.php?id=' : 'quiz.php?id=') + encodeURIComponent(QUIZ_ID) + '&name=' + encodeURIComponent(name) + <?= json_encode(isset($_GET['assignment'])?'&assignment='.urlencode($_GET['assignment']):'') ?>;
     document.getElementById('quiz-link').href = base;
 
     if (quizData?.settings?.generate_flashcards) {

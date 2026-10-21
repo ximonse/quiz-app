@@ -4,3 +4,6 @@
 /.claude/
 /config.local.php
 /nul
+
+/data/materials/*.pdf
+/data/classroom.json*

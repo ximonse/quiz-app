@@ -170,6 +170,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
             <div class="flex flex-wrap gap-2">
                 <a href="browser-ids.php" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium">👥 Elevnamn</a>
                 <a href="batch-import.php" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium">📎 Importera fler</a>
+                <a href="classes.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">Klasser och uppgifter</a>
                 <a href="../index.php?logout=1" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">Logga ut</a>
             </div>
         </div>

@@ -24,6 +24,7 @@ jobs:
               --exclude-glob .git* \
               --exclude-glob .github/ \
               --exclude-glob data/*.json \
+              --exclude-glob data/materials/*.pdf \
               --exclude-glob data/images/ \
               --exclude-glob backup-*/ \
               --exclude-glob .claude/ \

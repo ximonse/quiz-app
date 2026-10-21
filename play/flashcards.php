@@ -1,7 +1,10 @@
 <?php
 // play/flashcards.php — Flashcard player
 $quizId = $_GET['id'] ?? '';
-$studentName = $_GET['name'] ?? '';
+require_once __DIR__.'/../config.php';
+require_once __DIR__.'/../includes/classroom.php';
+classroomPlayer($quizId,'cards');
+$studentName = classroomStudent()['name'] ?? ($_GET['name'] ?? '');
 if (!$quizId) { header('Location: index.php'); exit; }
 ?>
 <!DOCTYPE html>
@@ -22,6 +25,7 @@ if (!$quizId) { header('Location: index.php'); exit; }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
+<?php classroomPlayerBar(); ?>
 <div class="max-w-lg mx-auto p-4">
     <div class="flex items-center justify-between mb-6">
         <a href="index.php?id=<?= urlencode($quizId) ?>" class="text-sm hover:underline" style="color: var(--accent)">&larr; Start</a>
@@ -195,6 +199,7 @@ function speakBack(e) {
 }
 
 function flipCard() {
+    if (items[currentIndex]) window.ClassroomTracker?.card(currentIndex, items.length);
     const card = document.getElementById('card');
     card.classList.toggle('flipped');
     // Svaret läses automatiskt när det avslöjas, men bara om det är glosordet på

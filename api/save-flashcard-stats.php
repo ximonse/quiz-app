@@ -1,6 +1,7 @@
 <?php
 require_once '../config.php';
 require_once '../includes/browser-ids.php';
+require_once __DIR__.'/../includes/classroom.php';
 
 header('Content-Type: application/json');
 
@@ -11,6 +12,7 @@ if (!defined('FLASHCARDS_FILE')) {
 
 // Läs POST data
 $input = json_decode(file_get_contents('php://input'), true);
+if (is_array($input)) classroomResultIdentity($input);
 
 if (!$input || !isset($input['deck_id']) || !isset($input['student_name'])) {
     echo json_encode(['success' => false, 'error' => 'Invalid input']);
@@ -18,7 +20,7 @@ if (!$input || !isset($input['deck_id']) || !isset($input['student_name'])) {
 }
 
 $deck_id = $input['deck_id'];
-$student_name = $input['student_name'];
+$student_name = classroomStudent()['name'] ?? $input['student_name'];
 $completed = $input['completed'] ?? false;
 $time_seconds = $input['time_seconds'] ?? 0;
 $card_grades = $input['card_grades'] ?? [];
@@ -65,6 +67,7 @@ $stats[$deck_id]['avg_grade'] = round(($total_grade + $avg_grade) / $stats[$deck
 
 // Spara försök
 $stats[$deck_id]['attempts'][] = [
+    'student_id' => classroomStudent()['id'] ?? null,
     'student_name' => $student_name,
     'browser_id' => browserIdFromInput($input['browser_id'] ?? null),
     'timestamp' => date('Y-m-d H:i:s'),
