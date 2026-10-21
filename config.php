@@ -48,7 +48,15 @@ function writeJSON($file, $data) {
     if ($json === false) return false;
     $temporary = $file . '.tmp.' . bin2hex(random_bytes(4));
     if (file_put_contents($temporary, $json) === false) return false;
-    return rename($temporary, $file);
+    // Windows readers can briefly deny replacement of an otherwise valid file.
+    // Retry the atomic rename; never remove the existing destination first.
+    $attempts = PHP_OS_FAMILY === 'Windows' ? 10 : 1;
+    for ($attempt = 0; $attempt < $attempts; $attempt++) {
+        if (@rename($temporary, $file)) return true;
+        if ($attempt + 1 < $attempts) usleep(10000 * ($attempt + 1));
+    }
+    @unlink($temporary);
+    return false;
 }
 
 function updateJSONLocked($file, callable $update) {

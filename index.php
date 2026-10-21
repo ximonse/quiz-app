@@ -9,6 +9,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Kolla super admin
     if ($username === 'superadmin' && $password === SUPER_ADMIN_PASSWORD) {
+        session_regenerate_id(true);
+        unset($_SESSION['pupil']);
         $_SESSION['super_admin'] = true;
         header('Location: super-admin.php');
         exit;
@@ -20,6 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($teacher['username'] === $username &&
             $teacher['active'] &&
             password_verify($password, $teacher['password_hash'])) {
+            session_regenerate_id(true);
+            unset($_SESSION['pupil']);
             $_SESSION['teacher_id'] = $tid;
             $_SESSION['teacher_name'] = $teacher['name'];
             header('Location: admin/dashboard.php');
@@ -55,6 +59,7 @@ if (isset($_GET['logout'])) {
             </div>
         <?php endif; ?>
 
+        <p class="text-center mb-4"><a href="student/" class="text-blue-600 underline">Elevinloggning</a></p>
         <form method="POST" class="space-y-4">
             <?= csrfField() ?>
             <div>

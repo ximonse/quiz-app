@@ -2,7 +2,10 @@
 // play/quiz.php — Student quiz player (glossary + fact)
 // No auth required — students access via link
 $quizId = $_GET['id'] ?? '';
-$studentName = $_GET['name'] ?? '';
+require_once __DIR__.'/../config.php';
+require_once __DIR__.'/../includes/classroom.php';
+classroomPlayer($quizId,'quiz');
+$studentName = classroomStudent()['name'] ?? ($_GET['name'] ?? '');
 if (!$quizId || !$studentName) {
     header('Location: index.php?id=' . urlencode($quizId));
     exit;
@@ -54,12 +57,13 @@ if (!$quizId || !$studentName) {
     <script src="../engine/quiz-engine.js?v=<?= filemtime(__DIR__ . '/../engine/quiz-engine.js') ?>"></script>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
+<?php classroomPlayerBar(); ?>
 <div id="root"></div>
 
 <script type="text/babel">
 const PREVIEW = <?= isset($_GET['preview'])?'true':'false' ?>;
 const QUIZ_ID = <?= json_encode($quizId) ?>;
-const STUDENT_NAME = <?= json_encode($studentName) ?>;
+const STUDENT_NAME = <?= json_encode($studentName, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>;
 
 // Faktaquiz: begreppet läses på svenska (förval) eller valt språk
 // (settings.concept_language === 'same'); beskrivningen alltid på valt språk.
@@ -182,6 +186,7 @@ function App() {
             phase: progress.phase
         };
         const result = engine.submitAnswer(answer, currentSpelling);
+        window.ClassroomTracker?.answer(result.correct, result.complete);
         setTextInput('');
 
         if (result.complete) {
@@ -192,6 +197,7 @@ function App() {
                 body: JSON.stringify({
                     quiz_id: QUIZ_ID,
                     student_name: STUDENT_NAME,
+                    student_id: window.classroomContext?.student_id || null,
                     browser_id: getQuizBrowserId(),
                     score: results.score,
                     total: results.total,

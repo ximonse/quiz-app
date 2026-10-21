@@ -9,6 +9,8 @@ if (!defined('FLASHCARDS_FILE')) {
 
 // Hämta deck ID från URL
 $deck_id = $_GET['deck_id'] ?? '';
+require_once __DIR__.'/../includes/classroom.php';
+classroomPlayer($deck_id,'deck');
 
 if (!$deck_id) {
     http_response_code(404);
@@ -34,6 +36,7 @@ if (isset($deck['active']) && $deck['active'] === false) {
     exit;
 }
 
+unset($deck['results'], $deck['attempts']);
 $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
 ?>
 <!DOCTYPE html>
@@ -221,6 +224,7 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
     </style>
 </head>
 <body>
+    <?php classroomPlayerBar(); ?>
     <div id="root"></div>
 
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -232,7 +236,7 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
         const deckData = <?= $deck_json ?>;
 
         function FlashcardApp() {
-            const [studentName, setStudentName] = useState('');
+            const [studentName, setStudentName] = useState(<?= json_encode(classroomStudent()['name'] ?? '', JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>);
             const [hasStarted, setHasStarted] = useState(false);
             const [cards, setCards] = useState([]);
             const [currentQueue, setCurrentQueue] = useState([]);
@@ -278,7 +282,7 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     setTimerRunning(true);
 
                     // Ladda svåra kort från localStorage
-                    const storageKey = `flashcard_difficult_${deckData.id}`;
+                    const storageKey = `flashcard_difficult_${window.classroomContext?.student_id ? window.classroomContext.student_id + '_' : ''}${deckData.id}`;
                     const saved = localStorage.getItem(storageKey);
                     if (saved) {
                         try {
@@ -435,6 +439,7 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             }
 
             function handleFlip() {
+                window.ClassroomTracker?.card(currentQueue[currentCardIndex], deckData.cards.length);
                 setIsFlipped(true);
                 setShowGrading(true);
             }
@@ -458,7 +463,7 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 setDifficultCards(newDifficult);
 
                 // Spara svåra kort till localStorage
-                const storageKey = `flashcard_difficult_${deckData.id}`;
+                const storageKey = `flashcard_difficult_${window.classroomContext?.student_id || 'guest'}_${deckData.id}`;
                 localStorage.setItem(storageKey, JSON.stringify([...newDifficult]));
 
                 // Om grade 0 eller 1, lägg tillbaka kortet i kön
@@ -493,6 +498,7 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             }
 
             async function saveStats() {
+                window.ClassroomTracker?.complete();
                 try {
                     const gradeDistribution = { '0': 0, '1': 0, '2': 0, '3': 0 };
                     const flatGrades = Object.values(cardGrades).flat();
@@ -503,6 +509,7 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     const statsData = {
                         deck_id: deckData.id,
                         student_name: studentName,
+                        student_id: window.classroomContext?.student_id || null,
                         browser_id: getQuizBrowserId(),
                         completed: true,
                         time_seconds: timer,

@@ -20,6 +20,8 @@ if (!isset($matches[1])) {
 }
 
 $quiz_id = $matches[1];
+require_once __DIR__.'/../includes/classroom.php';
+classroomPlayer($quiz_id,'quiz');
 
 // Ladda quiz data
 $quizzes = readJSON(QUIZZES_FILE);
@@ -184,6 +186,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
     </style>
 </head>
 <body>
+    <?php classroomPlayerBar(); ?>
     <div id="root"></div>
 
     <script type="text/babel">
@@ -191,7 +194,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
         const quizData = <?= $quiz_json ?>;
 
         function QuizApp() {
-            const [studentName, setStudentName] = useState('');
+            const [studentName, setStudentName] = useState(<?= json_encode(classroomStudent()['name'] ?? '', JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>);
             const [hasStarted, setHasStarted] = useState(false);
             const [phase, setPhase] = useState(1); // 1 = Flerval, 2 = Fritext
             const [questions, setQuestions] = useState([]);
@@ -735,7 +738,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                     }
                     // För glosquiz (training mode): kolla localStorage för senaste session
                     else if (!isTestMode && isGlossary && answerMode === 'hybrid') {
-                        const storageKey = `glossary_${quizData.id}`;
+                        const storageKey = `glossary_${window.classroomContext?.student_id ? window.classroomContext.student_id + '_' : ''}${quizData.id}`;
                         const lastSessionData = localStorage.getItem(storageKey);
 
                         if (lastSessionData) {
@@ -772,6 +775,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 const correctAnswer = getCorrectAnswerForQuestion(currentQ);
                 const selectedOption = currentOptions[optionIndex];
                 const correct = selectedOption === correctAnswer;
+                window.ClassroomTracker?.answer(correct);
 
                 setSelectedAnswer(optionIndex);
                 setIsCorrect(correct);
@@ -864,6 +868,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                 const currentQ = questions[currentQueue[currentQuestionIndex]];
                 const correctAnswer = getCorrectAnswerForQuestion(currentQ);
                 const result = isAnswerCorrect(textAnswer, correctAnswer, spellingMode);
+                window.ClassroomTracker?.answer(result.correct);
 
                 setIsCorrect(result.correct);
                 setShowFeedback(true);
@@ -949,10 +954,12 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             }
 
             async function saveStats() {
+                window.ClassroomTracker?.complete();
                 try {
                     const statsData = {
                         quiz_id: quizData.id,
                         student_name: studentName,
+                        student_id: window.classroomContext?.student_id || null,
                         browser_id: getQuizBrowserId(),
                         completed: true,
                         time_seconds: timer,
@@ -966,7 +973,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                         statsData.is_glossary = true;
 
                         // Uppdatera localStorage med senaste fullständiga session
-                        const storageKey = `glossary_${quizData.id}`;
+                        const storageKey = `glossary_${window.classroomContext?.student_id || 'guest'}_${quizData.id}`;
                         const sessionData = {
                             timestamp: new Date().toISOString(),
                             completed: true,

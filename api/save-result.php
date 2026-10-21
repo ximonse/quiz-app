@@ -2,10 +2,12 @@
 // api/save-result.php — Save student quiz results
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/browser-ids.php';
+require_once __DIR__.'/../includes/classroom.php';
 
 header('Content-Type: application/json');
 
 $input = json_decode(file_get_contents('php://input'), true);
+if (is_array($input)) classroomResultIdentity($input);
 if (!$input || empty($input['quiz_id']) || empty($input['student_name'])) {
     http_response_code(400);
     echo json_encode(['error' => 'Missing required fields']);
@@ -32,7 +34,8 @@ if (!empty($quiz['settings']['time_lock']['closes'])) {
 }
 
 $result = [
-    'student_name' => substr(trim($input['student_name']), 0, 50),
+    'student_id' => classroomStudent()['id'] ?? null,
+    'student_name' => classroomStudent()['name'] ?? substr(trim($input['student_name']), 0, 50),
     'browser_id' => browserIdFromInput($input['browser_id'] ?? null),
     'timestamp' => date('Y-m-d H:i:s'),
     'score' => intval($input['score']),
