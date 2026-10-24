@@ -6,14 +6,33 @@ En webbbaserad quiz-applikation för lärare och elever. Lärare skapar quiz (ku
 ## Användarroller
 
 ### Lärare
-- Loggar in via `login.php`
+- Loggar in med användarnamn och lösenord via `index.php` (konton skapas i `super-admin.php`)
 - Skapar och hanterar quiz via `admin.php`
 - Ser statistik för sina quiz via `stats.php`
+- Hanterar klasser, grupper, elevkonton och uppdrag via `admin/classes.php`
 
 ### Elever
-- Behöver ingen inloggning
+Två sätt att öva:
+
+**Med elevkonto (inloggad)**
+- Loggar in via `student/` med sin ordkod (tre ord) eller QR-kod, plus en fyrsiffrig PIN
+- PIN visas för läraren i 15 minuter efter att den skapats; bara hashen sparas
+- Återställning ger ny PIN och QR men behåller ordkoden, och loggar ut aktiva sessioner
+- Sessioner gäller i åtta timmar; misslyckade inloggningar begränsas per elev och per IP
+- Ser sina uppdrag och status (inte tidigare poäng eller svarshistorik)
+- Övning på ett tilldelat uppdrag registreras i lärarens klassöversikt
+
+**Utan konto (publik länk/QR)**
 - Skriver in sitt namn
 - Genomför quiz via `q/index.php`
+- Resultat sparas som tidigare och kopplas inte automatiskt till elevkonton
+
+### Klasser, grupper och uppdrag
+- En elev tillhör en klass och kan vara med i flera grupper
+- Läraren tilldelar publicerade quiz, flashcards, kortlekar eller PDF:er till klass eller grupp
+- Nya medlemmar får befintliga uppdrag för sin klass/grupp
+- Borttagen elev inaktiveras; historiken finns kvar för läraren
+- Detaljer: `docs/classroom.md`
 
 ## Quiz-typer
 
@@ -116,10 +135,13 @@ En webbbaserad quiz-applikation för lärare och elever. Lärare skapar quiz (ku
 ## Filstruktur
 
 ### Huvudfiler
-- `login.php` - Lärar-inloggning
+- `index.php` - Lärar-inloggning
 - `admin.php` - Quiz-hantering för lärare
 - `stats.php` - Statistikvy
 - `q/index.php` - Quiz-genomförande för elever
+- `admin/classes.php` - Klasser, grupper, elevkonton och uppdrag
+- `student/` - Elevinloggning och elevens uppdragsvy
+- `includes/classroom.php` - Inloggning, sessioner och aktivitet för elevkonton
 - `config.php` - Konfiguration, sessionshantering, hjälpfunktioner
 
 ### API-endpoints
@@ -132,6 +154,8 @@ En webbbaserad quiz-applikation för lärare och elever. Lärare skapar quiz (ku
 - `data/teachers.json` - Lärarkonton
 - `data/quizzes.json` - Alla quiz
 - `data/stats.json` - Statistik per quiz
+- `data/classroom.json` - Klasser, grupper, elevkonton, uppdrag och övningsaktivitet
+- `data/materials/` - Uppladdade PDF:er (ska skyddas med `.htaccess`)
 
 ## Datastruktur
 
@@ -225,5 +249,6 @@ Mening 1;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord
 ## Säkerhet
 - Lärar-autentisering via PHP-sessioner
 - `requireTeacher()` skyddar admin-endpoints
-- Elever behöver ingen autentisering (öppet för klassrum)
+- Publika quizlänkar kräver ingen autentisering (öppet för klassrum)
+- Elevkonton: ordkod/QR + hashad PIN, sessioner på åtta timmar, begränsning av misslyckade inloggningar
 - Lärare ser endast sina egna quiz
