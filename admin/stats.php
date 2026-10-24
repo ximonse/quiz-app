@@ -40,6 +40,18 @@ if (($quiz['type'] ?? '') === 'sort') {
     }
     uasort($objectErrors, fn($a, $b) => $b['count'] <=> $a['count']);
 }
+// Order quizzes: objects that most often break the order.
+if (($quiz['type'] ?? '') === 'order') {
+    foreach ($results as $result) foreach ($result['errors'] ?? [] as $err) {
+        $item = $items[$err['item_index'] ?? -1] ?? null; if (!$item) continue;
+        foreach ($err['wrong'] ?? [] as $objectId) {
+            $key = $err['item_index'] . ':' . $objectId;
+            $objectErrors[$key] ??= ['item' => $item, 'object_id' => $objectId, 'count' => 0, 'given' => []];
+            $objectErrors[$key]['count']++;
+        }
+    }
+    uasort($objectErrors, fn($a, $b) => $b['count'] <=> $a['count']);
+}
 function statsSortLabel(array $item, ?string $id): string {
     if ($id === null || $id === '') return 'utanför fälten';
     foreach (array_merge($item['fields'] ?? [], $item['objects'] ?? []) as $entry)
@@ -108,8 +120,14 @@ if (count($results) > 0) {
 
     <?php if ($objectErrors): ?>
     <div class="rounded-lg p-4 mb-6" style="background: var(--card-bg); border: 1px solid var(--border)">
-        <h2 class="font-medium mb-3" style="color: var(--text-primary)">Objekt som oftast hamnar fel</h2>
+        <h2 class="font-medium mb-3" style="color: var(--text-primary)"><?= $quiz['type'] === 'order' ? 'Objekt som oftast står på fel plats' : 'Objekt som oftast hamnar fel' ?></h2>
         <?php foreach (array_slice($objectErrors, 0, 10) as $entry):
+            if ($quiz['type'] === 'order'): $position = array_search($entry['object_id'], array_column($entry['item']['objects'], 'id')); ?>
+        <div class="flex items-center justify-between gap-3 py-1">
+            <div class="text-sm" style="color: var(--text-primary)"><?= htmlspecialchars(statsSortLabel($entry['item'], $entry['object_id'])) ?> <span style="color: var(--text-secondary)">→ rätt plats: <?= $position === false ? '?' : $position + 1 ?> · <?= htmlspecialchars($entry['item']['question']) ?></span></div>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 shrink-0"><?= $entry['count'] ?> fel</span>
+        </div>
+        <?php continue; endif;
             $correct = null; foreach ($entry['item']['objects'] as $o) if ($o['id'] === $entry['object_id']) $correct = $o['field'];
             arsort($entry['given']); $places = [];
             foreach ($entry['given'] as $given => $n) $places[] = statsSortLabel($entry['item'], (string)$given) . ' ' . $n . '×';

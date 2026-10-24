@@ -110,7 +110,7 @@ function App() {
             .then(r => r.json())
             .then(data => {
                 if (data.error) throw new Error(data.error);
-                const own = {image_choice:'image-quiz.php', sort:'sort-quiz.php'}[data.type];
+                const own = {image_choice:'image-quiz.php', sort:'sort-quiz.php', order:'order-quiz.php'}[data.type];
                 if (own) { window.location.replace(own+window.location.search); return; }
                 if (data.status === 'not_yet') {
                     setOpensAt(data.opens);

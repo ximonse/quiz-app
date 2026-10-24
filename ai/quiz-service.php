@@ -16,6 +16,7 @@ function aiOwn(array $quizzes, string $id, string $teacherId): array {
 function aiMarkdown(array $document): string {
     if (($document['type']??'') === 'image_choice') return aiImageMarkdown($document);
     if (($document['type']??'') === 'sort') return aiSortMarkdown($document);
+    if (($document['type']??'') === 'order') return aiOrderMarkdown($document);
     $text = '# ' . ($document['title'] ?? '') . "\n\n";
     foreach (($document['items'] ?? $document['questions'] ?? []) as $i => $item) {
         $legacy = isset($document['questions']); $reverse = !$legacy && ($document['settings']['question_direction'] ?? '') === 'description';

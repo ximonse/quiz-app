@@ -33,7 +33,9 @@ function attachLongPress(el, speak) {
     for (const type of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(type, cancel);
     el.addEventListener('contextmenu', e => e.preventDefault());
 }
-function DragBoard({root, containerSelector, axis = null, onSpeak = () => {}, onChange = () => {}}) {
+// A container may set data-axis="x"|"y" for single-row/column lines (order quiz).
+function DragBoard({root, containerSelector, onSpeak = () => {}, onChange = () => {}}) {
+    const axisOf = container => container.dataset.axis || null;
     let locked = false, selected = null, drag = null;
     function containerOf(el) { return el.closest(containerSelector); }
     function place(el, container, index) {
@@ -66,7 +68,7 @@ function DragBoard({root, containerSelector, axis = null, onSpeak = () => {}, on
         if (e.clientY < 50) window.scrollBy(0, -12); else if (e.clientY > innerHeight - 50) window.scrollBy(0, 12);
         const target = containerAt(e.clientX, e.clientY);
         if (!target) return;
-        const index = insertionIndex(target, e.clientX, e.clientY, drag.el, axis);
+        const index = insertionIndex(target, e.clientX, e.clientY, drag.el, axisOf(target));
         const position = [...target.children].filter(c => c.matches('[data-flip]')).indexOf(drag.el);
         if (containerOf(drag.el) !== target || position !== index) place(drag.el, target, index);
     }
@@ -108,7 +110,7 @@ function DragBoard({root, containerSelector, axis = null, onSpeak = () => {}, on
         if (locked || !selected || e.target.closest('[data-flip]')) return;
         const container = e.target.closest('[data-drop-target]')?.querySelector(containerSelector) || e.target.closest(containerSelector);
         if (!container || !root.contains(container)) return;
-        const el = selected; select(el); place(el, container, insertionIndex(container, e.clientX, e.clientY, el, axis));
+        const el = selected; select(el); place(el, container, insertionIndex(container, e.clientX, e.clientY, el, axisOf(container)));
     });
     return {
         place, flip: change => flipAnimate(root, change),

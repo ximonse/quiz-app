@@ -63,6 +63,14 @@ Två sätt att öva:
 - Filer: `engine/sort-engine.js` (regler), `engine/drag-board.js` (dra och släpp, delas med kommande ordningsquiz), `engine/sort-player.js`, `play/sort-quiz.php`, `ai/sort-validation.php`
 - Statistik visar vilka objekt som oftast hamnar fel och var
 
+### Ordningsquiz (order)
+- Varje fråga har en huvudfråga, en vågrät (vänster → höger) eller lodrät (uppifrån och ner) linje med valfri text i början, mitten och slutet, och 2–8 objekt som skrivs i rätt ordning
+- Eleven drar objekten till linjen; bara ordningen räknas, inte avstånden
+- Hela ordningen rättas, men bara objekt som bryter ordningen markeras röda (de utanför den längsta korrekt ordnade följden)
+- Första gången frågan visas glider objekten till rätt ordning; vid repetition ligger de kvar. Fel ger att hela frågan kommer tillbaka
+- Inga flashcards. Skapas i `admin/order-edit.php`, via MCP eller med prompt/JSON-mall (`assets/templates/ordningsquiz-mall.json`)
+- Filer: `engine/order-engine.js`, `engine/order-player.js`, `play/order-quiz.php`, `ai/order-validation.php`. Redigerarna för sortering och ordning delar `includes/drag-quiz-editor.php` och `engine/editor-kit.js`
+
 ## Huvudfunktioner
 
 ### Admin-gränssnitt (admin.php)

@@ -27,3 +27,22 @@
 .drag-ghost{position:fixed;z-index:50;margin:0;pointer-events:none;box-shadow:0 10px 18px -4px #192a3d66;cursor:grabbing}
 @media(prefers-reduced-motion:reduce){.sort-object.blink-wrong{animation-duration:.01s}}
 @media(max-width:460px){.sort-fields{grid-template-columns:1fr 1fr}.sort-object.has-image{width:90px}}
+/* Order quiz: a line (arrow) the pupil fills in order. */
+.order-track{display:flex;flex-direction:column;gap:6px}
+.order-labels{display:flex;justify-content:space-between;gap:10px;font-weight:700;color:var(--muted)}
+.order-labels span{flex:1}
+.order-labels span:nth-child(2){text-align:center}
+.order-labels span:last-child{text-align:right}
+.order-line{position:relative;display:flex;flex-wrap:nowrap;align-items:center;justify-content:space-evenly;gap:8px;min-height:96px;padding:14px 34px 14px 12px;border-radius:9px;background:#eef3f9}
+.order-line::before{content:"";position:absolute;left:12px;right:16px;top:50%;height:4px;margin-top:-2px;background:var(--muted);border-radius:2px;z-index:0}
+.order-line::after{content:"";position:absolute;right:6px;top:50%;margin-top:-10px;border:10px solid transparent;border-left:16px solid var(--muted);border-right:0}
+.order-line .sort-object{position:relative;z-index:1;flex:0 1 auto;min-width:0}
+.order-line:not(:has(.sort-object)){color:var(--muted)}
+.order-track.vertical{flex-direction:row;align-items:stretch}
+.order-track.vertical .order-labels{flex-direction:column;flex:0 0 auto;max-width:30%}
+.order-track.vertical .order-labels span{display:flex;align-items:center;text-align:left}
+.order-track.vertical .order-labels span:first-child{align-items:flex-start}
+.order-track.vertical .order-labels span:last-child{align-items:flex-end}
+.order-track.vertical .order-line{flex:1;flex-direction:column;justify-content:space-evenly;min-height:300px;padding:12px 14px 34px}
+.order-track.vertical .order-line::before{left:50%;right:auto;top:12px;bottom:16px;width:4px;height:auto;margin:0 0 0 -2px}
+.order-track.vertical .order-line::after{left:50%;right:auto;top:auto;bottom:6px;margin:0 0 0 -10px;border:10px solid transparent;border-top:16px solid var(--muted);border-bottom:0}

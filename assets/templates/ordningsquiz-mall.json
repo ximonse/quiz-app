@@ -1,0 +1,34 @@
+{
+  "title": "Livets utveckling",
+  "type": "order",
+  "settings": {
+    "tts_enabled": true,
+    "quiz_mode": "training",
+    "required_correct": 1,
+    "language": "sv"
+  },
+  "items": [
+    {
+      "question": "Ordna från det som fanns först till det som kom sist.",
+      "orientation": "horizontal",
+      "labels": { "start": "Först", "middle": "", "end": "Sist" },
+      "objects": [
+        { "id": "bakterier", "text": "Bakterier" },
+        { "id": "fiskar", "text": "Fiskar" },
+        { "id": "dinosaurier", "text": "Dinosaurier" },
+        { "id": "manniskor", "text": "Människor" }
+      ]
+    },
+    {
+      "question": "Ordna jordlagren från ytan och nedåt.",
+      "orientation": "vertical",
+      "labels": { "start": "Ytan", "middle": "", "end": "Djupast" },
+      "objects": [
+        { "id": "matjord", "text": "Matjord" },
+        { "id": "sand", "text": "Sand" },
+        { "id": "grus", "text": "Grus" },
+        { "id": "berggrund", "text": "Berggrund" }
+      ]
+    }
+  ]
+}

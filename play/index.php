@@ -97,7 +97,7 @@ function enterQuiz(e) {
     document.getElementById('dash-title').textContent = quizData?.title || 'Quiz';
     document.getElementById('dash-name').textContent = name;
 
-    const PLAYERS = <?= json_encode(['image_choice'=>quizTypeRoute('image_choice')['player'],'sort'=>quizTypeRoute('sort')['player']]) ?>;
+    const PLAYERS = <?= json_encode(['image_choice'=>quizTypeRoute('image_choice')['player'],'sort'=>quizTypeRoute('sort')['player'],'order'=>quizTypeRoute('order')['player']]) ?>;
     const base = (PLAYERS[quizData?.type] || 'quiz.php') + '?id=' + encodeURIComponent(QUIZ_ID) + '&name=' + encodeURIComponent(name) + <?= json_encode(isset($_GET['assignment'])?'&assignment='.urlencode($_GET['assignment']):'') ?>;
     document.getElementById('quiz-link').href = base;
 

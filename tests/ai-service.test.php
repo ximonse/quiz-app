@@ -198,4 +198,28 @@ $sortPublished=aiCall($actor,'quiz_publish',['id'=>$sort['id'],'revision'=>$sort
 check($sortPublished['publication']==='published' && str_ends_with($sortPublished['student_url'],'/play/index.php?id='.$sort['id']) && aiStudentQuiz(aiRead(QUIZZES_FILE)[$sort['id']])['type']==='sort','MCP sort quiz publication failed.');
 check(quizTypeRoute('sort')['player']==='sort-quiz.php' && quizTypeRoute('fact')['editor']==='edit.php' && quizTypeRoute(null)['label']==='faktaquiz','Type routes failed.');
 
-echo "PASS: $passed service checks, including publication, draft isolation, ownership, retries, conflicts, image choices, sort quizzes and legacy edits.\n";
+$orderQuiz=['title'=>'Livets utveckling','type'=>'order','items'=>[['question'=>'Ordna från först till sist','orientation'=>'horizontal','labels'=>['start'=>'Först','end'=>'Sist'],
+    'objects'=>[['id'=>'bakterier','text'=>'Bakterier'],['id'=>'fiskar','image'=>['file'=>$uploaded['image'],'alt'=>'Fiskar']],['id'=>'manniskor','text'=>'Människor']]]]];
+$order=aiCall($actor,'quiz_create',['quiz'=>$orderQuiz,'request_id'=>'order-quiz-0001']);
+check(str_ends_with($order['edit_url'],'/admin/order-edit.php?id='.$order['id']) && str_contains($order['markdown'],"Vågrät linje · Först → Sist\n\n1. Bakterier\n2. Fiskar\n3. Människor"),'Order quiz creation/Markdown failed.');
+$orderRead=aiCall($actor,'quiz_get',['id'=>$order['id']]);
+check($orderRead['quiz']['items'][0]['labels']===['start'=>'Först','middle'=>'','end'=>'Sist'] && $orderRead['quiz']['items'][0]['objects'][1]['image']['alt']==='Fiskar','Order document was not preserved.');
+foreach ([
+    fn(&$q)=>$q['items'][0]['orientation']='diagonal',
+    fn(&$q)=>$q['items'][0]['labels']['top']='x',
+    fn(&$q)=>$q['items'][0]['objects'][1]['id']='bakterier',
+    fn(&$q)=>$q['items'][0]['objects']=array_slice($q['items'][0]['objects'],0,1),
+    fn(&$q)=>$q['items'][0]['objects']=array_map(fn($n)=>['id'=>"o$n",'text'=>"O$n"],range(1,9)),
+    fn(&$q)=>$q['items'][0]['objects'][0]['field']='x',
+    fn(&$q)=>$q['items'][0]['objects'][0]['text']='',
+    fn(&$q)=>$q['settings']=['generate_flashcards'=>true],
+] as $break) {
+    $invalid=$orderQuiz; $break($invalid);
+    check($invalid!==$orderQuiz,"Broken order fixture did not change.");
+    rejects(fn()=>aiCall($actor,'quiz_preview',['quiz'=>$invalid]),400);
+}
+$orderPublished=aiCall($actor,'quiz_publish',['id'=>$order['id'],'revision'=>$orderRead['revision'],'approved'=>true,'request_id'=>'publish-order-request']);
+check($orderPublished['publication']==='published' && aiStudentQuiz(aiRead(QUIZZES_FILE)[$order['id']])['type']==='order','MCP order quiz publication failed.');
+check(quizTypeRoute('order')['editor']==='order-edit.php','Order route failed.');
+
+echo "PASS: $passed service checks, including publication, draft isolation, ownership, retries, conflicts, image choices, sort and order quizzes and legacy edits.\n";
