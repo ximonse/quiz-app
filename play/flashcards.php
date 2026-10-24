@@ -132,7 +132,7 @@ function shuffleNoAdjacentDuplicates(arr, keyFn) {
 
 // Glosor: glosord/mening är på quizets språk, översättningen alltid på svenska.
 function isGlossReverse(item) { return quizType === 'glossary' && item._dir === 'reverse'; }
-function sortLabel(entry) { return entry.text || entry.title || entry.image?.alt || ''; }
+function sortLabel(entry) { return entry.title || entry.text || entry.image?.alt || ''; }
 function frontText(item) {
     if (quizType === 'sort') return item.hint + ' ' + sortLabel(item.object) + '?';
     if (quizType === 'fact') {

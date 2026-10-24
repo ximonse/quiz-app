@@ -53,7 +53,7 @@
         const {item, objectIds, reveal} = presentation;
         $('question-card').hidden = false; $('question').textContent = item.question;
         $('info-image').replaceChildren(); if (item.image) $('info-image').append(imageNode(item.image));
-        $('instructions').textContent = reveal ? 'Dra varje objekt till fältet där det hör hemma. Allt behöver inte flyttas. Tryck på Klar när du är färdig.'
+        $('instructions').textContent = reveal ? 'Dra objekten nedanför till fältet där de hör hemma. Allt behöver inte flyttas. Tryck på Klar när du är färdig.'
             : 'Öva igen på de här objekten. Tryck på Klar när du är färdig.';
         $('fields').replaceChildren(...item.fields.map(fieldNode));
         $('fields').dataset.count = String(item.fields.length);

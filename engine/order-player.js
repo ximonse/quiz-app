@@ -41,7 +41,7 @@
         const {item, reveal} = presentation;
         $('question-card').hidden = false; $('question').textContent = item.question;
         $('info-image').replaceChildren(); if (item.image) $('info-image').append(imageNode(item.image));
-        $('instructions').textContent = reveal ? 'Dra objekten till linjen och lägg dem i rätt ordning. Tryck på Klar när du är färdig.' : 'Försök igen. Tryck på Klar när du är färdig.';
+        $('instructions').textContent = reveal ? 'Dra objekten nedanför till linjen och lägg dem i rätt ordning. Tryck på Klar när du är färdig.' : 'Försök igen. Tryck på Klar när du är färdig.';
         const vertical = item.orientation === 'vertical';
         $('track').classList.toggle('vertical', vertical); $('line').dataset.axis = vertical ? 'y' : 'x';
         for (const span of $('track').querySelectorAll('[data-label]')) span.textContent = item.labels?.[span.dataset.label] || '';
