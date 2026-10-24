@@ -15,6 +15,7 @@ function aiOwn(array $quizzes, string $id, string $teacherId): array {
 }
 function aiMarkdown(array $document): string {
     if (($document['type']??'') === 'image_choice') return aiImageMarkdown($document);
+    if (($document['type']??'') === 'sort') return aiSortMarkdown($document);
     $text = '# ' . ($document['title'] ?? '') . "\n\n";
     foreach (($document['items'] ?? $document['questions'] ?? []) as $i => $item) {
         $legacy = isset($document['questions']); $reverse = !$legacy && ($document['settings']['question_direction'] ?? '') === 'description';
@@ -37,7 +38,7 @@ function aiView(array $quiz): array {
     $legacy = !isset($quiz['items']); $id = $quiz['id'];
     return ['id'=>$id, 'revision'=>aiRevision($stored), 'publication'=>$state, 'review_url'=>aiBaseUrl().'/admin/review.php?id='.rawurlencode($id), 'format'=>$legacy ? 'legacy' : 'v2', 'quiz'=>aiDocument($quiz),
         'student_url'=>$state==='published' ? aiBaseUrl() . ($legacy ? '/q/' . rawurlencode($id) . '.html' : '/play/index.php?id=' . rawurlencode($id)) : null,
-        'edit_url'=>aiBaseUrl() . ($legacy ? '/edit-quiz.php?quiz_id=' : ($quiz['type']==='image_choice' ? '/admin/image-edit.php?id=' : '/admin/edit.php?id=')) . rawurlencode($id),
+        'edit_url'=>aiBaseUrl() . ($legacy ? '/edit-quiz.php?quiz_id=' : '/admin/'.quizTypeRoute($quiz['type'])['editor'].'?id=') . rawurlencode($id),
         'markdown'=>aiMarkdown(aiDocument($quiz))];
 }
 function aiValidateLegacy(array $input, string $teacherId): array {

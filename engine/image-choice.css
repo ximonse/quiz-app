@@ -23,3 +23,9 @@
 .editor-crop-controls input{width:100%}
 .review-choice .review-image-frame{margin-bottom:8px}
 @media(max-width:460px){.editor-crop-controls{grid-template-columns:1fr}}
+.review-sort{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:14px 0}
+.review-field{border:2px solid var(--good);border-radius:12px;padding:12px;background:#f5fbf7}
+.review-field.loose{border:2px dashed var(--line);background:#f7f9fc}
+.review-field ul{margin:8px 0 0;padding-left:18px}
+.review-thumb{display:inline-block;position:relative;width:48px;aspect-ratio:4/3;overflow:hidden;border-radius:4px;vertical-align:middle;margin-right:6px}
+.review-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}

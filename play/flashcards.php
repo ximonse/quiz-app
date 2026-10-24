@@ -39,12 +39,15 @@ if (!$quizId) { header('Location: index.php'); exit; }
         <div class="card-inner w-full h-full rounded-xl" style="background: var(--card-bg); border: 1px solid var(--border)">
             <div class="card-front text-center">
                 <div>
+                    <p id="front-hint" class="text-sm mb-2 hidden" style="color: var(--text-secondary)"></p>
+                    <img id="front-image" class="hidden mx-auto mb-3 max-h-28 rounded" alt="">
                     <p id="front-text" class="text-2xl font-bold" style="color: var(--text-primary)"></p>
                     <button onclick="speakFront(event)" class="mt-3 text-xs px-2 py-1 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)" title="Lyssna på framsidan">🔊</button>
                 </div>
             </div>
             <div class="card-back text-center">
                 <div>
+                    <img id="back-image" class="hidden mx-auto mb-3 max-h-28 rounded" alt="">
                     <p id="back-text" class="text-xl" style="color: var(--accent)"></p>
                     <button onclick="speakBack(event)" class="mt-3 text-xs px-2 py-1 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)" title="Lyssna på baksidan">🔊</button>
                 </div>
@@ -70,8 +73,10 @@ fetch('../api/quiz-data.php?id=' + encodeURIComponent(QUIZ_ID))
     .then(data => {
         quizSettings = data.settings;
         quizType = data.type;
-        const baseItems = data.items || [];
-        if (quizSettings?.flashcard_mix_directions) {
+        // Sort quizzes: one card per object that belongs to a field (distractors are skipped).
+        const baseItems = quizType === 'sort' ? (data.items || []).flatMap(item => item.objects.filter(o => o.field).map(o => ({
+            hint: item.flashcard_prompt || item.question, object: o, field: item.fields.find(f => f.id === o.field)}))) : (data.items || []);
+        if (quizSettings?.flashcard_mix_directions && quizType !== 'sort') {
             // En gång från varje håll per kort: dubblera listan och tagga varje kopia
             // med sin riktning och ursprungsindex. Faktaquiz: concept/description,
             // glosor: forward (glosord -> översättning) / reverse (översättning -> glosord).
@@ -127,7 +132,9 @@ function shuffleNoAdjacentDuplicates(arr, keyFn) {
 
 // Glosor: glosord/mening är på quizets språk, översättningen alltid på svenska.
 function isGlossReverse(item) { return quizType === 'glossary' && item._dir === 'reverse'; }
+function sortLabel(entry) { return entry.text || entry.title || entry.image?.alt || ''; }
 function frontText(item) {
+    if (quizType === 'sort') return item.hint + ' ' + sortLabel(item.object) + '?';
     if (quizType === 'fact') {
         const dir = item._dir || quizSettings?.question_direction || 'concept';
         return dir === 'description' ? (item.description || '') : (item.concept || '');
@@ -135,6 +142,7 @@ function frontText(item) {
     return isGlossReverse(item) ? (item.translation || '') : (item.word || '');
 }
 function backText(item) {
+    if (quizType === 'sort') return sortLabel(item.field);
     if (quizType === 'fact') {
         const dir = item._dir || quizSettings?.question_direction || 'concept';
         return dir === 'description' ? (item.concept || '') : (item.description || '');
@@ -165,10 +173,22 @@ function showCard() {
     const card = document.getElementById('card');
     card.classList.remove('flipped');
     const item = items[currentIndex];
-    document.getElementById('front-text').textContent = frontText(item);
+    const sort = quizType === 'sort';
+    document.getElementById('front-hint').classList.toggle('hidden', !sort);
+    document.getElementById('front-hint').textContent = sort ? item.hint : '';
+    document.getElementById('front-text').textContent = sort ? sortLabel(item.object) : frontText(item);
     document.getElementById('back-text').textContent = backText(item);
+    setCardImage('front-image', sort ? item.object.image : null);
+    setCardImage('back-image', sort ? item.field.image : null);
     document.getElementById('counter').textContent = `${currentIndex + 1}/${items.length}`;
     playCardTTS();
+}
+
+function setCardImage(id, image) {
+    const img = document.getElementById(id);
+    img.classList.toggle('hidden', !image);
+    if (image) { img.src = '../api/question-image.php?file=' + encodeURIComponent(image.file); img.alt = image.alt; }
+    else { img.removeAttribute('src'); img.alt = ''; }
 }
 
 function playCardTTS() {

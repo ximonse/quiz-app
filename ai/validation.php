@@ -1,11 +1,12 @@
 <?php
 require_once __DIR__ . '/images.php';
 require_once __DIR__ . '/image-validation.php';
+require_once __DIR__ . '/sort-validation.php';
 function aiValidateDocument(array $input, string $teacherId): array {
     $allowed = ['title', 'type', 'subject', 'grade', 'tags', 'settings', 'items'];
     if (array_diff(array_keys($input), $allowed)) throw new QuizAiError('Unknown quiz fields. Do not include id, results or teacher_id.');
     $type = $input['type'] ?? '';
-    if (!in_array($type, ['fact', 'glossary', 'image_choice'], true)) throw new QuizAiError('type must be fact, glossary or image_choice.');
+    if (!in_array($type, ['fact', 'glossary', 'image_choice', 'sort'], true)) throw new QuizAiError('type must be fact, glossary, image_choice or sort.');
     $items = $input['items'] ?? null;
     if (!is_array($items) || !array_is_list($items) || count($items) < 1 || count($items) > 200)
         throw new QuizAiError('Provide 1 to 200 items.');
@@ -13,6 +14,7 @@ function aiValidateDocument(array $input, string $teacherId): array {
     foreach ($items as $index => $item) {
         if (!is_array($item)) throw new QuizAiError('Invalid item.');
         if ($type === 'image_choice') { $normalized[] = aiValidateImageQuestion($item,$teacherId); continue; }
+        if ($type === 'sort') { $normalized[] = aiValidateSortQuestion($item,$teacherId); continue; }
         $fields = $type === 'fact' ? ['concept', 'description'] : ['sentence', 'word', 'translation'];
         if (array_diff(array_keys($item), array_merge($fields, ['wrong_options', 'reverse_wrong_options', 'image'])))
             throw new QuizAiError('Unknown item fields.');
@@ -61,6 +63,7 @@ function aiValidateDocument(array $input, string $teacherId): array {
             throw new QuizAiError('Opening must be before closing.');
     }
     if ($type === 'image_choice' && ($settings['answer_mode'] !== 'multiple_choice' || $settings['reverse_enabled'] || $settings['generate_flashcards'])) throw new QuizAiError('Image choices use multiple_choice, without reverse mode or flashcards.');
+    if ($type === 'sort' && ($settings['answer_mode'] !== 'multiple_choice' || $settings['reverse_enabled'])) throw new QuizAiError('Sort quizzes use drag and drop, without reverse mode.');
     return ['title'=>aiText($input['title'] ?? '', 'title', 300), 'type'=>$type,
         'subject'=>aiText($input['subject'] ?? '', 'subject', 100, false), 'grade'=>aiText($input['grade'] ?? '', 'grade', 100, false),
         'tags'=>aiText($input['tags'] ?? '', 'tags', 500, false), 'settings'=>$settings, 'items'=>$normalized];

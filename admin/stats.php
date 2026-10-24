@@ -28,6 +28,25 @@ foreach ($results as $result) {
 }
 arsort($questionErrors);
 
+// Sort quizzes: which objects end up wrong, and where pupils put them.
+$objectErrors = [];
+if (($quiz['type'] ?? '') === 'sort') {
+    foreach ($results as $result) foreach ($result['errors'] ?? [] as $err) {
+        $item = $items[$err['item_index'] ?? -1] ?? null; if (!$item || !isset($err['object_id'])) continue;
+        $key = $err['item_index'] . ':' . $err['object_id'];
+        $objectErrors[$key] ??= ['item' => $item, 'object_id' => $err['object_id'], 'count' => 0, 'given' => []];
+        $objectErrors[$key]['count']++;
+        $given = $err['given'] ?? ''; $objectErrors[$key]['given'][$given] = ($objectErrors[$key]['given'][$given] ?? 0) + 1;
+    }
+    uasort($objectErrors, fn($a, $b) => $b['count'] <=> $a['count']);
+}
+function statsSortLabel(array $item, ?string $id): string {
+    if ($id === null || $id === '') return 'utanför fälten';
+    foreach (array_merge($item['fields'] ?? [], $item['objects'] ?? []) as $entry)
+        if ($entry['id'] === $id) return ($entry['title'] ?? '') ?: (($entry['text'] ?? '') ?: ($entry['image']['alt'] ?? $id));
+    return $id;
+}
+
 // Average score
 $avgScore = 0;
 if (count($results) > 0) {
@@ -82,6 +101,25 @@ if (count($results) > 0) {
         <div class="flex items-center justify-between py-1">
             <span class="text-sm" style="color: var(--text-primary)"><?= htmlspecialchars($label) ?></span>
             <span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700"><?= $errorCount ?> fel (<?= $pct ?>%)</span>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($objectErrors): ?>
+    <div class="rounded-lg p-4 mb-6" style="background: var(--card-bg); border: 1px solid var(--border)">
+        <h2 class="font-medium mb-3" style="color: var(--text-primary)">Objekt som oftast hamnar fel</h2>
+        <?php foreach (array_slice($objectErrors, 0, 10) as $entry):
+            $correct = null; foreach ($entry['item']['objects'] as $o) if ($o['id'] === $entry['object_id']) $correct = $o['field'];
+            arsort($entry['given']); $places = [];
+            foreach ($entry['given'] as $given => $n) $places[] = statsSortLabel($entry['item'], (string)$given) . ' ' . $n . '×';
+        ?>
+        <div class="flex items-center justify-between gap-3 py-1">
+            <div>
+                <div class="text-sm" style="color: var(--text-primary)"><?= htmlspecialchars(statsSortLabel($entry['item'], $entry['object_id'])) ?> <span style="color: var(--text-secondary)">→ rätt: <?= htmlspecialchars(statsSortLabel($entry['item'], $correct)) ?></span></div>
+                <div class="text-xs" style="color: var(--text-secondary)">Placerat i: <?= htmlspecialchars(implode(' · ', $places)) ?></div>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 shrink-0"><?= $entry['count'] ?> fel</span>
         </div>
         <?php endforeach; ?>
     </div>

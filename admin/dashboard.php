@@ -234,6 +234,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
     <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
         <h2 class="text-lg font-bold text-gray-800 mb-4">Skapa nytt quiz</h2>
         <a href="image-edit.php" class="inline-block mb-4 px-3 py-2 border rounded-lg font-medium text-blue-700">Skapa bildvalsquiz</a>
+        <a href="sort-edit.php" class="inline-block mb-4 ml-2 px-3 py-2 border rounded-lg font-medium text-blue-700">Skapa sorteringsquiz</a>
 
         <form id="create-quiz-form" method="POST" class="space-y-4" onsubmit="return prepareCreateSubmit();">
             <?= csrfField() ?>
@@ -525,7 +526,7 @@ Nu, invänta mitt material.</pre>
             <?php foreach ($myQuizzes as $quiz):
                 $storedQuiz=$quiz; $quiz=aiEffectiveQuiz($quiz);
                 $type = $quiz['type'] ?? 'glossary';
-                $typeBadge = $type === 'glossary' ? 'glosquiz' : ($type==='image_choice'?'bildvalsquiz':'faktaquiz');
+                $typeBadge = quizTypeRoute($type)['label'];
                 $reviewState=aiReviewState($storedQuiz);
                 $badgeColor = $type === 'glossary' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
                 $itemCount = count($quiz['items'] ?? []);
@@ -563,7 +564,7 @@ Nu, invänta mitt material.</pre>
                     <?php if ($reviewState==='published'): ?><button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Kopiera elevlänk">📋</button>
                     <button onclick="showQrCode('<?= htmlspecialchars($playUrl) ?>', '<?= htmlspecialchars($quiz['title'], ENT_QUOTES) ?>')" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Visa QR-kod">📱</button>
                     <?php endif; ?><a href="review.php?id=<?= urlencode($quiz['id']) ?>" class="text-blue-700 text-sm"><?= $reviewState==='published'?'Granska':'Granska och publicera' ?></a>
-                    <a href="<?= $type==='image_choice'?'image-edit.php':'edit.php' ?>?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Redigera">✏️</a>
+                    <a href="<?= quizTypeRoute($type)['editor'] ?>?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Redigera">✏️</a>
                     <a href="stats.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Statistik">📊</a>
                     <form method="POST" style="display:inline" onsubmit="return confirm('Radera detta quiz?')">
                         <?= csrfField() ?>

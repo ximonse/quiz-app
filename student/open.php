@@ -20,7 +20,7 @@ if ($a['kind']==='material') {
 $content=classroomContent($a);
 if ($a['kind']==='deck') $path='../q/flashcards.php?deck_id='.urlencode($a['content_id']);
 elseif ($a['kind']==='cards') $path='../play/flashcards.php?id='.urlencode($a['content_id']);
-elseif (isset($content['items'])) $path='../play/'.(($content['type'] ?? '')==='image_choice'?'image-quiz.php':'quiz.php').'?id='.urlencode($a['content_id']);
+elseif (isset($content['items'])) $path='../play/'.quizTypeRoute($content['type'] ?? null)['player'].'?id='.urlencode($a['content_id']);
 else $path='../q/'.$a['content_id'].'.html?';
 $path.=(str_ends_with($path,'?')?'':'&').'assignment='.urlencode($id).'&name='.urlencode($student['name']);
 header('Location: '.$path);

@@ -51,6 +51,18 @@ Två sätt att öva:
 - TTS (text-to-speech) med röstval för iPad
 - Omvänd glosträning stöds: översättning → glosord, med egna omvända felsvar
 
+### Sorteringsquiz (sort)
+- Varje fråga har en huvudfråga, 1–5 valfält (rubrik, infotext och/eller bild) och 2–12 objekt (text och/eller bild)
+- Eleven drar objekten till rätt fält; objekt med `field: null` (distraktorer) ska ligga kvar utanför
+- Rättas per objekt. Första gången en fråga visas blinkar fel objekt rött och glider sedan till rätt plats (grönt); vid repetition ligger de kvar där eleven lade dem
+- Repetition: frågan kommer tillbaka med bara de objekt som behöver övas (`required_correct` gäller per objekt)
+- Objekt kan aldrig överlappa: de ligger alltid i radbrytande behållare
+- Uppläsning: eleven håller fingret stilla ~1 s på en text; eleven kan stänga av ljudet i headern
+- Flashcards: ett kort per objekt som hör till ett fält, med ledtråden (`flashcard_prompt`) på framsidan
+- Skapas i `admin/sort-edit.php`, via MCP, eller med prompt/JSON-mall (`assets/templates/sorteringsquiz-mall.json`)
+- Filer: `engine/sort-engine.js` (regler), `engine/drag-board.js` (dra och släpp, delas med kommande ordningsquiz), `engine/sort-player.js`, `play/sort-quiz.php`, `ai/sort-validation.php`
+- Statistik visar vilka objekt som oftast hamnar fel och var
+
 ## Huvudfunktioner
 
 ### Admin-gränssnitt (admin.php)

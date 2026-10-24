@@ -17,7 +17,7 @@ $error = '';
 require_once __DIR__ . '/../ai/quiz-service.php';
 $editRevision = aiRevision($quiz);
 $quiz=aiEffectiveQuiz($quiz);
-if ($quiz['type']==='image_choice') { header('Location: image-edit.php?id='.urlencode($quizId)); exit; }
+if (quizTypeRoute($quiz['type'])['editor']!=='edit.php') { header('Location: '.quizTypeRoute($quiz['type'])['editor'].'?id='.urlencode($quizId)); exit; }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requireValidCsrf();

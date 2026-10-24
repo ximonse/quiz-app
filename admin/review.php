@@ -21,7 +21,7 @@ function reviewImage(array $image): void {
 <body><main class="review-main"><a href="dashboard.php">← Mina quiz</a><header><p class="eyebrow">Granska · justera · publicera</p><h1><?= reviewEscape($quiz['title']) ?></h1>
 <p><?= $view['publication']==='draft'?'Inte publicerat. Elever kan inte nå quizet ännu.':($view['publication']==='pending'?'Du granskar nya ändringar. Eleverna ser fortfarande den publicerade versionen.':'Quizet är publicerat.') ?></p>
 <nav><a class="button secondary" href="<?= reviewEscape($view['edit_url']) ?>">Redigera frågor</a><a class="button secondary" href="images.php?id=<?= urlencode($id) ?>">Infobilder</a>
-<?php if (isset($quiz['items'])): ?><a class="button secondary" href="../play/<?= $quiz['type']==='image_choice'?'image-quiz.php':'quiz.php' ?>?id=<?= urlencode($id) ?>&name=Förhandsvisning&preview=1">Prova quizet</a><?php endif; ?></nav></header>
+<?php if (isset($quiz['items'])): ?><a class="button secondary" href="../play/<?= quizTypeRoute($quiz['type'])['player'] ?>?id=<?= urlencode($id) ?>&name=Förhandsvisning&preview=1">Prova quizet</a><?php endif; ?></nav></header>
 <?php if ($error): ?><p class="error" role="alert"><?= reviewEscape($error) ?></p><?php endif; ?>
 <?php if (isset($_GET['published']) && $view['publication']==='published'): ?><p class="success" role="status">Publicerat! <a href="<?= reviewEscape($view['student_url']) ?>">Öppna elevlänken</a></p><?php endif; ?>
 <?php foreach ($quiz['items']??$quiz['questions'] as $index=>$item):
@@ -34,6 +34,11 @@ function reviewImage(array $image): void {
 <?php if (!empty($item['image'])): $info=is_array($item['image'])?$item['image']:['file'=>$item['image'],'alt'=>$item['image_alt']??'Infobild']; ?><div class="info-image"><?php reviewImage($info); ?></div><?php endif; ?>
 <?php if ($quiz['type']==='image_choice'): ?><p><?= count(array_filter($item['choices'],fn($c)=>$c['correct']))>1?'Flera rätta bilder · eleven markerar och kontrollerar':'En rätt bild · eleven klickar och får svar' ?></p><div class="choice-grid">
 <?php foreach ($item['choices'] as $i=>$choice): ?><figure class="review-choice <?= $choice['correct']?'correct':'' ?>"><div class="review-image-frame"><?php reviewImage($choice['image']); ?></div><figcaption>Bild <?= $i+1 ?> · <?= $choice['correct']?'Rätt':'Fel' ?></figcaption></figure><?php endforeach; ?></div>
+<?php elseif ($quiz['type']==='sort'): ?><?php if ($item['flashcard_prompt']!==''): ?><p class="small">Ledtråd för flashcards: <?= reviewEscape($item['flashcard_prompt']) ?></p><?php endif; ?><div class="review-sort">
+<?php foreach (array_merge($item['fields'],[['id'=>null,'title'=>'Hör inte till något fält','text'=>'','image'=>null]]) as $field): $members=array_filter($item['objects'],fn($o)=>$o['field']===$field['id']); if ($field['id']===null && !$members) continue; ?>
+<div class="review-field<?= $field['id']===null?' loose':'' ?>"><?php if ($field['image']): ?><div class="review-image-frame"><?php reviewImage($field['image']); ?></div><?php endif; ?><strong><?= reviewEscape($field['title']) ?></strong><?php if ($field['text']!==''): ?><p class="small"><?= reviewEscape($field['text']) ?></p><?php endif; ?>
+<ul><?php foreach ($members as $object): ?><li><?php if ($object['image']): ?><span class="review-thumb"><?php reviewImage($object['image']); ?></span><?php endif; ?><?= reviewEscape($object['text']!==''?$object['text']:$object['image']['alt']) ?></li><?php endforeach; ?></ul></div>
+<?php endforeach; ?></div>
 <?php else: ?><p><strong>Rätt svar:</strong> <?= reviewEscape($answer) ?></p><ul><?php foreach ($wrongAnswers as $wrong): ?><li><?= reviewEscape($wrong) ?></li><?php endforeach; ?></ul><?php endif; ?></section>
 <?php endforeach; ?>
 <footer class="publish-bar"><?php if ($view['publication']!=='published'): ?><form method="post"><?= csrfField() ?><input type="hidden" name="revision" value="<?= aiRevision($stored) ?>"><button>Publicera <?= $view['publication']==='pending'?'ändringarna':'quizet' ?></button></form><?php else: ?><a class="button" href="<?= reviewEscape($view['student_url']) ?>">Öppna elevlänken</a><?php endif; ?></footer>

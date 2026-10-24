@@ -61,6 +61,6 @@ Uploaded PNG/JPEG/WebP/GIF pictures are raster-validated (max 5 MB, 8000 pixels 
 
 ## Verification
 
-Run `php tests/ai-service.test.php` and `node --test engine/quiz-engine.test.js tests/image-choice.test.js`. HTTP tests take a synthetic copied site's `fixture.json` and loopback base URL: `python tests/publication-http.test.py <fixture.json> http://127.0.0.1:8765`. Use only disposable fixtures, never live data. Browser QA covers teacher editing/review/publication, single/multiple picture selection, feedback, and preview/result isolation. Local verification, site publication and connection to a real AI client are separate steps.
+Run `php tests/ai-service.test.php` and `node --test engine/quiz-engine.test.js tests/image-choice.test.js tests/sort-engine.test.js`. HTTP tests take a synthetic copied site's `fixture.json` and loopback base URL: `python tests/publication-http.test.py <fixture.json> http://127.0.0.1:8765`. Use only disposable fixtures, never live data. Browser QA covers teacher editing/review/publication, single/multiple picture selection, feedback, and preview/result isolation. Local verification, site publication and connection to a real AI client are separate steps.
 
 Protocol references: [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports), [MCP tools](https://modelcontextprotocol.io/specification/2025-06-18/server/tools).
