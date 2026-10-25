@@ -16,7 +16,9 @@ if (!$quizId) { header('Location: index.php'); exit; }
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="../engine/themes.css?v=<?= filemtime(__DIR__ . '/../engine/themes.css') ?>">
     <script src="../engine/tts.js?v=<?= filemtime(__DIR__ . '/../engine/tts.js') ?>"></script>
+    <script src="../engine/hold-speak.js?v=<?= filemtime(__DIR__ . '/../engine/hold-speak.js') ?>"></script>
     <style>
+        :root { --bar-width: 32rem; }
         .card { perspective: 1000px; cursor: pointer; }
         .card-inner { transition: transform 0.5s; transform-style: preserve-3d; position: relative; }
         .card.flipped .card-inner { transform: rotateY(180deg); }
@@ -25,10 +27,9 @@ if (!$quizId) { header('Location: index.php'); exit; }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
-<?php classroomPlayerBar(); ?>
+<?php classroomPlayerBar('index.php?id='.urlencode($quizId)); ?>
 <div class="max-w-lg mx-auto p-4">
-    <div class="flex items-center justify-between mb-6">
-        <a href="index.php?id=<?= urlencode($quizId) ?>" class="text-sm hover:underline" style="color: var(--accent)">&larr; Start</a>
+    <div class="flex items-center justify-end mb-6">
         <div class="flex items-center gap-2">
             <span id="counter" class="text-sm" style="color: var(--text-secondary)">1/0</span>
             <button id="mute-btn" onclick="toggleMute()" class="text-xs px-1.5 py-0.5 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)"></button>
@@ -39,14 +40,15 @@ if (!$quizId) { header('Location: index.php'); exit; }
         <div class="card-inner w-full h-full rounded-xl" style="background: var(--card-bg); border: 1px solid var(--border)">
             <div class="card-front text-center">
                 <div>
+                    <p id="front-hint" class="text-sm mb-2 hidden" style="color: var(--text-secondary)"></p>
+                    <img id="front-image" class="hidden mx-auto mb-3 max-h-28 rounded" alt="">
                     <p id="front-text" class="text-2xl font-bold" style="color: var(--text-primary)"></p>
-                    <button onclick="speakFront(event)" class="mt-3 text-xs px-2 py-1 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)" title="Lyssna på framsidan">🔊</button>
                 </div>
             </div>
             <div class="card-back text-center">
                 <div>
+                    <img id="back-image" class="hidden mx-auto mb-3 max-h-28 rounded" alt="">
                     <p id="back-text" class="text-xl" style="color: var(--accent)"></p>
-                    <button onclick="speakBack(event)" class="mt-3 text-xs px-2 py-1 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)" title="Lyssna på baksidan">🔊</button>
                 </div>
             </div>
         </div>
@@ -70,8 +72,10 @@ fetch('../api/quiz-data.php?id=' + encodeURIComponent(QUIZ_ID))
     .then(data => {
         quizSettings = data.settings;
         quizType = data.type;
-        const baseItems = data.items || [];
-        if (quizSettings?.flashcard_mix_directions) {
+        // Sort quizzes: one card per object that belongs to a field (distractors are skipped).
+        const baseItems = quizType === 'sort' ? (data.items || []).flatMap(item => item.objects.filter(o => o.field).map(o => ({
+            hint: item.flashcard_prompt || item.question, object: o, field: item.fields.find(f => f.id === o.field)}))) : (data.items || []);
+        if (quizSettings?.flashcard_mix_directions && quizType !== 'sort') {
             // En gång från varje håll per kort: dubblera listan och tagga varje kopia
             // med sin riktning och ursprungsindex. Faktaquiz: concept/description,
             // glosor: forward (glosord -> översättning) / reverse (översättning -> glosord).
@@ -127,7 +131,9 @@ function shuffleNoAdjacentDuplicates(arr, keyFn) {
 
 // Glosor: glosord/mening är på quizets språk, översättningen alltid på svenska.
 function isGlossReverse(item) { return quizType === 'glossary' && item._dir === 'reverse'; }
+function sortLabel(entry) { return entry.title || entry.text || entry.image?.alt || ''; }
 function frontText(item) {
+    if (quizType === 'sort') return item.hint + ' ' + sortLabel(item.object) + '?';
     if (quizType === 'fact') {
         const dir = item._dir || quizSettings?.question_direction || 'concept';
         return dir === 'description' ? (item.description || '') : (item.concept || '');
@@ -135,6 +141,7 @@ function frontText(item) {
     return isGlossReverse(item) ? (item.translation || '') : (item.word || '');
 }
 function backText(item) {
+    if (quizType === 'sort') return sortLabel(item.field);
     if (quizType === 'fact') {
         const dir = item._dir || quizSettings?.question_direction || 'concept';
         return dir === 'description' ? (item.concept || '') : (item.description || '');
@@ -165,14 +172,27 @@ function showCard() {
     const card = document.getElementById('card');
     card.classList.remove('flipped');
     const item = items[currentIndex];
-    document.getElementById('front-text').textContent = frontText(item);
+    const sort = quizType === 'sort';
+    document.getElementById('front-hint').classList.toggle('hidden', !sort);
+    document.getElementById('front-hint').textContent = sort ? item.hint : '';
+    document.getElementById('front-text').textContent = sort ? sortLabel(item.object) : frontText(item);
     document.getElementById('back-text').textContent = backText(item);
+    setCardImage('front-image', sort ? item.object.image : null);
+    setCardImage('back-image', sort ? item.field.image : null);
     document.getElementById('counter').textContent = `${currentIndex + 1}/${items.length}`;
+    updateCardSpeech();
     playCardTTS();
 }
 
+function setCardImage(id, image) {
+    const img = document.getElementById(id);
+    img.classList.toggle('hidden', !image);
+    if (image) { img.src = '../api/question-image.php?file=' + encodeURIComponent(image.file); img.alt = image.alt; }
+    else { img.removeAttribute('src'); img.alt = ''; }
+}
+
 function playCardTTS() {
-    // Faktaquiz läses bara upp när eleven trycker på en 🔊-knapp (ingen autouppspelning).
+    // Faktaquiz läses bara upp när eleven håller på kortet (ingen autouppspelning).
     if (!quizSettings?.tts_enabled || quizType === 'fact') return;
     const item = items[currentIndex];
     if (!item) return;
@@ -182,28 +202,23 @@ function playCardTTS() {
     }
 }
 
-// Uppspelningsknapparna är uttryckliga användarval: de låter även när
-// automatisk uppläsning är avstängd (force=true).
-function speakFront(e) {
-    if (e) e.stopPropagation();
+// Håll på kortet i en sekund för att höra sidan som syns (engine/hold-speak.js).
+function updateCardSpeech() {
+    const card = document.getElementById('card');
     const item = items[currentIndex];
-    if (!item) return;
-    speakText(frontText(item), frontLang(item), true);
-}
-
-function speakBack(e) {
-    if (e) e.stopPropagation();
-    const item = items[currentIndex];
-    if (!item) return;
-    speakText(backText(item), backLang(item), true);
+    if (!item || !quizSettings?.tts_enabled) { delete card.dataset.speak; return; }
+    const back = card.classList.contains('flipped');
+    card.dataset.speak = back ? backText(item) : frontText(item);
+    card.dataset.speakLang = (back ? backLang(item) : frontLang(item)) || 'sv';
 }
 
 function flipCard() {
     if (items[currentIndex]) window.ClassroomTracker?.card(currentIndex, items.length);
     const card = document.getElementById('card');
     card.classList.toggle('flipped');
+    updateCardSpeech();
     // Svaret läses automatiskt när det avslöjas, men bara om det är glosordet på
-    // målspråket (omvänt kort). Svensk baksida läses bara via 🔊.
+    // målspråket (omvänt kort). Svensk baksida läses bara när eleven håller på kortet.
     if (card.classList.contains('flipped') && quizSettings?.tts_enabled && quizType === 'glossary') {
         const item = items[currentIndex];
         if (item && isGlossReverse(item)) speakText(backText(item), backLang(item));

@@ -230,3 +230,13 @@ function deleteImage($filename) {
     }
     return false;
 }
+
+// Quiz types with their own player/editor. Text quizzes (fact/glossary) use the defaults.
+function quizTypeRoute(?string $type): array {
+    $routes = [
+        'image_choice' => ['player' => 'image-quiz.php', 'editor' => 'image-edit.php', 'label' => 'bildvalsquiz'],
+        'sort' => ['player' => 'sort-quiz.php', 'editor' => 'sort-edit.php', 'label' => 'sorteringsquiz'],
+        'order' => ['player' => 'order-quiz.php', 'editor' => 'order-edit.php', 'label' => 'ordningsquiz'],
+    ];
+    return $routes[$type ?? ''] ?? ['player' => 'quiz.php', 'editor' => 'edit.php', 'label' => $type === 'glossary' ? 'glosquiz' : 'faktaquiz'];
+}

@@ -24,6 +24,7 @@ if (!$quizId || !$studentName) {
     <link rel="stylesheet" href="../engine/themes.css?v=<?= filemtime(__DIR__ . '/../engine/themes.css') ?>">
     <script src="../engine/browser-id.js?v=<?= filemtime(__DIR__ . '/../engine/browser-id.js') ?>"></script>
     <style>
+        :root { --bar-width: 32rem; }
         @keyframes answerPulseOnce {
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
             40% { transform: scale(1.035); box-shadow: 0 0 14px 4px rgba(34,197,94,0.45); }
@@ -54,10 +55,11 @@ if (!$quizId || !$studentName) {
     </style>
     <script src="../engine/validator.js?v=<?= filemtime(__DIR__ . '/../engine/validator.js') ?>"></script>
     <script src="../engine/tts.js?v=<?= filemtime(__DIR__ . '/../engine/tts.js') ?>"></script>
+    <script src="../engine/hold-speak.js?v=<?= filemtime(__DIR__ . '/../engine/hold-speak.js') ?>"></script>
     <script src="../engine/quiz-engine.js?v=<?= filemtime(__DIR__ . '/../engine/quiz-engine.js') ?>"></script>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
-<?php classroomPlayerBar(); ?>
+<?php classroomPlayerBar('index.php?id='.urlencode($quizId)); ?>
 <div id="root"></div>
 
 <script type="text/babel">
@@ -96,7 +98,7 @@ function App() {
         return direction === 'reverse' ? factConceptLang(quiz?.settings) : factDescriptionLang(quiz?.settings);
     }
 
-    // Faktaquiz läses bara upp när eleven trycker på en 🔊-knapp (ingen autouppspelning).
+    // Faktaquiz läses bara upp när eleven håller på texten (ingen autouppspelning).
 
     function toggleMute() {
         const next = !muted;
@@ -110,7 +112,8 @@ function App() {
             .then(r => r.json())
             .then(data => {
                 if (data.error) throw new Error(data.error);
-                if (data.type==='image_choice') { window.location.replace('image-quiz.php'+window.location.search); return; }
+                const own = {image_choice:'image-quiz.php', sort:'sort-quiz.php', order:'order-quiz.php'}[data.type];
+                if (own) { window.location.replace(own+window.location.search); return; }
                 if (data.status === 'not_yet') {
                     setOpensAt(data.opens);
                     setStatus('not_yet');
@@ -288,27 +291,28 @@ function App() {
     // Framåt: alternativen är svenska. Omvänt: prompten är svensk, alternativen glosord.
     const isGlossary = quiz.type === 'glossary';
     const optionLang = isGlossary ? (progress.direction === 'forward' ? 'sv' : factLang()) : factOptionLang(progress.direction);
-    const optionTts = quiz.settings.tts_enabled;
-    const ttsBtnStyle = {background: 'var(--card-bg)', color: 'var(--text-secondary)', borderColor: 'var(--border)'};
+    // Håll på frågan eller ett alternativ i en sekund för uppläsning (engine/hold-speak.js).
+    const speakProps = (text, lang) => quiz.settings.tts_enabled ? {'data-speak': text, 'data-speak-lang': lang} : {};
+    const promptLang = (direction, phase) => isGlossary ? (direction === 'forward' && phase !== 'text' ? factLang() : 'sv') : factPromptLang(direction);
 
     function renderPrompt(promptText, highlightText, direction, phase) {
         if (quiz.type === 'glossary' && direction === 'forward' && phase !== 'text') {
             return (
-                <div>
-                    <p className="text-lg mb-2" style={{color: 'var(--text-secondary)'}}>
+                <div {...speakProps(promptText, promptLang(direction, phase))}>
+                    <p className="text-xl mb-2 text-center" style={{color: 'var(--text-secondary)'}}>
                         {promptText.replace(highlightText, `**${highlightText}**`).split('**').map((part, i) =>
                             i % 2 === 1
                                 ? <strong key={i} style={{color: 'var(--accent)'}}>{part}</strong>
                                 : part
                         )}
                     </p>
-                    <p className="text-sm" style={{color: 'var(--text-secondary)'}}>
+                    <p className="text-sm text-center" style={{color: 'var(--text-secondary)'}}>
                         Vad betyder <strong style={{color: 'var(--accent)'}}>{highlightText}</strong>?
                     </p>
                 </div>
             );
         }
-        return <p className="text-lg" style={{color: 'var(--text-primary)'}}>{promptText}</p>;
+        return <p className="text-2xl font-bold text-center leading-snug" style={{color: 'var(--text-primary)'}} {...speakProps(promptText, promptLang(direction, phase))}>{promptText}</p>;
     }
 
     return (
@@ -316,7 +320,6 @@ function App() {
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2 min-w-0">
-                    <a href={'index.php?id=' + encodeURIComponent(QUIZ_ID)} className="text-xs shrink-0 hover:underline" style={{color: 'var(--accent)'}}>&larr; Start</a>
                     <h2 className="text-sm font-medium truncate" style={{color: 'var(--text-primary)'}}>{quiz.title}</h2>
                 </div>
                 <div className="flex items-center gap-2">
@@ -376,26 +379,13 @@ function App() {
                     )}
                     {renderPrompt(q.prompt, q.highlight, progress.direction, progress.phase)}
 
-                    {isGlossary && progress.direction === 'reverse' && quiz.settings.tts_enabled && (
-                        <button onClick={() => speakText(q.prompt, 'sv', true)} className="mt-3 text-xs px-2 py-1 rounded border" style={ttsBtnStyle} title="Lyssna på frågan">🔊 Lyssna</button>
-                    )}
-
-                    {isFact && quiz.settings.tts_enabled && (
-                        <button onClick={() => speakText(q.prompt, factPromptLang(progress.direction), true)} className="mt-3 text-xs px-2 py-1 rounded border" style={ttsBtnStyle} title="Lyssna på frågan">🔊 Lyssna</button>
-                    )}
-
                     {/* Multiple choice options */}
                     {q.options && (
                         <div className="mt-4 space-y-2">
                             {q.options.map((opt, i) => (
-                                <div key={i} className="flex items-stretch gap-2">
-                                    <button onClick={() => handleAnswer(opt)} className="flex-1 text-left px-4 py-3 rounded-lg border text-sm transition-colors hover:border-blue-400" style={{background: 'var(--card-bg)', color: 'var(--text-primary)', borderColor: 'var(--border)'}}>
-                                        {opt}
-                                    </button>
-                                    {optionTts && (
-                                        <button onClick={() => speakText(opt, optionLang, true)} className="px-2 text-sm opacity-40 active:opacity-80" style={{background: 'transparent', color: 'var(--text-secondary)'}} aria-label="Lyssna på alternativet" title="Lyssna på alternativet">🔊</button>
-                                    )}
-                                </div>
+                                <button key={i} onClick={() => handleAnswer(opt)} {...speakProps(opt, optionLang)} className="w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors hover:border-blue-400" style={{background: 'var(--card-bg)', color: 'var(--text-primary)', borderColor: 'var(--border)'}}>
+                                    {opt}
+                                </button>
                             ))}
                         </div>
                     )}
@@ -423,17 +413,12 @@ function App() {
                 <div className="rounded-xl p-6 mb-4" style={{background: 'var(--card-bg)', border: '1px solid var(--border)'}}>
                     {renderPrompt(feedback.prompt, feedback.highlight, feedback.direction, feedback.phase)}
 
-                    {/* Osynlig kopia av frågans 🔊-knapp så att alternativen inte hoppar när den försvinner */}
-                    {quiz.settings.tts_enabled && (isFact || (isGlossary && feedback.direction === 'reverse')) && (
-                        <button disabled aria-hidden="true" tabIndex={-1} className="mt-3 text-xs px-2 py-1 rounded border" style={{...ttsBtnStyle, visibility: 'hidden'}}>🔊 Lyssna</button>
-                    )}
-
                     {feedback.options ? (
                         <div className="mt-4 space-y-2">
                             {feedback.options.map((opt, i) => {
                                 const isGiven = opt === feedback.given;
                                 const isCorrectOpt = opt === feedback.correctAnswer;
-                                let cls = 'flex-1 text-left px-4 py-3 rounded-lg border text-sm';
+                                let cls = 'w-full text-left px-4 py-3 rounded-lg border text-sm';
                                 let style = {background: 'var(--card-bg)', color: 'var(--text-primary)', borderColor: 'var(--border)'};
                                 if (isGiven && feedback.correct) {
                                     cls += ' answer-correct-pulse';
@@ -442,14 +427,7 @@ function App() {
                                 } else if (isCorrectOpt && !feedback.correct) {
                                     cls += ' answer-correct-glow';
                                 }
-                                return (
-                                    <div key={i} className="flex items-stretch gap-2">
-                                        <button disabled className={cls} style={style}>{opt}</button>
-                                        {optionTts && (
-                                            <button disabled aria-hidden="true" className="px-2 text-sm opacity-40" style={{background: 'transparent', color: 'var(--text-secondary)'}}>🔊</button>
-                                        )}
-                                    </div>
-                                );
+                                return <button key={i} disabled className={cls} style={style}>{opt}</button>;
                             })}
                         </div>
                     ) : (

@@ -1,0 +1,31 @@
+{
+  "title": "Rikena i naturen",
+  "type": "sort",
+  "settings": {
+    "tts_enabled": true,
+    "quiz_mode": "training",
+    "required_correct": 1,
+    "language": "sv",
+    "generate_flashcards": true
+  },
+  "items": [
+    {
+      "question": "Vilket rike tillhör de här organismerna?",
+      "flashcard_prompt": "Vilket rike tillhör",
+      "fields": [
+        { "id": "svampar", "title": "Svampar", "text": "Bryter ner döda växter och djur" },
+        { "id": "vaxter", "title": "Växter", "text": "Gör egen näring med fotosyntes" },
+        { "id": "djur", "title": "Djur", "text": "Äter andra organismer" }
+      ],
+      "objects": [
+        { "id": "champinjon", "text": "Champinjon", "field": "svampar" },
+        { "id": "kantarell", "text": "Kantarell", "field": "svampar" },
+        { "id": "ek", "text": "Ek", "field": "vaxter" },
+        { "id": "maskros", "text": "Maskros", "field": "vaxter" },
+        { "id": "rav", "text": "Räv", "field": "djur" },
+        { "id": "myra", "text": "Myra", "field": "djur" },
+        { "id": "sten", "text": "Sten", "field": null }
+      ]
+    }
+  ]
+}

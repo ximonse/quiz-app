@@ -53,10 +53,10 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             --bg-from: #f0f9ff;
             --bg-to: #faf5ff;
             --card-bg: #ffffff;
-            --text-primary: #1f2937;
-            --text-secondary: #6b7280;
-            --border: #e5e7eb;
-            --accent: #3b82f6;
+            --text-primary: #111827;
+            --text-secondary: #374151;
+            --border: #6b7280;
+            --accent: #1d4ed8;
         }
 
         body.night-mode {
@@ -64,8 +64,8 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             --bg-to: #1a1a1a;
             --card-bg: #1a1a1a;
             --text-primary: #ffffff;
-            --text-secondary: #999999;
-            --border: #444444;
+            --text-secondary: #d1d5db;
+            --border: #9ca3af;
             --accent: #ffffff;
         }
 
@@ -78,19 +78,19 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             --bg-to: #1a0a1f;
             --card-bg: #150a1a;
             --text-primary: #ffffff;
-            --text-secondary: #c084fc;
-            --border: #4a1f5a;
-            --accent: #ff00ff;
+            --text-secondary: #f0d9ff;
+            --border: #b45fd6;
+            --accent: #ff5cff;
         }
 
         body.psychedelic-mode {
             --bg-from: #ff00ff;
             --bg-to: #00ffff;
-            --card-bg: rgba(255, 255, 0, 0.15);
-            --text-primary: #ffffff;
-            --text-secondary: #ffff00;
-            --border: #ff00ff;
-            --accent: #00ff00;
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --text-primary: #000000;
+            --text-secondary: #1a1a1a;
+            --border: #000000;
+            --accent: #2e0057;
             animation: psychedelic-pulse 8s ease-in-out infinite;
         }
 
@@ -823,7 +823,7 @@ $deck_json = json_encode($deck, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
 
                         {/* Timer */}
                         <div className="text-right mt-1 compact-timer">
-                            <span className="text-xs text-gray-400">{formatTime(timer)}</span>
+                            <span className="text-xs text-gray-700">{formatTime(timer)}</span>
                         </div>
                     </div>
                 </div>

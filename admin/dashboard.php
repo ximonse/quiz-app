@@ -163,7 +163,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
             <div class="flex items-center gap-2">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-800">Hej <?= htmlspecialchars($teacherName) ?>!</h1>
-                    <p class="text-gray-500 text-sm">Hantera dina quizzes</p>
+                    <p class="text-gray-700 text-sm">Hantera dina quizzes</p>
                 </div>
                 <button type="button" onclick="toggleInfoModal()" title="Så funkar appen" class="w-7 h-7 shrink-0 flex items-center justify-center rounded-full bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold text-sm">i</button>
             </div>
@@ -181,7 +181,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
         <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-bold text-gray-800">Så funkar appen</h2>
-                <button type="button" onclick="toggleInfoModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                <button type="button" onclick="toggleInfoModal()" class="text-gray-700 hover:text-gray-600 text-2xl leading-none">&times;</button>
             </div>
             <div class="space-y-4 text-sm text-gray-700">
                 <div>
@@ -234,6 +234,8 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
     <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
         <h2 class="text-lg font-bold text-gray-800 mb-4">Skapa nytt quiz</h2>
         <a href="image-edit.php" class="inline-block mb-4 px-3 py-2 border rounded-lg font-medium text-blue-700">Skapa bildvalsquiz</a>
+        <a href="sort-edit.php" class="inline-block mb-4 ml-2 px-3 py-2 border rounded-lg font-medium text-blue-700">Skapa sorteringsquiz</a>
+        <a href="order-edit.php" class="inline-block mb-4 ml-2 px-3 py-2 border rounded-lg font-medium text-blue-700">Skapa ordningsquiz</a>
 
         <form id="create-quiz-form" method="POST" class="space-y-4" onsubmit="return prepareCreateSubmit();">
             <?= csrfField() ?>
@@ -247,7 +249,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                     Glosquiz
                 </button>
                 <button type="button" id="btn-fact" onclick="selectType('fact')"
-                    class="flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-gray-200 bg-white text-gray-500 hover:border-blue-400">
+                    class="flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-gray-400 bg-white text-gray-700 hover:border-blue-400">
                     Faktaquiz
                 </button>
             </div>
@@ -256,24 +258,24 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Titel</label>
-                    <input type="text" name="title" value="<?= old('title') ?>" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="T.ex. Spanska vecka 12">
+                    <input type="text" name="title" value="<?= old('title') ?>" required class="w-full px-3 py-2 border border-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="T.ex. Spanska vecka 12">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Ämne</label>
-                    <input type="text" name="subject" value="<?= old('subject') ?>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="T.ex. Spanska">
+                    <input type="text" name="subject" value="<?= old('subject') ?>" class="w-full px-3 py-2 border border-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="T.ex. Spanska">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Taggar</label>
-                    <input type="text" name="tags" value="<?= old('tags') ?>" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="vecka12, åk6">
+                    <input type="text" name="tags" value="<?= old('tags') ?>" class="w-full px-3 py-2 border border-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="vecka12, åk6">
                 </div>
             </div>
 
             <!-- CSV Data -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">CSV-data (semikolon-separerad)</label>
-                <div id="csv-hint-glossary" class="text-xs text-gray-500 mb-1">Format: mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3</div>
-                <div id="csv-hint-fact" class="text-xs text-gray-500 mb-1 hidden">Format: begrepp;beskrivning;fel1;fel2;fel3</div>
-                <textarea name="csv_data" rows="6" class="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500" placeholder="Klistra in CSV här..."><?= old('csv_data') ?></textarea>
+                <div id="csv-hint-glossary" class="text-xs text-gray-700 mb-1">Format: mening;ord;översättning;fel1;fel2;fel3;omvänt_fel1;omvänt_fel2;omvänt_fel3</div>
+                <div id="csv-hint-fact" class="text-xs text-gray-700 mb-1 hidden">Format: begrepp;beskrivning;fel1;fel2;fel3</div>
+                <textarea name="csv_data" rows="6" class="w-full px-3 py-2 border border-gray-500 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500" placeholder="Klistra in CSV här..."><?= old('csv_data') ?></textarea>
 
                 <!-- AI Prompt Helper -->
                 <div class="mt-2">
@@ -295,7 +297,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                                 📋 Kopiera prompt
                             </button>
                         </div>
-                        <pre id="prompt-glossary" class="text-xs bg-white p-2 rounded border border-gray-200 overflow-x-auto whitespace-pre-wrap text-gray-600">Du är en expert på pedagogik. Jag vill skapa glosquiz-material.
+                        <pre id="prompt-glossary" class="text-xs bg-white p-2 rounded border border-gray-400 overflow-x-auto whitespace-pre-wrap text-gray-600">Du är en expert på pedagogik. Jag vill skapa glosquiz-material.
 
 Processen sker i två steg:
 
@@ -335,7 +337,7 @@ This place is strange.;strange;konstig;läskig;tråkig;vacker;boring;scary;beaut
 (Notera andra exemplet: ordparet strange/konstig är i grundform. Meningen är därför skriven i singular — "this place", INTE "these places" — så att grundformen "konstig" passar utan att behöva böjas om till "konstiga". Hade jag istället gett dig ordparet strange/konstiga [plural] hade du valt en mening i plural för att passa DET.)
 
 Nu, invänta mitt material.</pre>
-                        <pre id="prompt-fact" class="text-xs bg-white p-2 rounded border border-gray-200 overflow-x-auto whitespace-pre-wrap text-gray-600 hidden">Du är en expert på pedagogik. Jag vill skapa faktaquiz-material.
+                        <pre id="prompt-fact" class="text-xs bg-white p-2 rounded border border-gray-400 overflow-x-auto whitespace-pre-wrap text-gray-600 hidden">Du är en expert på pedagogik. Jag vill skapa faktaquiz-material.
 
 Processen sker i två steg:
 
@@ -383,51 +385,51 @@ Nu, invänta mitt material.</pre>
                             <button type="button" onclick="addItemRow()" class="text-xs px-2 py-1 rounded bg-blue-200 hover:bg-blue-300 text-blue-800 transition">+ Lägg till <span id="add-row-label">glosa</span></button>
                         </div>
                         <div id="items-editor" class="space-y-3"></div>
-                        <p class="text-xs text-gray-500 mt-2">Raderna byggs ihop till CSV-datan automatiskt när du skapar quizet — det du skriver i CSV-fältet ovan används bara om du inte lägger till några rader här.</p>
+                        <p class="text-xs text-gray-700 mt-2">Raderna byggs ihop till CSV-datan automatiskt när du skapar quizet — det du skriver i CSV-fältet ovan används bara om du inte lägger till några rader här.</p>
                     </div>
                 </div>
             </div>
 
             <!-- Inställningar -->
-            <fieldset class="border border-gray-200 rounded-lg p-4">
+            <fieldset class="border border-gray-400 rounded-lg p-4">
                 <legend class="text-sm font-medium text-gray-700 px-2">Inställningar</legend>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Svarsläge</label>
-                        <select name="answer_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <label class="block text-xs text-gray-700 mb-1">Svarsläge</label>
+                        <select name="answer_mode" class="w-full px-2 py-1 border border-gray-500 rounded text-sm">
                             <option value="multiple_choice" <?= oldSelected('answer_mode', 'multiple_choice', 'multiple_choice') ?>>Flerval</option>
                             <option value="text_only" <?= oldSelected('answer_mode', 'text_only', 'multiple_choice') ?>>Skrivsvar</option>
                             <option value="hybrid" <?= oldSelected('answer_mode', 'hybrid', 'multiple_choice') ?>>Hybrid (alla ord som flerval, sedan alla som skrivsvar)</option>
                         </select>
                     </div>
                     <div id="fact-direction-field" class="hidden">
-                        <label class="block text-xs text-gray-500 mb-1">Vad är frågan?</label>
-                        <select name="question_direction" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <label class="block text-xs text-gray-700 mb-1">Vad är frågan?</label>
+                        <select name="question_direction" class="w-full px-2 py-1 border border-gray-500 rounded text-sm">
                             <option value="concept" <?= oldSelected('question_direction', 'concept', 'concept') ?>>Begrepp → skriv/välj beskrivning</option>
                             <option value="description" <?= oldSelected('question_direction', 'description', 'concept') ?>>Beskrivning → skriv/välj begrepp</option>
                         </select>
-                        <p class="text-xs text-gray-500 mt-1">Vid Skrivsvar/Hybrid: välj "Beskrivning" om beskrivningarna är hela meningar — då skriver eleven det korta begreppet istället.</p>
-                    <label class="block text-xs text-gray-500 mb-1 mt-2">Begreppet läses på</label>
-                    <select name="concept_language" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <p class="text-xs text-gray-700 mt-1">Vid Skrivsvar/Hybrid: välj "Beskrivning" om beskrivningarna är hela meningar — då skriver eleven det korta begreppet istället.</p>
+                    <label class="block text-xs text-gray-700 mb-1 mt-2">Begreppet läses på</label>
+                    <select name="concept_language" class="w-full px-2 py-1 border border-gray-500 rounded text-sm">
                         <option value="sv" <?= oldSelected('concept_language', 'sv', 'sv') ?>>Svenska</option>
                         <option value="same" <?= oldSelected('concept_language', 'same', 'sv') ?>>Valt språk</option>
                     </select>
-                    <p class="text-xs text-gray-500 mt-1">Läses begreppet på svenska eller på det valda språket? Beskrivningen läses alltid på det valda språket.</p>
+                    <p class="text-xs text-gray-700 mt-1">Läses begreppet på svenska eller på det valda språket? Beskrivningen läses alltid på det valda språket.</p>
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Quizläge</label>
-                        <select name="quiz_mode" id="quiz-mode-select" class="w-full px-2 py-1 border border-gray-300 rounded text-sm" onchange="onQuizModeChange()">
+                        <label class="block text-xs text-gray-700 mb-1">Quizläge</label>
+                        <select name="quiz_mode" id="quiz-mode-select" class="w-full px-2 py-1 border border-gray-500 rounded text-sm" onchange="onQuizModeChange()">
                             <option value="training" <?= oldSelected('quiz_mode', 'training', 'training') ?>>Träning (repetition)</option>
                             <option value="test" <?= oldSelected('quiz_mode', 'test', 'training') ?>>Test (en genomgång)</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Rätt per fråga</label>
-                        <input type="number" name="required_correct" min="1" max="10" value="<?= old('required_correct', '2') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <label class="block text-xs text-gray-700 mb-1">Rätt per fråga</label>
+                        <input type="number" name="required_correct" min="1" max="10" value="<?= old('required_correct', '2') ?>" class="w-full px-2 py-1 border border-gray-500 rounded text-sm">
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Språk</label>
-                        <select name="language" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <label class="block text-xs text-gray-700 mb-1">Språk</label>
+                        <select name="language" class="w-full px-2 py-1 border border-gray-500 rounded text-sm">
                             <option value="sv" <?= oldSelected('language', 'sv', 'sv') ?>>Svenska</option>
                             <option value="en" <?= oldSelected('language', 'en', 'sv') ?>>Engelska</option>
                             <option value="es" <?= oldSelected('language', 'es', 'sv') ?>>Spanska</option>
@@ -438,8 +440,8 @@ Nu, invänta mitt material.</pre>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Stavningsläge</label>
-                        <select name="spelling_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <label class="block text-xs text-gray-700 mb-1">Stavningsläge</label>
+                        <select name="spelling_mode" class="w-full px-2 py-1 border border-gray-500 rounded text-sm">
                             <option value="student_choice" <?= oldSelected('spelling_mode', 'student_choice', 'student_choice') ?>>Eleven väljer</option>
                             <option value="easy" <?= oldSelected('spelling_mode', 'easy', 'student_choice') ?>>Generös</option>
                             <option value="puritan" <?= oldSelected('spelling_mode', 'puritan', 'student_choice') ?>>Exakt</option>
@@ -463,35 +465,35 @@ Nu, invänta mitt material.</pre>
             </fieldset>
 
             <!-- Omvänd riktning -->
-            <fieldset id="reverse-fields" class="border border-gray-200 rounded-lg p-4 hidden">
+            <fieldset id="reverse-fields" class="border border-gray-400 rounded-lg p-4 hidden">
                 <legend class="text-sm font-medium text-gray-700 px-2">Omvänd riktning</legend>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Omvänt svarsläge</label>
-                        <select name="reverse_answer_mode" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <label class="block text-xs text-gray-700 mb-1">Omvänt svarsläge</label>
+                        <select name="reverse_answer_mode" class="w-full px-2 py-1 border border-gray-500 rounded text-sm">
                             <option value="multiple_choice" <?= oldSelected('reverse_answer_mode', 'multiple_choice', 'multiple_choice') ?>>Flerval</option>
                             <option value="text_only" <?= oldSelected('reverse_answer_mode', 'text_only', 'multiple_choice') ?>>Skrivsvar</option>
                             <option value="hybrid" <?= oldSelected('reverse_answer_mode', 'hybrid', 'multiple_choice') ?>>Hybrid</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Rätt per fråga (omvänd)</label>
-                        <input type="number" name="reverse_required_correct" min="1" max="10" value="<?= old('reverse_required_correct', '2') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <label class="block text-xs text-gray-700 mb-1">Rätt per fråga (omvänd)</label>
+                        <input type="number" name="reverse_required_correct" min="1" max="10" value="<?= old('reverse_required_correct', '2') ?>" class="w-full px-2 py-1 border border-gray-500 rounded text-sm">
                     </div>
                 </div>
             </fieldset>
 
             <!-- Tidsspärr -->
-            <fieldset class="border border-gray-200 rounded-lg p-4">
+            <fieldset class="border border-gray-400 rounded-lg p-4">
                 <legend class="text-sm font-medium text-gray-700 px-2">Tidsspärr (valfritt)</legend>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Öppnar</label>
-                        <input type="datetime-local" name="time_lock_opens" value="<?= old('time_lock_opens') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <label class="block text-xs text-gray-700 mb-1">Öppnar</label>
+                        <input type="datetime-local" name="time_lock_opens" value="<?= old('time_lock_opens') ?>" class="w-full px-2 py-1 border border-gray-500 rounded text-sm">
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">Stänger</label>
-                        <input type="datetime-local" name="time_lock_closes" value="<?= old('time_lock_closes') ?>" class="w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                        <label class="block text-xs text-gray-700 mb-1">Stänger</label>
+                        <input type="datetime-local" name="time_lock_closes" value="<?= old('time_lock_closes') ?>" class="w-full px-2 py-1 border border-gray-500 rounded text-sm">
                     </div>
                 </div>
             </fieldset>
@@ -505,9 +507,9 @@ Nu, invänta mitt material.</pre>
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-bold text-gray-800">Mina Quiz (<?= count($myQuizzes) ?>)</h2>
             <div class="flex items-center gap-2">
-                <input type="text" id="search-input" oninput="filterQuizzes()" placeholder="Sök..." class="text-sm px-2 py-1 border border-gray-300 rounded w-40">
-                <label class="text-xs text-gray-500">Sortera:</label>
-                <select id="sort-select" onchange="sortQuizzes()" class="text-sm px-2 py-1 border border-gray-300 rounded">
+                <input type="text" id="search-input" oninput="filterQuizzes()" placeholder="Sök..." class="text-sm px-2 py-1 border border-gray-500 rounded w-40">
+                <label class="text-xs text-gray-700">Sortera:</label>
+                <select id="sort-select" onchange="sortQuizzes()" class="text-sm px-2 py-1 border border-gray-500 rounded">
                     <option value="created-desc">Nyast först</option>
                     <option value="created-asc">Äldst först</option>
                     <option value="title-asc">Titel A-Ö</option>
@@ -519,13 +521,13 @@ Nu, invänta mitt material.</pre>
         </div>
 
         <?php if (empty($myQuizzes)): ?>
-            <p class="text-center py-8 text-gray-400">Inga quiz ännu. Skapa ditt första ovan!</p>
+            <p class="text-center py-8 text-gray-700">Inga quiz ännu. Skapa ditt första ovan!</p>
         <?php else: ?>
         <div id="quiz-list" class="space-y-1">
             <?php foreach ($myQuizzes as $quiz):
                 $storedQuiz=$quiz; $quiz=aiEffectiveQuiz($quiz);
                 $type = $quiz['type'] ?? 'glossary';
-                $typeBadge = $type === 'glossary' ? 'glosquiz' : ($type==='image_choice'?'bildvalsquiz':'faktaquiz');
+                $typeBadge = quizTypeRoute($type)['label'];
                 $reviewState=aiReviewState($storedQuiz);
                 $badgeColor = $type === 'glossary' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
                 $itemCount = count($quiz['items'] ?? []);
@@ -537,7 +539,7 @@ Nu, invänta mitt material.</pre>
                 $createdDate = $created ? date('Y-m-d', strtotime($created)) : '';
                 $playUrl = '../play/index.php?id=' . urlencode($quiz['id']);
             ?>
-            <div class="quiz-row flex items-center justify-between px-4 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 transition"
+            <div class="quiz-row flex items-center justify-between px-4 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-400 transition"
                  data-created="<?= htmlspecialchars($created) ?>"
                  data-title="<?= htmlspecialchars($quiz['title']) ?>"
                  data-type="<?= $type ?>"
@@ -555,21 +557,21 @@ Nu, invänta mitt material.</pre>
                             <span class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700"><?= htmlspecialchars($tag) ?></span>
                         <?php endif; endforeach; endif; ?>
                     </div>
-                    <div class="text-xs text-gray-500">
+                    <div class="text-xs text-gray-700">
                         <?= $itemCount ?> <?= $itemWord ?> &middot; <?= htmlspecialchars($createdDate) ?> &middot; <?= $resultCount ?> resultat
                     </div>
                 </div>
                 <div class="flex items-center gap-1 ml-4">
-                    <?php if ($reviewState==='published'): ?><button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Kopiera elevlänk">📋</button>
-                    <button onclick="showQrCode('<?= htmlspecialchars($playUrl) ?>', '<?= htmlspecialchars($quiz['title'], ENT_QUOTES) ?>')" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Visa QR-kod">📱</button>
+                    <?php if ($reviewState==='published'): ?><button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="p-1.5 rounded hover:bg-gray-200 text-gray-700" title="Kopiera elevlänk">📋</button>
+                    <button onclick="showQrCode('<?= htmlspecialchars($playUrl) ?>', '<?= htmlspecialchars($quiz['title'], ENT_QUOTES) ?>')" class="p-1.5 rounded hover:bg-gray-200 text-gray-700" title="Visa QR-kod">📱</button>
                     <?php endif; ?><a href="review.php?id=<?= urlencode($quiz['id']) ?>" class="text-blue-700 text-sm"><?= $reviewState==='published'?'Granska':'Granska och publicera' ?></a>
-                    <a href="<?= $type==='image_choice'?'image-edit.php':'edit.php' ?>?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Redigera">✏️</a>
-                    <a href="stats.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-500" title="Statistik">📊</a>
+                    <a href="<?= quizTypeRoute($type)['editor'] ?>?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-700" title="Redigera">✏️</a>
+                    <a href="stats.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-700" title="Statistik">📊</a>
                     <form method="POST" style="display:inline" onsubmit="return confirm('Radera detta quiz?')">
                         <?= csrfField() ?>
                         <input type="hidden" name="action" value="delete">
                         <input type="hidden" name="quiz_id" value="<?= htmlspecialchars($quiz['id']) ?>">
-                        <button type="submit" class="p-1.5 rounded hover:bg-red-100 text-gray-500" title="Radera">🗑️</button>
+                        <button type="submit" class="p-1.5 rounded hover:bg-red-100 text-gray-700" title="Radera">🗑️</button>
                     </form>
                 </div>
             </div>
@@ -587,7 +589,7 @@ Nu, invänta mitt material.</pre>
     <div class="bg-white rounded-xl shadow-lg p-6 max-w-sm w-full mx-4 text-center">
         <h3 id="qr-modal-title" class="text-lg font-bold text-gray-800 mb-3"></h3>
         <div id="qr-modal-code" class="flex justify-center mb-3"></div>
-        <p id="qr-modal-url" class="text-xs text-gray-500 break-all mb-4"></p>
+        <p id="qr-modal-url" class="text-xs text-gray-700 break-all mb-4"></p>
         <div class="flex gap-2 justify-center">
             <a id="qr-modal-download" download="quiz-qr.png" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-sm">
                 Ladda ner
@@ -672,10 +674,10 @@ function selectType(type, silent) {
     const btnF = document.getElementById('btn-fact');
     if (type === 'glossary') {
         btnG.className = 'flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-purple-500 bg-purple-50 text-purple-700 shadow-md';
-        btnF.className = 'flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-gray-200 bg-white text-gray-500 hover:border-blue-400';
+        btnF.className = 'flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-gray-400 bg-white text-gray-700 hover:border-blue-400';
     } else {
         btnF.className = 'flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-blue-500 bg-blue-50 text-blue-700 shadow-md';
-        btnG.className = 'flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-gray-200 bg-white text-gray-500 hover:border-purple-400';
+        btnG.className = 'flex-1 py-3 rounded-xl border-2 font-bold text-lg transition-all border-gray-400 bg-white text-gray-700 hover:border-purple-400';
     }
     document.getElementById('csv-hint-glossary').classList.toggle('hidden', type !== 'glossary');
     document.getElementById('csv-hint-fact').classList.toggle('hidden', type !== 'fact');
@@ -717,37 +719,37 @@ function toggleManualBuilder() {
 // Manuell radbyggare — samma fält/mönster som admin/edit.php använder för att
 // redigera ett befintligt quiz, återanvänt här för att bygga CSV-datan från grunden.
 const GLOSSARY_ROW_HTML = `
-    <div class="item-row border border-gray-200 rounded-lg p-3 bg-white">
+    <div class="item-row border border-gray-400 rounded-lg p-3 bg-white">
         <div class="flex items-start gap-2 mb-2">
-            <input type="text" data-field="mening" placeholder="Mening" class="flex-1 px-2 py-1 border border-gray-300 rounded text-sm">
+            <input type="text" data-field="mening" placeholder="Mening" class="flex-1 px-2 py-1 border border-gray-500 rounded text-sm">
             <button type="button" onclick="removeItemRow(this)" title="Ta bort" class="text-red-500 hover:text-red-700 shrink-0 px-1">🗑️</button>
         </div>
         <div class="grid grid-cols-2 gap-2 mb-2">
-            <input type="text" data-field="ord" placeholder="Ord" class="px-2 py-1 border border-gray-300 rounded text-sm">
-            <input type="text" data-field="oversattning" placeholder="Översättning" class="px-2 py-1 border border-gray-300 rounded text-sm">
+            <input type="text" data-field="ord" placeholder="Ord" class="px-2 py-1 border border-gray-500 rounded text-sm">
+            <input type="text" data-field="oversattning" placeholder="Översättning" class="px-2 py-1 border border-gray-500 rounded text-sm">
         </div>
         <div class="grid grid-cols-3 gap-2 mb-2">
-            <input type="text" data-field="fel1" placeholder="Fel 1" class="px-2 py-1 border border-gray-300 rounded text-xs">
-            <input type="text" data-field="fel2" placeholder="Fel 2" class="px-2 py-1 border border-gray-300 rounded text-xs">
-            <input type="text" data-field="fel3" placeholder="Fel 3" class="px-2 py-1 border border-gray-300 rounded text-xs">
+            <input type="text" data-field="fel1" placeholder="Fel 1" class="px-2 py-1 border border-gray-500 rounded text-xs">
+            <input type="text" data-field="fel2" placeholder="Fel 2" class="px-2 py-1 border border-gray-500 rounded text-xs">
+            <input type="text" data-field="fel3" placeholder="Fel 3" class="px-2 py-1 border border-gray-500 rounded text-xs">
         </div>
         <div class="grid grid-cols-3 gap-2">
-            <input type="text" data-field="ofel1" placeholder="Omvänt fel 1 (valfri)" class="px-2 py-1 border border-gray-300 rounded text-xs">
-            <input type="text" data-field="ofel2" placeholder="Omvänt fel 2 (valfri)" class="px-2 py-1 border border-gray-300 rounded text-xs">
-            <input type="text" data-field="ofel3" placeholder="Omvänt fel 3 (valfri)" class="px-2 py-1 border border-gray-300 rounded text-xs">
+            <input type="text" data-field="ofel1" placeholder="Omvänt fel 1 (valfri)" class="px-2 py-1 border border-gray-500 rounded text-xs">
+            <input type="text" data-field="ofel2" placeholder="Omvänt fel 2 (valfri)" class="px-2 py-1 border border-gray-500 rounded text-xs">
+            <input type="text" data-field="ofel3" placeholder="Omvänt fel 3 (valfri)" class="px-2 py-1 border border-gray-500 rounded text-xs">
         </div>
     </div>`;
 const FACT_ROW_HTML = `
-    <div class="item-row border border-gray-200 rounded-lg p-3 bg-white">
+    <div class="item-row border border-gray-400 rounded-lg p-3 bg-white">
         <div class="flex items-start gap-2 mb-2">
-            <input type="text" data-field="begrepp" placeholder="Begrepp" class="flex-1 px-2 py-1 border border-gray-300 rounded text-sm">
+            <input type="text" data-field="begrepp" placeholder="Begrepp" class="flex-1 px-2 py-1 border border-gray-500 rounded text-sm">
             <button type="button" onclick="removeItemRow(this)" title="Ta bort" class="text-red-500 hover:text-red-700 shrink-0 px-1">🗑️</button>
         </div>
-        <textarea data-field="beskrivning" placeholder="Beskrivning" rows="2" class="w-full px-2 py-1 border border-gray-300 rounded text-sm mb-2"></textarea>
+        <textarea data-field="beskrivning" placeholder="Beskrivning" rows="2" class="w-full px-2 py-1 border border-gray-500 rounded text-sm mb-2"></textarea>
         <div class="grid grid-cols-3 gap-2">
-            <input type="text" data-field="ffel1" placeholder="Fel 1" class="px-2 py-1 border border-gray-300 rounded text-xs">
-            <input type="text" data-field="ffel2" placeholder="Fel 2" class="px-2 py-1 border border-gray-300 rounded text-xs">
-            <input type="text" data-field="ffel3" placeholder="Fel 3" class="px-2 py-1 border border-gray-300 rounded text-xs">
+            <input type="text" data-field="ffel1" placeholder="Fel 1" class="px-2 py-1 border border-gray-500 rounded text-xs">
+            <input type="text" data-field="ffel2" placeholder="Fel 2" class="px-2 py-1 border border-gray-500 rounded text-xs">
+            <input type="text" data-field="ffel3" placeholder="Fel 3" class="px-2 py-1 border border-gray-500 rounded text-xs">
         </div>
     </div>`;
 const GLOSSARY_FIELDS = ['mening', 'ord', 'oversattning', 'fel1', 'fel2', 'fel3', 'ofel1', 'ofel2', 'ofel3'];

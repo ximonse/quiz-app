@@ -9,3 +9,6 @@
 /data/classroom.json*
 
 /tests/__pycache__/
+
+/tests/browser/node_modules/
+/tests/browser/screenshots/

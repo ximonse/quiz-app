@@ -22,9 +22,42 @@ $data=classroomRead(); $student=classroomStudent($data);
 <p><button>Logga in</button></p></form><a href="../index.php">Lärarinloggning</a></div>
 <?php else: ?>
 <header><div><p class="muted">Hej <?= classroomEscape($student['name']) ?></p><h1>Mina uppgifter</h1></div><form method="post"><?= csrfField() ?><button name="action" value="logout" class="secondary">Logga ut / byt elev</button></form></header>
-<div class="grid">
-<?php $count=0; foreach ($data['assignments'] ?? [] as $id=>$a): if (!classroomAllowed($data,$student,$a) || !classroomContent($a)) continue; $count++; $rows=classroomAttempts($data,$id,$student['id']); ?>
-<section class="panel"><p class="muted"><?= ['quiz'=>'Quiz','cards'=>'Flashcards','deck'=>'Flashcards','material'=>'PDF'][$a['kind']] ?></p><h2><?= classroomEscape($a['title']) ?></h2><p><?= classroomStatus($rows,$a['kind']) ?></p>
-<a class="button" href="open.php?assignment=<?= urlencode($id) ?>"><?= $a['kind']==='material'?'Hämta PDF':'Öppna' ?></a></section>
-<?php endforeach; ?></div><?php if (!$count): ?><section class="panel"><h2>Här kommer dina uppgifter</h2><p>Din lärare har inte delat ut något till dig ännu.</p></section><?php endif; ?>
+<?php
+// Default order works without JavaScript: unfinished first, newest first within each group.
+$cards=[];
+foreach ($data['assignments'] ?? [] as $id=>$a) {
+    if (!classroomAllowed($data,$student,$a) || !($content=classroomContent($a))) continue;
+    $status=classroomStatus(classroomAttempts($data,$id,$student['id']),$a['kind']);
+    $cards[]=['id'=>$id,'a'=>$a,'status'=>$status,'done'=>in_array($status,['Klart','Övat','Hämtad'],true),
+              'type'=>['quiz'=>'Quiz','cards'=>'Flashcards','deck'=>'Flashcards','material'=>'PDF'][$a['kind']],
+              'subject'=>trim((string)($content['subject'] ?? '')),'created'=>(string)($a['created'] ?? '')];
+}
+usort($cards,fn($x,$y)=>[$x['done'],$y['created']]<=>[$y['done'],$x['created']]);
+?>
+<?php if ($cards): ?><div class="sort-bar"><label for="sort">Sortera</label><select id="sort"><option value="todo">Ogjorda först</option><option value="new">Nyaste först</option><option value="subject">Ämne</option><option value="type">Typ</option></select></div><?php endif; ?>
+<div class="grid" id="assignments">
+<?php foreach ($cards as $i=>$c): $a=$c['a']; ?>
+<section class="panel<?= $c['done']?' done':'' ?>" data-done="<?= $c['done']?1:0 ?>" data-created="<?= classroomEscape($c['created']) ?>" data-subject="<?= classroomEscape($c['subject']) ?>" data-type="<?= classroomEscape($c['type']) ?>" data-title="<?= classroomEscape($a['title']) ?>">
+<p class="muted"><?= $c['type'] ?><?= $c['subject']!=='' ? ' · '.classroomEscape($c['subject']) : '' ?></p><h2><?= classroomEscape($a['title']) ?></h2><p class="status"><?= $c['status'] ?></p>
+<a class="button" href="open.php?assignment=<?= urlencode($c['id']) ?>"><?= $a['kind']==='material'?'Hämta PDF':'Öppna' ?></a></section>
+<?php endforeach; ?></div><?php if (!$cards): ?><section class="panel"><h2>Här kommer dina uppgifter</h2><p>Din lärare har inte delat ut något till dig ännu.</p></section><?php endif; ?>
+<script>
+(() => {
+    const select = document.getElementById('sort'), grid = document.getElementById('assignments');
+    if (!select) return;
+    const sv = (x, y) => x.localeCompare(y, 'sv');
+    const newest = (x, y) => sv(y.dataset.created, x.dataset.created);
+    const orders = {
+        todo: (x, y) => x.dataset.done - y.dataset.done || newest(x, y),
+        new: newest,
+        // Cards without a subject go last.
+        subject: (x, y) => (!x.dataset.subject - !y.dataset.subject) || sv(x.dataset.subject, y.dataset.subject) || x.dataset.done - y.dataset.done || sv(x.dataset.title, y.dataset.title),
+        type: (x, y) => sv(x.dataset.type, y.dataset.type) || x.dataset.done - y.dataset.done || newest(x, y)
+    };
+    function apply() { grid.append(...[...grid.children].sort(orders[select.value] || orders.todo)); }
+    try { const saved = localStorage.getItem('pupil-assignment-sort'); if (orders[saved]) select.value = saved; } catch (e) {}
+    select.addEventListener('change', () => { try { localStorage.setItem('pupil-assignment-sort', select.value); } catch (e) {} apply(); });
+    apply();
+})();
+</script>
 <?php endif; ?></main></body></html>

@@ -6,14 +6,33 @@ En webbbaserad quiz-applikation för lärare och elever. Lärare skapar quiz (ku
 ## Användarroller
 
 ### Lärare
-- Loggar in via `login.php`
+- Loggar in med användarnamn och lösenord via `index.php` (konton skapas i `super-admin.php`)
 - Skapar och hanterar quiz via `admin.php`
 - Ser statistik för sina quiz via `stats.php`
+- Hanterar klasser, grupper, elevkonton och uppdrag via `admin/classes.php`
 
 ### Elever
-- Behöver ingen inloggning
+Två sätt att öva:
+
+**Med elevkonto (inloggad)**
+- Loggar in via `student/` med sin ordkod (tre ord) eller QR-kod, plus en fyrsiffrig PIN
+- PIN visas för läraren i 15 minuter efter att den skapats; bara hashen sparas
+- Återställning ger ny PIN och QR men behåller ordkoden, och loggar ut aktiva sessioner
+- Sessioner gäller i åtta timmar; misslyckade inloggningar begränsas per elev och per IP
+- Ser sina uppdrag och status (inte tidigare poäng eller svarshistorik)
+- Övning på ett tilldelat uppdrag registreras i lärarens klassöversikt
+
+**Utan konto (publik länk/QR)**
 - Skriver in sitt namn
 - Genomför quiz via `q/index.php`
+- Resultat sparas som tidigare och kopplas inte automatiskt till elevkonton
+
+### Klasser, grupper och uppdrag
+- En elev tillhör en klass och kan vara med i flera grupper
+- Läraren tilldelar publicerade quiz, flashcards, kortlekar eller PDF:er till klass eller grupp
+- Nya medlemmar får befintliga uppdrag för sin klass/grupp
+- Borttagen elev inaktiveras; historiken finns kvar för läraren
+- Detaljer: `docs/classroom.md`
 
 ## Quiz-typer
 
@@ -31,6 +50,26 @@ En webbbaserad quiz-applikation för lärare och elever. Lärare skapar quiz (ku
 - Språk: språkneutralt (t.ex. svenska, spanska, engelska, ukrainska)
 - TTS (text-to-speech) med röstval för iPad
 - Omvänd glosträning stöds: översättning → glosord, med egna omvända felsvar
+
+### Sorteringsquiz (sort)
+- Varje fråga har en huvudfråga, 1–5 valfält (rubrik, infotext och/eller bild) och 2–12 objekt (text och/eller bild)
+- Eleven drar objekten till rätt fält; objekt med `field: null` (distraktorer) ska ligga kvar utanför
+- Rättas per objekt. Första gången en fråga visas blinkar fel objekt rött och glider sedan till rätt plats (grönt); vid repetition ligger de kvar där eleven lade dem
+- Repetition: frågan kommer tillbaka med bara de objekt som behöver övas (`required_correct` gäller per objekt)
+- Objekt kan aldrig överlappa: de ligger alltid i radbrytande behållare
+- Uppläsning: eleven håller fingret stilla 1 s på en text; eleven kan stänga av ljudet i headern
+- Flashcards: ett kort per objekt som hör till ett fält, med ledtråden (`flashcard_prompt`) på framsidan
+- Skapas i `admin/sort-edit.php`, via MCP, eller med prompt/JSON-mall (`assets/templates/sorteringsquiz-mall.json`)
+- Filer: `engine/sort-engine.js` (regler), `engine/drag-board.js` (dra och släpp, delas med kommande ordningsquiz), `engine/sort-player.js`, `play/sort-quiz.php`, `ai/sort-validation.php`
+- Statistik visar vilka objekt som oftast hamnar fel och var
+
+### Ordningsquiz (order)
+- Varje fråga har en huvudfråga, en vågrät (vänster → höger) eller lodrät (uppifrån och ner) linje med valfri text i början, mitten och slutet, och 2–8 objekt som skrivs i rätt ordning
+- Eleven drar objekten till linjen; bara ordningen räknas, inte avstånden
+- Hela ordningen rättas, men bara objekt som bryter ordningen markeras röda (de utanför den längsta korrekt ordnade följden)
+- Första gången frågan visas glider objekten till rätt ordning; vid repetition ligger de kvar. Fel ger att hela frågan kommer tillbaka
+- Inga flashcards. Skapas i `admin/order-edit.php`, via MCP eller med prompt/JSON-mall (`assets/templates/ordningsquiz-mall.json`)
+- Filer: `engine/order-engine.js`, `engine/order-player.js`, `play/order-quiz.php`, `ai/order-validation.php`. Redigerarna för sortering och ordning delar `includes/drag-quiz-editor.php` och `engine/editor-kit.js`
 
 ## Huvudfunktioner
 
@@ -69,7 +108,7 @@ En webbbaserad quiz-applikation för lärare och elever. Lärare skapar quiz (ku
 - Visa mening med markerat ord
 - Röst-uppläsning (TTS)
   - Automatisk uppläsning
-  - Manuell uppspelningsknapp
+  - Håll stilla 1 s på en text för uppläsning (gäller alla elevspelare, `engine/hold-speak.js`)
   - Röstval för iPad/iPhone (Paulina som standard för spanska)
   - Hjälptext för nedladdning av bättre röster
 - Stavningslägen:
@@ -116,10 +155,13 @@ En webbbaserad quiz-applikation för lärare och elever. Lärare skapar quiz (ku
 ## Filstruktur
 
 ### Huvudfiler
-- `login.php` - Lärar-inloggning
+- `index.php` - Lärar-inloggning
 - `admin.php` - Quiz-hantering för lärare
 - `stats.php` - Statistikvy
 - `q/index.php` - Quiz-genomförande för elever
+- `admin/classes.php` - Klasser, grupper, elevkonton och uppdrag
+- `student/` - Elevinloggning och elevens uppdragsvy
+- `includes/classroom.php` - Inloggning, sessioner och aktivitet för elevkonton
 - `config.php` - Konfiguration, sessionshantering, hjälpfunktioner
 
 ### API-endpoints
@@ -132,6 +174,8 @@ En webbbaserad quiz-applikation för lärare och elever. Lärare skapar quiz (ku
 - `data/teachers.json` - Lärarkonton
 - `data/quizzes.json` - Alla quiz
 - `data/stats.json` - Statistik per quiz
+- `data/classroom.json` - Klasser, grupper, elevkonton, uppdrag och övningsaktivitet
+- `data/materials/` - Uppladdade PDF:er (ska skyddas med `.htaccess`)
 
 ## Datastruktur
 
@@ -212,6 +256,17 @@ Titel på quiz 2
 Mening 1;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord 1;Fel ord 2;Fel ord 3
 ```
 
+## Tester
+
+All testdata är syntetisk och körs i engångskopior av appen; riktiga konton och quiz rörs aldrig.
+
+- Enhetstester: `node --test tests/*.test.js engine/*.test.js` och `php tests/ai-service.test.php`
+- Klassrum via HTTP: `python tests/classroom-http.test.py`, med `--robots` för 32 robotelever samtidigt i alla quiztyper
+- Webbläsare (kräver PHP, Python och Node): `cd tests/browser && npm install && npm test`
+  - spelar sorterings- och ordningsquiz, sorteringsredigeraren och håll-för-uppläsning med mus och touch
+  - `pupil-robots.js`: fyra elever (dator, iPad, iPhone) loggar in och spelar alla uppdrag till slut
+  - `npm run themes` tar skärmdumpar av alla teman; bilderna hamnar i `tests/browser/screenshots/`
+
 ## Utvecklingshistorik
 
 ### Senaste uppdateringar (2026-02-11)
@@ -225,5 +280,6 @@ Mening 1;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord
 ## Säkerhet
 - Lärar-autentisering via PHP-sessioner
 - `requireTeacher()` skyddar admin-endpoints
-- Elever behöver ingen autentisering (öppet för klassrum)
+- Publika quizlänkar kräver ingen autentisering (öppet för klassrum)
+- Elevkonton: ordkod/QR + hashad PIN, sessioner på åtta timmar, begränsning av misslyckade inloggningar
 - Lärare ser endast sina egna quiz
