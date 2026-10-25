@@ -115,6 +115,22 @@ function classroomStatus(array $rows, string $kind): string {
     foreach ($rows as $a) if ($a['completed']) return 'Klart';
     return 'Påbörjat';
 }
+// The pupil's own list: a colour state from the best visit, never numbers.
+// flawless = finished without a mistake, done = finished with at most 20 % wrong answers,
+// shaky = finished with more, started = opened but not finished, new = never opened.
+// Flashcards are optional practice and get no judgement.
+function classroomPupilState(array $rows, string $kind): array {
+    if ($kind==='cards' || $kind==='deck') return ['state'=>'optional','label'=>$rows?'Övat':'Frivillig övning','action'=>$rows?'Öva igen':'Öva','todo'=>false];
+    if ($kind==='material') return $rows ? ['state'=>'done','label'=>'Hämtad','action'=>'Hämta igen','todo'=>false] : ['state'=>'new','label'=>'Inte hämtad','action'=>'Hämta PDF','todo'=>true];
+    if (!$rows) return ['state'=>'new','label'=>'Inte påbörjat','action'=>'Kör mig!','todo'=>true];
+    $finished=array_filter($rows,fn($a)=>!empty($a['completed']));
+    if (!$finished) return ['state'=>'started','label'=>'Påbörjat – fortsätt där du var','action'=>'Fortsätt','todo'=>true];
+    $share=fn($a)=>($a['wrong'] ?? 0)/max(1,($a['right'] ?? 0)+($a['wrong'] ?? 0));
+    $best=min(array_map($share,$finished));
+    if ($best==0) return ['state'=>'flawless','label'=>'Klart utan ett enda fel!','action'=>'Kör igen','todo'=>false];
+    if ($best<=0.2) return ['state'=>'done','label'=>'Klart','action'=>'Kör igen','todo'=>false];
+    return ['state'=>'shaky','label'=>'Klart – kör gärna en gång till','action'=>'Kör igen','todo'=>false];
+}
 function classroomRecord(array $student, array $input): void {
     classroomUpdate(function (&$data) use ($student,$input) {
         $current=classroomStudent($data);
