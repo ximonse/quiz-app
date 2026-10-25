@@ -149,7 +149,22 @@ function startFixture() {
         await sleep(700);
         done.push({what,assignment:a.id});
       }
-      await page.goto(base+'/student/'); await page.screenshot({path:shot(`robot-home-${kind}-${student.name.replace(/\W+/g,'')}.png`),fullPage:true});
+      await page.goto(base+'/student/');
+      // Sorting on "Mina uppgifter": unfinished first by default, the choice survives a reload.
+      const cards=()=>page.locator('#assignments > section').evaluateAll(els=>els.map(e=>({done:+e.dataset.done,type:e.dataset.type,subject:e.dataset.subject,created:e.dataset.created})));
+      const sortedBy=(list,key)=>list.every((c,i)=>!i||String(list[i-1][key]).localeCompare(String(c[key]),'sv')<=0);
+      check(await page.inputValue('#sort')==='todo','default sort is unfinished first');
+      check(sortedBy(await cards(),'done'),student.name+': unfinished assignments first');
+      check((await cards()).some(c=>!c.done) && (await cards()).some(c=>c.done),student.name+': both finished and unfinished listed');
+      await page.selectOption('#sort','type'); check(sortedBy(await cards(),'type'),student.name+': sort by type');
+      await page.selectOption('#sort','subject');
+      { const subjects=(await cards()).map(c=>c.subject); const named=subjects.filter(Boolean);
+        check(named.length>=2 && subjects.indexOf('')>=named.length-1+0 && subjects.slice(0,named.length).every(Boolean) && named.every((x,i)=>!i||named[i-1].localeCompare(x,'sv')<=0),student.name+': sort by subject '+subjects.join('|')); }
+      check((await page.locator('#assignments > section').first().innerText()).includes('Biologi'),student.name+': subject shown on card');
+      await page.selectOption('#sort','new'); check([...(await cards())].map(c=>c.created).every((c,i,l)=>!i||l[i-1]>=c),student.name+': newest first');
+      await page.reload(); check(await page.inputValue('#sort')==='new' && (await cards()).map(c=>c.created).every((c,i,l)=>!i||l[i-1]>=c),student.name+': sort choice remembered');
+      await page.selectOption('#sort','todo');
+      await page.screenshot({path:shot(`robot-home-${kind}-${student.name.replace(/\W+/g,'')}.png`),fullPage:true});
       check(!errors.length,student.name+' page errors: '+errors.join('; '));
       await ctx.close();
       return {student,kind,done};
