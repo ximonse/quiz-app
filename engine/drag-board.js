@@ -2,8 +2,9 @@
 // Items always live inside flex containers, so they can never overlap: a drop
 // only picks a container and an index, and the others make room (FLIP animated).
 // Pointer Events work for mouse, pen and iPad touch; tap-to-select is the
-// keyboard/motor-friendly alternative. Holding still on an item speaks it.
-const LONG_PRESS_MS = 900, DRAG_THRESHOLD = 8;
+// keyboard/motor-friendly alternative. Holding still on an item speaks it
+// (timing from hold-speak.js, which must load first).
+const DRAG_THRESHOLD = 8;
 function flipAnimate(root, change) {
     const nodes = [...root.querySelectorAll('[data-flip]')];
     const before = new Map(nodes.map(n => [n, n.getBoundingClientRect()]));
@@ -23,15 +24,6 @@ function insertionIndex(container, x, y, dragged, axis) {
         if (!axis && (y < r.top || (y <= r.bottom && x < r.left + r.width / 2))) return i;
     }
     return children.length;
-}
-// Speaks after the pointer stays still; movement or release cancels it.
-function attachLongPress(el, speak) {
-    let timer = null, start = null;
-    const cancel = () => { clearTimeout(timer); timer = null; };
-    el.addEventListener('pointerdown', e => { start = [e.clientX, e.clientY]; cancel(); timer = setTimeout(() => { timer = null; speak(); }, LONG_PRESS_MS); });
-    el.addEventListener('pointermove', e => { if (timer && Math.hypot(e.clientX - start[0], e.clientY - start[1]) > DRAG_THRESHOLD) cancel(); });
-    for (const type of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(type, cancel);
-    el.addEventListener('contextmenu', e => e.preventDefault());
 }
 // A container may set data-axis="x"|"y" for single-row/column lines (order quiz).
 function DragBoard({root, containerSelector, onSpeak = () => {}, onChange = () => {}}) {
@@ -82,7 +74,7 @@ function DragBoard({root, containerSelector, onSpeak = () => {}, onChange = () =
         const el = e.target.closest('[data-flip]');
         if (!el || !root.contains(el) || e.button > 0) return;
         const state = {el, x: e.clientX, y: e.clientY, moved: false, spoke: false};
-        state.timer = setTimeout(() => { state.spoke = true; onSpeak(el); }, LONG_PRESS_MS);
+        state.timer = setTimeout(() => { state.spoke = true; onSpeak(el); }, HOLD_SPEAK_MS);
         const move = ev => {
             if (!state.moved && Math.hypot(ev.clientX - state.x, ev.clientY - state.y) > DRAG_THRESHOLD) {
                 state.moved = true; clearTimeout(state.timer);

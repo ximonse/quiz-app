@@ -192,7 +192,7 @@ Systemet accepterar små stavfel:
 ```
 
 ### Talsyntes
-Klicka på 🔊-knappen för att höra frågan uppläst med svensk röst.
+Håll fingret (eller musen) stilla i en sekund på en fråga, ett svarsalternativ eller ett kort för att höra texten uppläst. Ett kort tryck räknas som vanligt, men en hållning är aldrig ett svar. Högtalaren i headern stänger av all uppläsning.
 
 ### Progress-staplar
 Visar framsteg för varje fråga:

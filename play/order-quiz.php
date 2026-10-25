@@ -9,7 +9,7 @@ $v=fn($file)=>filemtime(__DIR__.'/../engine/'.$file);
 ?>
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ordningsquiz</title>
 <link rel="stylesheet" href="../engine/image-choice.css?v=<?= $v('image-choice.css') ?>"><link rel="stylesheet" href="../engine/sort.css?v=<?= $v('sort.css') ?>">
-<script src="../engine/browser-id.js?v=<?= $v('browser-id.js') ?>"></script><script src="../engine/tts.js?v=<?= $v('tts.js') ?>"></script><script src="../engine/drag-board.js?v=<?= $v('drag-board.js') ?>"></script><script src="../engine/order-engine.js?v=<?= $v('order-engine.js') ?>"></script><script src="../engine/order-player.js?v=<?= $v('order-player.js') ?>" defer></script></head>
+<script src="../engine/browser-id.js?v=<?= $v('browser-id.js') ?>"></script><script src="../engine/tts.js?v=<?= $v('tts.js') ?>"></script><script src="../engine/hold-speak.js?v=<?= $v('hold-speak.js') ?>"></script><script src="../engine/drag-board.js?v=<?= $v('drag-board.js') ?>"></script><script src="../engine/order-engine.js?v=<?= $v('order-engine.js') ?>"></script><script src="../engine/order-player.js?v=<?= $v('order-player.js') ?>" defer></script></head>
 <body><?php classroomPlayerBar(); ?><main id="order-player" class="sort-main" data-id="<?= htmlspecialchars($id,ENT_QUOTES) ?>" data-name="<?= htmlspecialchars($name,ENT_QUOTES) ?>" data-preview="<?= isset($_GET['preview'])?'1':'0' ?>">
 <header class="sort-header"><div><a href="index.php?id=<?= urlencode($id) ?>">← Start</a><div class="sort-header-top"><h1 id="quiz-title">Laddar…</h1><p id="progress"></p></div><p class="eyebrow" id="preview-label"></p></div>
 <button type="button" id="mute" class="mute-button" hidden></button></header>

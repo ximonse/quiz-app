@@ -17,11 +17,6 @@
         const muted = ttsIsMuted(); $('mute').textContent = muted ? '🔇' : '🔊';
         $('mute').setAttribute('aria-label', muted ? 'Slå på uppläsning' : 'Stäng av uppläsning'); $('mute').setAttribute('aria-pressed', String(muted));
     }
-    // iOS only allows speech that starts from a user gesture; unlock once on the first touch.
-    document.addEventListener('pointerdown', () => {
-        if (!('speechSynthesis' in window)) return;
-        const silent = new SpeechSynthesisUtterance(' '); silent.volume = 0; window.speechSynthesis.speak(silent);
-    }, {once: true});
     function updateProgress() {
         const p = engine.progress();
         $('progress').textContent = quiz.settings.quiz_mode === 'test' ? `${p.answered} av ${p.total} frågor besvarade` : `${p.mastered} av ${p.total} frågor klara · ${p.required} rätt per objekt`;

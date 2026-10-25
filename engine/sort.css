@@ -9,8 +9,6 @@
 .sort-main .question-card{margin:10px 0}
 .sort-main #question{margin:0 0 4px}
 .sort-main #instructions{margin:0;color:var(--muted)}
-.mute-button{background:transparent;border-color:transparent;color:var(--ink);font-size:24px;line-height:1;padding:6px 8px}
-.mute-button:hover{background:#e3e9f1}
 .speakable,.sort-object,.sort-field-head{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .sort-board{display:flex;flex-direction:column;gap:18px;margin:14px 0}
 .sort-tray{display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;min-height:64px;padding:12px;border:2px dashed var(--line);border-radius:9px;background:#f4f7fb}

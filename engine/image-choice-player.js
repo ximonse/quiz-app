@@ -9,7 +9,12 @@
         img.addEventListener('error',()=>{ img.alt='Bilden kunde inte laddas. '+image.alt; });
         return img;
     };
-    function speak(force=false) { if (quiz.settings.tts_enabled && item) speakText(item.question,quiz.settings.language,force); }
+    // The header mute switch silences all reading; holding the question reads it again (hold-speak.js).
+    function speak() { if (quiz.settings.tts_enabled && item) speakText(item.question,quiz.settings.language); }
+    function renderMute() {
+        const muted=ttsIsMuted(); $('mute').textContent=muted?'🔇':'🔊';
+        $('mute').setAttribute('aria-label',muted?'Slå på uppläsning':'Stäng av uppläsning'); $('mute').setAttribute('aria-pressed',String(muted));
+    }
     function updateProgress() {
         const p=engine.progress();
         $('progress').textContent=quiz.settings.quiz_mode==='test' ? `${p.attempts} av ${p.total} frågor besvarade` : `${p.mastered} av ${p.total} frågor klara · ${p.required} rätt per fråga`;
@@ -19,7 +24,7 @@
         updateProgress();
         if (!item) return finish();
         $('question-card').hidden=false; $('question').textContent=item.question;
-        $('listen').hidden=!quiz.settings.tts_enabled;
+        if (quiz.settings.tts_enabled) { $('question').dataset.speak=item.question; $('question').dataset.speakLang=quiz.settings.language||'sv'; }
         const multiple=item.choices.filter(c=>c.correct).length>1;
         $('instructions').textContent=multiple?'Välj alla bilder som stämmer. Tryck sedan på Kontrollera.':'Välj en bild.';
         $('check').hidden=!multiple; $('check').disabled=true; $('next').hidden=true; $('feedback').textContent='';
@@ -69,7 +74,7 @@
             if (!response.ok || !saved.saved) throw new Error('Resultatet kunde inte sparas.');
         } catch(e) { $('player-error').textContent=e.message; }
     }
-    $('listen').addEventListener('click',()=>speak(true)); $('check').addEventListener('click',check); $('next').addEventListener('click',render);
+    $('mute').addEventListener('click',()=>{ ttsSetMuted(!ttsIsMuted()); renderMute(); }); $('check').addEventListener('click',check); $('next').addEventListener('click',render);
     try {
         const response=await fetch('../api/quiz-data.php?id='+encodeURIComponent(root.dataset.id)+(preview?'&preview=1':''));
         quiz=await response.json();
@@ -77,7 +82,7 @@
         if (quiz.status==='not_yet') throw new Error('Quizet öppnar '+quiz.opens+'.');
         if (quiz.status==='training_only') quiz.settings.quiz_mode='training';
         if (quiz.type!=='image_choice') throw new Error('Det här är inte ett bildvalsquiz.');
-        $('quiz-title').textContent=quiz.title; if (preview) $('preview-label').textContent='Förhandsvisning · bara du kan se det här';
+        $('quiz-title').textContent=quiz.title; $('mute').hidden=!quiz.settings.tts_enabled; renderMute(); if (preview) $('preview-label').textContent='Förhandsvisning · bara du kan se det här';
         engine=ImageChoiceEngine(quiz.items,quiz.settings); render();
     } catch(e) { $('quiz-title').textContent='Quiz'; $('player-error').textContent=e.message; }
 })();

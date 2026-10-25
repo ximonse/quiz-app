@@ -16,6 +16,7 @@ if (!$quizId) { header('Location: index.php'); exit; }
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="../engine/themes.css?v=<?= filemtime(__DIR__ . '/../engine/themes.css') ?>">
     <script src="../engine/tts.js?v=<?= filemtime(__DIR__ . '/../engine/tts.js') ?>"></script>
+    <script src="../engine/hold-speak.js?v=<?= filemtime(__DIR__ . '/../engine/hold-speak.js') ?>"></script>
     <style>
         .card { perspective: 1000px; cursor: pointer; }
         .card-inner { transition: transform 0.5s; transform-style: preserve-3d; position: relative; }
@@ -42,14 +43,12 @@ if (!$quizId) { header('Location: index.php'); exit; }
                     <p id="front-hint" class="text-sm mb-2 hidden" style="color: var(--text-secondary)"></p>
                     <img id="front-image" class="hidden mx-auto mb-3 max-h-28 rounded" alt="">
                     <p id="front-text" class="text-2xl font-bold" style="color: var(--text-primary)"></p>
-                    <button onclick="speakFront(event)" class="mt-3 text-xs px-2 py-1 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)" title="Lyssna på framsidan">🔊</button>
                 </div>
             </div>
             <div class="card-back text-center">
                 <div>
                     <img id="back-image" class="hidden mx-auto mb-3 max-h-28 rounded" alt="">
                     <p id="back-text" class="text-xl" style="color: var(--accent)"></p>
-                    <button onclick="speakBack(event)" class="mt-3 text-xs px-2 py-1 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)" title="Lyssna på baksidan">🔊</button>
                 </div>
             </div>
         </div>
@@ -181,6 +180,7 @@ function showCard() {
     setCardImage('front-image', sort ? item.object.image : null);
     setCardImage('back-image', sort ? item.field.image : null);
     document.getElementById('counter').textContent = `${currentIndex + 1}/${items.length}`;
+    updateCardSpeech();
     playCardTTS();
 }
 
@@ -192,7 +192,7 @@ function setCardImage(id, image) {
 }
 
 function playCardTTS() {
-    // Faktaquiz läses bara upp när eleven trycker på en 🔊-knapp (ingen autouppspelning).
+    // Faktaquiz läses bara upp när eleven håller på kortet (ingen autouppspelning).
     if (!quizSettings?.tts_enabled || quizType === 'fact') return;
     const item = items[currentIndex];
     if (!item) return;
@@ -202,28 +202,23 @@ function playCardTTS() {
     }
 }
 
-// Uppspelningsknapparna är uttryckliga användarval: de låter även när
-// automatisk uppläsning är avstängd (force=true).
-function speakFront(e) {
-    if (e) e.stopPropagation();
+// Håll på kortet i en sekund för att höra sidan som syns (engine/hold-speak.js).
+function updateCardSpeech() {
+    const card = document.getElementById('card');
     const item = items[currentIndex];
-    if (!item) return;
-    speakText(frontText(item), frontLang(item), true);
-}
-
-function speakBack(e) {
-    if (e) e.stopPropagation();
-    const item = items[currentIndex];
-    if (!item) return;
-    speakText(backText(item), backLang(item), true);
+    if (!item || !quizSettings?.tts_enabled) { delete card.dataset.speak; return; }
+    const back = card.classList.contains('flipped');
+    card.dataset.speak = back ? backText(item) : frontText(item);
+    card.dataset.speakLang = (back ? backLang(item) : frontLang(item)) || 'sv';
 }
 
 function flipCard() {
     if (items[currentIndex]) window.ClassroomTracker?.card(currentIndex, items.length);
     const card = document.getElementById('card');
     card.classList.toggle('flipped');
+    updateCardSpeech();
     // Svaret läses automatiskt när det avslöjas, men bara om det är glosordet på
-    // målspråket (omvänt kort). Svensk baksida läses bara via 🔊.
+    // målspråket (omvänt kort). Svensk baksida läses bara när eleven håller på kortet.
     if (card.classList.contains('flipped') && quizSettings?.tts_enabled && quizType === 'glossary') {
         const item = items[currentIndex];
         if (item && isGlossReverse(item)) speakText(backText(item), backLang(item));

@@ -57,7 +57,7 @@ Två sätt att öva:
 - Rättas per objekt. Första gången en fråga visas blinkar fel objekt rött och glider sedan till rätt plats (grönt); vid repetition ligger de kvar där eleven lade dem
 - Repetition: frågan kommer tillbaka med bara de objekt som behöver övas (`required_correct` gäller per objekt)
 - Objekt kan aldrig överlappa: de ligger alltid i radbrytande behållare
-- Uppläsning: eleven håller fingret stilla ~1 s på en text; eleven kan stänga av ljudet i headern
+- Uppläsning: eleven håller fingret stilla 1 s på en text; eleven kan stänga av ljudet i headern
 - Flashcards: ett kort per objekt som hör till ett fält, med ledtråden (`flashcard_prompt`) på framsidan
 - Skapas i `admin/sort-edit.php`, via MCP, eller med prompt/JSON-mall (`assets/templates/sorteringsquiz-mall.json`)
 - Filer: `engine/sort-engine.js` (regler), `engine/drag-board.js` (dra och släpp, delas med kommande ordningsquiz), `engine/sort-player.js`, `play/sort-quiz.php`, `ai/sort-validation.php`
@@ -108,7 +108,7 @@ Två sätt att öva:
 - Visa mening med markerat ord
 - Röst-uppläsning (TTS)
   - Automatisk uppläsning
-  - Manuell uppspelningsknapp
+  - Håll stilla 1 s på en text för uppläsning (gäller alla elevspelare, `engine/hold-speak.js`)
   - Röstval för iPad/iPhone (Paulina som standard för spanska)
   - Hjälptext för nedladdning av bättre röster
 - Stavningslägen:
