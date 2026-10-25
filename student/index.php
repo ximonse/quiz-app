@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
 }
 $data=classroomRead(); $student=classroomStudent($data);
 ?>
-<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mina uppgifter</title><link rel="stylesheet" href="../assets/classroom.css"></head><body class="classroom"><main>
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mina uppgifter</title><link rel="stylesheet" href="../assets/classroom.css"></head><body class="classroom"><main<?= $student?' class="pupil-home"':'' ?>>
 <?php if (!$student): ?>
 <div class="login panel"><h1>Elevinloggning</h1><p>Logga in för att se dina uppgifter.</p>
 <?php if ($error): ?><p class="notice error" role="alert"><?= classroomEscape($error) ?></p><?php endif; ?>
@@ -27,20 +27,19 @@ $data=classroomRead(); $student=classroomStudent($data);
 $cards=[];
 foreach ($data['assignments'] ?? [] as $id=>$a) {
     if (!classroomAllowed($data,$student,$a) || !($content=classroomContent($a))) continue;
-    $status=classroomStatus(classroomAttempts($data,$id,$student['id']),$a['kind']);
-    $cards[]=['id'=>$id,'a'=>$a,'status'=>$status,'done'=>in_array($status,['Klart','Övat','Hämtad'],true),
-              'type'=>['quiz'=>'Quiz','cards'=>'Flashcards','deck'=>'Flashcards','material'=>'PDF'][$a['kind']],
+    $state=classroomPupilState(classroomAttempts($data,$id,$student['id']),$a['kind']);
+    $cards[]=['id'=>$id,'a'=>$a,'s'=>$state,'type'=>['quiz'=>'Quiz','cards'=>'Flashcards','deck'=>'Flashcards','material'=>'PDF'][$a['kind']],
               'subject'=>trim((string)($content['subject'] ?? '')),'created'=>(string)($a['created'] ?? '')];
 }
-usort($cards,fn($x,$y)=>[$x['done'],$y['created']]<=>[$y['done'],$x['created']]);
+usort($cards,fn($x,$y)=>[!$x['s']['todo'],$y['created']]<=>[!$y['s']['todo'],$x['created']]);
 ?>
 <?php if ($cards): ?><div class="sort-bar"><label for="sort">Sortera</label><select id="sort"><option value="todo">Ogjorda först</option><option value="new">Nyaste först</option><option value="subject">Ämne</option><option value="type">Typ</option></select></div><?php endif; ?>
-<div class="grid" id="assignments">
-<?php foreach ($cards as $i=>$c): $a=$c['a']; ?>
-<section class="panel<?= $c['done']?' done':'' ?>" data-done="<?= $c['done']?1:0 ?>" data-created="<?= classroomEscape($c['created']) ?>" data-subject="<?= classroomEscape($c['subject']) ?>" data-type="<?= classroomEscape($c['type']) ?>" data-title="<?= classroomEscape($a['title']) ?>">
-<p class="muted"><?= $c['type'] ?><?= $c['subject']!=='' ? ' · '.classroomEscape($c['subject']) : '' ?></p><h2><?= classroomEscape($a['title']) ?></h2><p class="status"><?= $c['status'] ?></p>
-<a class="button" href="open.php?assignment=<?= urlencode($c['id']) ?>"><?= $a['kind']==='material'?'Hämta PDF':'Öppna' ?></a></section>
-<?php endforeach; ?></div><?php if (!$cards): ?><section class="panel"><h2>Här kommer dina uppgifter</h2><p>Din lärare har inte delat ut något till dig ännu.</p></section><?php endif; ?>
+<ul class="assignment-list" id="assignments">
+<?php foreach ($cards as $c): $a=$c['a']; $s=$c['s']; ?>
+<li class="assignment <?= $s['state'] ?>" data-done="<?= $s['todo']?0:1 ?>" data-created="<?= classroomEscape($c['created']) ?>" data-subject="<?= classroomEscape($c['subject']) ?>" data-type="<?= classroomEscape($c['type']) ?>" data-title="<?= classroomEscape($a['title']) ?>">
+<div class="assignment-text"><p class="assignment-meta"><?= $c['type'] ?><?= $c['subject']!=='' ? ' · '.classroomEscape($c['subject']) : '' ?></p><h2><?= classroomEscape($a['title']) ?></h2><p class="status"><?= $s['label'] ?></p></div>
+<a class="button assignment-action" href="open.php?assignment=<?= urlencode($c['id']) ?>"><?= $s['action'] ?></a></li>
+<?php endforeach; ?></ul><?php if (!$cards): ?><section class="panel"><h2>Här kommer dina uppgifter</h2><p>Din lärare har inte delat ut något till dig ännu.</p></section><?php endif; ?>
 <script>
 (() => {
     const select = document.getElementById('sort'), grid = document.getElementById('assignments');

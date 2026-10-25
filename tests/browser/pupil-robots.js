@@ -40,10 +40,11 @@ function startFixture() {
     const pins=[...cardText.matchAll(/PIN: ([0-9]{4})/g)].map(m=>m[1]);
     const added=Object.values(state().students).filter(s=>s.name.startsWith('Robot '));
     check(added.length===3 && pins.length===3,'three robot pupils with PIN cards');
-    const pupils=[{student:robin,pin:info.student_pin,kind:'dator'},...added.map((s,i)=>({student:s,pin:pins[i],kind:['ipad','mobil','dator'][i]}))];
+    // Styles cover every colour on "Mina uppgifter": mixed (yellow/green), leave (orange), perfect (strong green).
+    const pupils=[{student:robin,pin:info.student_pin,kind:'dator',style:'mixed'},...added.map((s,i)=>({student:s,pin:pins[i],kind:['ipad','mobil','dator'][i],style:['mixed','leave','perfect'][i]}))];
     const data=quizzes();
 
-    async function playQuiz(page, quizId) {
+    async function playQuiz(page, quizId, perfect=false, leave=false) {
       const quiz=data[quizId]; const answerFor=prompt=>{
         for (const item of quiz.items) {
           if (quiz.type==='fact') { if (prompt.includes(item.concept)) return item.description; if (prompt.includes(item.description)) return item.concept; }
@@ -51,7 +52,7 @@ function startFixture() {
         }
         throw new Error('no answer for '+prompt);
       };
-      let wrongOnce=false;
+      let wrongOnce=perfect;
       for (let round=0; round<30; round++) {
         await page.waitForFunction(()=>/Bra jobbat|FLAWLESS/.test(document.body.innerText) || document.querySelectorAll('#root .space-y-2 button:not([disabled])').length || document.querySelector('#root input[type=text]'));
         if (/Bra jobbat|FLAWLESS/.test(await page.locator('body').innerText())) return;
@@ -64,11 +65,12 @@ function startFixture() {
           await options.nth(texts.findIndex(t=>t.trim()===pick.trim())).click();
         } else { await page.fill('#root input[type=text]',correct); await page.click('#root button[type=submit]'); }
         await page.waitForFunction(()=>!document.querySelector('#root button[disabled]') || /Bra jobbat|FLAWLESS/.test(document.body.innerText),null,{timeout:6000});
+        if (leave) return 'left';
       }
       throw new Error('quiz did not finish: '+quizId);
     }
-    async function playImage(page) {
-      const quiz=data.q_img; let first=true;
+    async function playImage(page, perfect=false) {
+      const quiz=data.q_img; let first=!perfect;
       for (let round=0; round<20; round++) {
         await page.waitForFunction(()=>document.getElementById('quiz-title').textContent==='Klart!' || !document.getElementById('question-card').hidden);
         if (await page.textContent('#quiz-title')==='Klart!') return;
@@ -82,14 +84,14 @@ function startFixture() {
     }
     async function drag(page, touch, from, to, end) {
       const a=await from.boundingBox(), b=await to.boundingBox();
-      const p={x:a.x+a.width/2,y:a.y+a.height/2}, q=end==='y'?{x:b.x+b.width/2,y:b.y+b.height-6}:end==='x'?{x:b.x+b.width-6,y:b.y+b.height/2}:{x:b.x+b.width/2,y:b.y+b.height/2};
+      const p={x:a.x+a.width/2,y:a.y+a.height/2}, q=end==='y'?{x:b.x+b.width/2,y:b.y+b.height-6}:end==='x'?{x:b.x+b.width-6,y:b.y+b.height/2}:{x:b.x+b.width-8,y:b.y+b.height-8}; // empty corner: a tap on an object already there would select it
       if (touch) { // tap the object, then the target: the touch/motor-friendly path
         await from.tap(); await to.tap({position:{x:q.x-b.x,y:q.y-b.y}});
       } else { await page.mouse.move(p.x,p.y); await page.mouse.down(); await page.mouse.move(q.x,q.y,{steps:12}); await page.mouse.up(); }
       await sleep(350);
     }
-    async function playSort(page, touch) {
-      const quiz=data.q_sort; let first=true;
+    async function playSort(page, touch, perfect=false) {
+      const quiz=data.q_sort; let first=!perfect;
       for (let round=0; round<20; round++) {
         await page.waitForFunction(()=>document.getElementById('quiz-title').textContent==='Klart!' || (!document.getElementById('question-card').hidden && !document.getElementById('check').hidden));
         if (await page.textContent('#quiz-title')==='Klart!') return;
@@ -104,8 +106,8 @@ function startFixture() {
       }
       throw new Error('sort quiz did not finish');
     }
-    async function playOrder(page, touch) {
-      const quiz=data.q_order; let first=true;
+    async function playOrder(page, touch, perfect=false) {
+      const quiz=data.q_order; let first=!perfect;
       for (let round=0; round<20; round++) {
         await page.waitForFunction(()=>document.getElementById('quiz-title').textContent==='Klart!' || (!document.getElementById('question-card').hidden && !document.getElementById('check').hidden));
         if (await page.textContent('#quiz-title')==='Klart!') return;
@@ -126,7 +128,8 @@ function startFixture() {
       return total;
     }
 
-    async function pupilRun({student,pin,kind}) {
+    async function pupilRun({student,pin,kind,style}) {
+      const perfect=style==='perfect';
       const opts=kind==='ipad'?{...devices['iPad (gen 7)']}:kind==='mobil'?{...devices['iPhone 13']}:{viewport:{width:1280,height:800}};
       const ctx=await browser.newContext(opts); const page=await ctx.newPage(); page.setDefaultTimeout(10000);
       const errors=[]; page.on('pageerror',e=>errors.push(e.message));
@@ -134,24 +137,28 @@ function startFixture() {
       await page.goto(base+'/student/'); await page.fill('input[name=code]',student.code); await page.fill('input[name=pin]',pin);
       await Promise.all([page.waitForNavigation(), page.locator('form button').first().click()]);
       check((await page.locator('body').innerText()).includes('Hej '+student.name),'login '+student.name);
-      const links=await page.locator('a.button[href^="open.php"]').evaluateAll(as=>as.map(a=>({href:a.getAttribute('href'),title:a.closest('section').innerText.split('\n')[0]})));
+      const links=await page.locator('a.button[href^="open.php"]').evaluateAll(as=>as.map(a=>({href:a.getAttribute('href'),title:a.closest('li').innerText.split('\n')[0]})));
       for (const link of links) {
         const a=state().assignments[new URLSearchParams(link.href.split('?')[1]).get('assignment')];
         if (a.kind==='material') continue;
         await page.goto(base+'/student/'+link.href); await page.waitForLoadState('networkidle');
         const url=page.url(); let what;
-        if (url.includes('/play/sort-quiz.php')) { await playSort(page,touch); what='sorteringsquiz'; }
-        else if (url.includes('/play/order-quiz.php')) { await playOrder(page,touch); what='ordningsquiz'; }
-        else if (url.includes('/play/image-quiz.php')) { await playImage(page); what='bildvalsquiz'; }
+        if (url.includes('/play/sort-quiz.php')) { await playSort(page,touch,perfect); what='sorteringsquiz'; }
+        else if (url.includes('/play/order-quiz.php')) { await playOrder(page,touch,perfect); what='ordningsquiz'; }
+        else if (url.includes('/play/image-quiz.php')) { await playImage(page,perfect); what='bildvalsquiz'; }
         else if (url.includes('/play/flashcards.php')) { await playCards(page,touch); what='flashcards '+a.content_id; }
-        else if (url.includes('/play/quiz.php')) { await playQuiz(page,a.content_id); what=data[a.content_id].type==='fact'?'faktaquiz':'glosquiz'; }
+        else if (url.includes('/play/quiz.php')) {
+          const leave=style==='leave' && data[a.content_id].type==='fact';
+          await playQuiz(page,a.content_id,perfect,leave); what=data[a.content_id].type==='fact'?'faktaquiz':'glosquiz';
+          if (leave) { await sleep(700); done.push({what:what+' (avbrutet)',assignment:a.id,started:true}); continue; }
+        }
         else { what='äldre spelare ('+a.kind+')'; check(!/Fatal|Warning/.test(await page.content()),'legacy page error'); done.push({what,assignment:a.id,legacy:true}); continue; }
         await sleep(700);
         done.push({what,assignment:a.id});
       }
       await page.goto(base+'/student/');
       // Sorting on "Mina uppgifter": unfinished first by default, the choice survives a reload.
-      const cards=()=>page.locator('#assignments > section').evaluateAll(els=>els.map(e=>({done:+e.dataset.done,type:e.dataset.type,subject:e.dataset.subject,created:e.dataset.created})));
+      const cards=()=>page.locator('#assignments > li').evaluateAll(els=>els.map(e=>({done:+e.dataset.done,type:e.dataset.type,subject:e.dataset.subject,created:e.dataset.created})));
       const sortedBy=(list,key)=>list.every((c,i)=>!i||String(list[i-1][key]).localeCompare(String(c[key]),'sv')<=0);
       check(await page.inputValue('#sort')==='todo','default sort is unfinished first');
       check(sortedBy(await cards(),'done'),student.name+': unfinished assignments first');
@@ -160,10 +167,19 @@ function startFixture() {
       await page.selectOption('#sort','subject');
       { const subjects=(await cards()).map(c=>c.subject); const named=subjects.filter(Boolean);
         check(named.length>=2 && subjects.indexOf('')>=named.length-1+0 && subjects.slice(0,named.length).every(Boolean) && named.every((x,i)=>!i||named[i-1].localeCompare(x,'sv')<=0),student.name+': sort by subject '+subjects.join('|')); }
-      check((await page.locator('#assignments > section').first().innerText()).includes('Biologi'),student.name+': subject shown on card');
+      check((await page.locator('#assignments > li').first().innerText()).includes('Biologi'),student.name+': subject shown on card');
       await page.selectOption('#sort','new'); check([...(await cards())].map(c=>c.created).every((c,i,l)=>!i||l[i-1]>=c),student.name+': newest first');
       await page.reload(); check(await page.inputValue('#sort')==='new' && (await cards()).map(c=>c.created).every((c,i,l)=>!i||l[i-1]>=c),student.name+': sort choice remembered');
       await page.selectOption('#sort','todo');
+      // Colour per assignment on the pupil's own list.
+      const rows=await page.locator('#assignments > li').evaluateAll(els=>els.map(e=>({cls:e.className,title:e.dataset.title,type:e.dataset.type,action:e.querySelector('.assignment-action').textContent})));
+      check(!/\d+ rätt|\d+ fel/.test(await page.locator('#assignments').innerText()),student.name+': no scores on pupil list');
+      for (const d of done) {
+        const a=state().assignments[d.assignment]; const row=rows.find(r=>r.title===a.title && r.type===(a.kind==='quiz'?'Quiz':'Flashcards'));
+        const want=a.kind!=='quiz'?['optional']:d.legacy?['new']:d.started?['started']:perfect?['flawless']:['done','shaky'];
+        check(row && want.some(w=>row.cls.split(' ').includes(w)),`${student.name}: ${d.what} should be ${want.join('/')}, got ${row&&row.cls}`);
+      }
+      check(rows.some(r=>r.cls.includes('new') && r.action==='Kör mig!'),student.name+': unopened quiz offers "Kör mig!"');
       await page.screenshot({path:shot(`robot-home-${kind}-${student.name.replace(/\W+/g,'')}.png`),fullPage:true});
       check(!errors.length,student.name+' page errors: '+errors.join('; '));
       await ctx.close();
@@ -175,7 +191,7 @@ function startFixture() {
     for (const run of runs) {
       for (const d of run.done.filter(d=>!d.legacy)) {
         const rows=Object.values(st.attempts).filter(r=>r.assignment_id===d.assignment && r.student_id===run.student.id);
-        check(rows.some(r=>r.completed),`${run.student.name}: ${d.what} not recorded as done`);
+        check(d.started ? rows.length && !rows.some(r=>r.completed) : rows.some(r=>r.completed),`${run.student.name}: ${d.what} recorded wrongly`);
       }
       log.push(`${run.student.name} (${run.kind}): `+run.done.map(d=>d.what).join(', '));
     }
