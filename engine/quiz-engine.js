@@ -164,6 +164,8 @@ function QuizEngine(config) {
             result = isAnswerCorrect(answer, q.answer, spellingMode);
         }
 
+        result.itemIndex = item._index;
+
         if (result.correct) {
             const requiredCorrect = getRequiredCorrect();
             const masteryCount = Math.min((masteryCounts[item._index] || 0) + 1, requiredCorrect);
@@ -172,16 +174,20 @@ function QuizEngine(config) {
             result.requiredCorrect = requiredCorrect;
             if (masteryCount >= requiredCorrect) {
                 correctCount++;
+                result.itemFinal = true;
                 queue.shift(); // Mastered: remove from queue
             } else {
+                result.itemFinal = false;
                 queue.push(queue.shift()); // Keep rotating until mastered
             }
         } else {
             totalErrors++;
             errors.push({ item_index: item._index, given: answer, correct: q.answer });
             if (isTest) {
+                result.itemFinal = true;
                 queue.shift(); // Test mode: remove even on wrong
             } else {
+                result.itemFinal = false;
                 queue.push(queue.shift()); // Training: move to end
             }
         }

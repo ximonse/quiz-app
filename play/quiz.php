@@ -87,6 +87,7 @@ function App() {
     const [textInput, setTextInput] = React.useState('');
     const [opensAt, setOpensAt] = React.useState('');
     const [muted, setMuted] = React.useState(() => ttsIsMuted());
+    const wrongCountsRef = React.useRef({}); // item index -> accumulated wrong tries, for the spaced-repetition signal
 
     function factLang() { return quiz?.settings?.language; }
     // Faktaquiz: språket beror på om texten är begrepp eller beskrivning.
@@ -190,6 +191,11 @@ function App() {
         };
         const result = engine.submitAnswer(answer, currentSpelling);
         window.ClassroomTracker?.answer(result.correct, result.complete);
+        if (!result.correct) wrongCountsRef.current[result.itemIndex] = (wrongCountsRef.current[result.itemIndex] || 0) + 1;
+        if (result.itemFinal) {
+            window.ClassroomTracker?.question(result.itemIndex, wrongCountsRef.current[result.itemIndex] || 0);
+            delete wrongCountsRef.current[result.itemIndex];
+        }
         setTextInput('');
 
         if (result.complete) {

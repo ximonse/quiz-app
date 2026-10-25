@@ -3,6 +3,7 @@
     const root = document.getElementById('order-player');
     const $ = id => document.getElementById(id); const preview = root.dataset.preview === '1';
     let quiz, engine, presentation, board, submitted = false;
+    const wrongCounts = {}; // item index -> accumulated wrong tries, for the spaced-repetition signal
     const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
     const imageNode = image => {
         const img = document.createElement('img'); img.alt = image.alt; img.draggable = false;
@@ -52,6 +53,8 @@
         const placed = [...$('line').querySelectorAll('.sort-object')].map(el => el.dataset.id);
         const result = engine.submit(placed); const complete = engine.progress().complete;
         window.ClassroomTracker?.answer(result.correct, complete);
+        if (!result.correct) wrongCounts[result.itemIndex] = (wrongCounts[result.itemIndex] || 0) + 1;
+        if (result.itemFinal) { window.ClassroomTracker?.question(result.itemIndex, wrongCounts[result.itemIndex] || 0); delete wrongCounts[result.itemIndex]; }
         const nodes = [...$('board').querySelectorAll('.sort-object')];
         for (const el of nodes) if (result.statuses[el.dataset.id] === 'correct' && placed.includes(el.dataset.id)) el.classList.add('correct');
         const wrong = nodes.filter(el => result.statuses[el.dataset.id] === 'wrong');

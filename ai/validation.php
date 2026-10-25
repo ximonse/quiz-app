@@ -39,7 +39,8 @@ function aiValidateDocument(array $input, string $teacherId): array {
     $defaults = ['answer_mode'=>'multiple_choice', 'question_direction'=>'concept', 'concept_language'=>'sv',
         'required_correct'=>1, 'reverse_enabled'=>false, 'reverse_answer_mode'=>'multiple_choice',
         'reverse_required_correct'=>1, 'quiz_mode'=>'training', 'tts_enabled'=>true, 'language'=>'sv',
-        'spelling_mode'=>'student_choice', 'time_lock'=>null, 'generate_flashcards'=>false, 'flashcard_mix_directions'=>false];
+        'spelling_mode'=>'student_choice', 'time_lock'=>null, 'generate_flashcards'=>false, 'flashcard_mix_directions'=>false,
+        'spaced_repetition'=>false];
     if (array_diff(array_keys($settings), array_keys($defaults))) throw new QuizAiError('Unknown settings.');
     $settings = array_replace($defaults, $settings);
     foreach (['answer_mode'=>['multiple_choice','text_only','hybrid'], 'reverse_answer_mode'=>['multiple_choice','text_only','hybrid'],
@@ -48,7 +49,7 @@ function aiValidateDocument(array $input, string $teacherId): array {
         if (!in_array($settings[$key], $values, true)) throw new QuizAiError("Invalid $key.");
     foreach (['required_correct','reverse_required_correct'] as $key)
         if (!is_int($settings[$key]) || $settings[$key] < 1 || $settings[$key] > 10) throw new QuizAiError("$key must be 1 to 10.");
-    foreach (['reverse_enabled','tts_enabled','generate_flashcards','flashcard_mix_directions'] as $key)
+    foreach (['reverse_enabled','tts_enabled','generate_flashcards','flashcard_mix_directions','spaced_repetition'] as $key)
         if (!is_bool($settings[$key])) throw new QuizAiError("$key must be boolean.");
     if (!is_string($settings['language']) || !preg_match('/^[a-z]{2}(-[A-Z]{2})?$/D', $settings['language'])) throw new QuizAiError('Invalid language.');
     if ($settings['time_lock'] !== null) {

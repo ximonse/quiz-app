@@ -1,5 +1,6 @@
 <?php
 // Classroom data is separate from public quizzes. All writes use one locked transaction.
+require_once __DIR__.'/repetition.php';
 if (!defined('CLASSROOM_FILE')) define('CLASSROOM_FILE', DATA_DIR . 'classroom.json');
 function classroomRead(): array {
     if (!is_file(CLASSROOM_FILE)) return [];
@@ -132,25 +133,43 @@ function classroomPupilState(array $rows, string $kind): array {
     return ['state'=>'shaky','label'=>'Klart – kör gärna en gång till','action'=>'Kör igen','todo'=>false];
 }
 function classroomRecord(array $student, array $input): void {
-    classroomUpdate(function (&$data) use ($student,$input) {
+    $pendingAnswers=null; $repetitionQuizId=null;
+    classroomUpdate(function (&$data) use ($student,$input,&$pendingAnswers,&$repetitionQuizId) {
         $current=classroomStudent($data);
         if (!$current || $current['id']!==$student['id'] || ($input['student_id'] ?? '')!==$current['id']) throw new DomainException('Logga in igen.');
         $assignment=classroomOwned($data,'assignments',(string)($input['assignment_id'] ?? ''),$student['teacher_id']);
-        if (!classroomAllowed($data,$current,$assignment) || !classroomContent($assignment)) throw new DomainException('Uppgiften är inte tillgänglig.');
+        $content=classroomContent($assignment);
+        if (!classroomAllowed($data,$current,$assignment) || !$content) throw new DomainException('Uppgiften är inte tillgänglig.');
         if ($assignment['kind']==='material') throw new DomainException('Använd materiallänken.');
         $id=$input['attempt_id'] ?? '';
         if (!is_string($id) || !preg_match('/^[a-f0-9]{32}$/D',$id)) throw new DomainException('Ogiltigt försök.');
         $old=$data['attempts'][$id] ?? null;
         if ($old && ($old['student_id']!==$student['id'] || $old['assignment_id']!==$assignment['id'])) throw new DomainException('Ogiltigt försök.');
         foreach (['seq','right','wrong','cards'] as $key) if (!isset($input[$key]) || !is_int($input[$key]) || $input[$key]<0 || $input[$key]>100000) throw new DomainException('Ogiltig aktivitet.');
+        $answers=$input['answers'] ?? [];
+        if (!is_array($answers) || count($answers)>300) throw new DomainException('Ogiltig aktivitet.');
+        foreach ($answers as $a) {
+            if (!is_array($a) || !isset($a['q'],$a['w']) || !is_string($a['q']) || !preg_match('/^[0-9]{1,6}$/D',$a['q']) || !is_int($a['w']) || $a['w']<0 || $a['w']>1000)
+                throw new DomainException('Ogiltig aktivitet.');
+        }
         if ($old && $input['seq'] <= $old['seq']) return;
+        // Repetitionskort uppdateras utanför detta lås (egen fil); fånga upp
+        // bara de NYA svaren sedan sist, och bara för quiz läraren markerat.
+        $alreadyApplied=(int)($old['answers_applied'] ?? 0);
+        // v1 av repetitionsspelaren kan bara visa enkla fakta/glos-frågor.
+        if (count($answers)>$alreadyApplied && $assignment['kind']==='quiz' && in_array($content['type'] ?? '',['fact','glossary'],true) && !empty($content['settings']['spaced_repetition'])) {
+            $pendingAnswers=array_slice($answers,$alreadyApplied);
+            $repetitionQuizId=$assignment['content_id'];
+        }
         $data['attempts'][$id]=[
             'student_id'=>$student['id'],'assignment_id'=>$assignment['id'],'teacher_id'=>$student['teacher_id'],
             'seq'=>$input['seq'],'right'=>max($old['right'] ?? 0,$input['right']),'wrong'=>max($old['wrong'] ?? 0,$input['wrong']),
             'cards'=>max($old['cards'] ?? 0,$input['cards']),'completed'=>!empty($old['completed']) || ($input['completed'] ?? false)===true,
+            'answers_applied'=>count($answers),
             'started'=>$old['started'] ?? gmdate('c'),'updated'=>gmdate('c')
         ];
     });
+    if ($pendingAnswers) repetitionRecordAnswers($student['id'],$repetitionQuizId,$pendingAnswers);
 }
 function classroomResultIdentity(array $input): void {
     $student=classroomStudent();

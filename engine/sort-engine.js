@@ -43,8 +43,9 @@ function SortEngine(items, settings = {}) {
         }
         shown[index]++;
         queue.shift();
+        const final = test || pending(index).length === 0;
         if (!test && pending(index).length) queue.push(index);
-        return {...result, reveal: presentation.reveal};
+        return {...result, reveal: presentation.reveal, itemIndex: index, itemFinal: final};
     }
     function progress() {
         const mastered = items.filter((_, i) => !pending(i).length).length;
