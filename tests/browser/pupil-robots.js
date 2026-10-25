@@ -1,8 +1,8 @@
 // Browser pupil robots: log in like pupils and play every assigned quiz type to the end,
 // against the synthetic classroom fixture from tests/classroom-http.test.py --serve.
-const {chromium, devices}=require('playwright');
+const {devices}=require('playwright');
 const fs=require('fs'),path=require('path'),{spawn}=require('child_process');
-const {shot}=require('./fixture');
+const {shot,launch}=require('./fixture');
 const repo=path.resolve(__dirname,'../..');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let checks=0; const log=[];
@@ -23,7 +23,7 @@ function startFixture() {
   const base=info.url, fixture=info.fixture;
   const state=()=>JSON.parse(fs.readFileSync(path.join(fixture,'data/classroom.json'),'utf-8'));
   const quizzes=()=>JSON.parse(fs.readFileSync(path.join(fixture,'data/quizzes.json'),'utf-8'));
-  const browser=await chromium.launch();
+  const browser=await launch();
   try {
     // Teacher: assign the remaining quiz types and add three more pupils.
     const tctx=await browser.newContext(); const teacher=await tctx.newPage();

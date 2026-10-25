@@ -45,4 +45,20 @@ function startFixture() {
     return fx;
 }
 
-module.exports = {startFixture, shot, root};
+// Headless Chromium still reaches the OS voice, so every page gets a silent speechSynthesis.
+// Tests that record speech add their own stub afterwards, which runs later and wins.
+function silentSpeech() {
+    if (!('speechSynthesis' in window)) return;
+    const synth = window.speechSynthesis;
+    synth.speak = () => {}; synth.cancel = () => {};
+}
+async function launch() {
+    const {chromium} = require('playwright');
+    const browser = await chromium.launch();
+    const newContext = browser.newContext.bind(browser);
+    browser.newContext = async options => { const context = await newContext(options); await context.addInitScript(silentSpeech); return context; };
+    browser.newPage = async options => (await browser.newContext(options)).newPage();
+    return browser;
+}
+
+module.exports = {startFixture, shot, root, launch};

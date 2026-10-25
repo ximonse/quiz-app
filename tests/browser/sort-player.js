@@ -1,13 +1,12 @@
 // Synthetic browser check of the sort player. Never touches real data.
-const {chromium}=require('playwright');
 const fs=require('fs'),path=require('path');
-const {startFixture,shot}=require('./fixture');
+const {startFixture,shot,launch}=require('./fixture');
 const fx=startFixture(); const fixture=fx.dir, root=fx.root; let base;
 let checks=0; const check=(c,m)=>{ if(!c) throw new Error(m); checks++; };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{
   await fx.ready(); base=fx.base;
-  const browser=await chromium.launch(); const page=await browser.newPage({viewport:{width:1024,height:768}}); page.setDefaultTimeout(8000);
+  const browser=await launch(); const page=await browser.newPage({viewport:{width:1024,height:768}}); page.setDefaultTimeout(8000);
   const errors=[]; page.on('pageerror',e=>errors.push(e.message)); page.on('console',m=>{ if(m.type()==='error') errors.push(m.text()); });
   await page.goto(base+'/play/sort-quiz.php?id=q_sort&name=Robot');
   await page.waitForSelector('.sort-object');

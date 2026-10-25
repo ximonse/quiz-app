@@ -1,7 +1,6 @@
 // Hold-to-listen and mute, with a recording speechSynthesis stub. Synthetic data only.
-const {chromium}=require('playwright');
 const fs=require('fs'),path=require('path');
-const {startFixture,shot}=require('./fixture');
+const {startFixture,shot,launch}=require('./fixture');
 const fx=startFixture(); const fixture=fx.dir, root=fx.root; let base;
 let checks=0; const check=(c,m)=>{ if(!c) throw new Error(m); checks++; console.log('ok',m); };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -9,7 +8,7 @@ const stub=()=>{ window.__spoken=[]; const s=window.speechSynthesis;
   s.speak=u=>{ if(u.text.trim()) window.__spoken.push(u.text); }; s.cancel=()=>{}; s.getVoices=()=>[]; };
 (async()=>{
   await fx.ready(); base=fx.base;
-  const browser=await chromium.launch();
+  const browser=await launch();
   for (const touch of ((process.argv[2]||'mouse')==='touch'?[true]:[false])) {
     const context=await browser.newContext({viewport:{width:1024,height:768},hasTouch:touch}); await context.addInitScript(stub);
     const page=await context.newPage(); page.setDefaultTimeout(8000); const cdp=touch?await context.newCDPSession(page):null;

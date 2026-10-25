@@ -1,14 +1,13 @@
 // Synthetic browser check of the teacher flow: import template JSON, save, review, publish, stats.
-const {chromium}=require('playwright');
 const fs=require('fs'),path=require('path');
-const {startFixture,shot}=require('./fixture');
+const {startFixture,shot,launch}=require('./fixture');
 const fx=startFixture(); const fixture=fx.dir, root=fx.root; let base;
 const png=path.join(fixture,'pixel.png'); fs.writeFileSync(png,Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==','base64'));
 let checks=0; const check=(c,m)=>{ if(!c) throw new Error(m); checks++; };
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 (async()=>{
   await fx.ready(); base=fx.base;
-  const browser=await chromium.launch(); const page=await browser.newPage({viewport:{width:1100,height:900}});
+  const browser=await launch(); const page=await browser.newPage({viewport:{width:1100,height:900}});
   const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base+'/index.php'); await page.fill('[name=username]','fixture'); await page.fill('[name=password]','pw');
   await Promise.all([page.waitForNavigation(),page.click('form button[type=submit], form button')]);
