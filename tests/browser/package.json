@@ -1,0 +1,13 @@
+{
+  "name": "quiz-app-browser-tests",
+  "private": true,
+  "description": "Synthetic browser checks and pupil robots for the quiz players. Requires PHP and Python on PATH.",
+  "scripts": {
+    "test": "node run-all.js",
+    "robots": "node pupil-robots.js",
+    "themes": "node themes.js"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

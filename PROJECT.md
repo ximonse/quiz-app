@@ -256,6 +256,17 @@ Titel på quiz 2
 Mening 1;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord 1;Fel ord 2;Fel ord 3
 ```
 
+## Tester
+
+All testdata är syntetisk och körs i engångskopior av appen; riktiga konton och quiz rörs aldrig.
+
+- Enhetstester: `node --test tests/*.test.js engine/*.test.js` och `php tests/ai-service.test.php`
+- Klassrum via HTTP: `python tests/classroom-http.test.py`, med `--robots` för 32 robotelever samtidigt i alla quiztyper
+- Webbläsare (kräver PHP, Python och Node): `cd tests/browser && npm install && npm test`
+  - spelar sorterings- och ordningsquiz, sorteringsredigeraren och håll-för-uppläsning med mus och touch
+  - `pupil-robots.js`: fyra elever (dator, iPad, iPhone) loggar in och spelar alla uppdrag till slut
+  - `npm run themes` tar skärmdumpar av alla teman; bilderna hamnar i `tests/browser/screenshots/`
+
 ## Utvecklingshistorik
 
 ### Senaste uppdateringar (2026-02-11)
