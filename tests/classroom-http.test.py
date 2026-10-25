@@ -81,7 +81,12 @@ $sortQuiz=['id'=>'q_sort','teacher_id'=>'t1','publication'=>'published','title'=
 'items'=>[['question'=>'Vilket rike?','flashcard_prompt'=>'Vilket rike tillhör','image'=>null,'fields'=>[['id'=>'svamp','title'=>'Svampar','text'=>'','image'=>null]],'objects'=>[['id'=>'champinjon','text'=>'Champinjon','image'=>null,'field'=>'svamp'],['id'=>'sten','text'=>'Sten','image'=>null,'field'=>null]]]],'results'=>[]];
 $orderQuiz=['id'=>'q_order','teacher_id'=>'t1','publication'=>'published','title'=>'Ordningsquiz','type'=>'order','settings'=>['quiz_mode'=>'training','answer_mode'=>'multiple_choice','required_correct'=>1,'language'=>'sv','generate_flashcards'=>false,'tts_enabled'=>false],
 'items'=>[['question'=>'Ordna','image'=>null,'orientation'=>'horizontal','labels'=>['start'=>'','middle'=>'','end'=>''],'objects'=>[['id'=>'a','text'=>'A','image'=>null],['id'=>'b','text'=>'B','image'=>null]]]],'results'=>[]];
-writeJSON(QUIZZES_FILE,['q_fixture'=>$quiz,'aabbccdd'=>$legacy,'q_draft'=>$draft,'q_other'=>$other,'q_sort'=>$sortQuiz,'q_order'=>$orderQuiz]);
+$glossQuiz=['id'=>'q_gloss','teacher_id'=>'t1','publication'=>'published','title'=>'Glosquiz','type'=>'glossary','settings'=>['quiz_mode'=>'training','answer_mode'=>'multiple_choice','required_correct'=>1,'language'=>'en','generate_flashcards'=>true,'tts_enabled'=>false,'reverse_enabled'=>false],
+'items'=>[['word'=>'dog','translation'=>'hund','sentence'=>'The dog runs.','wrong_options'=>['katt','häst','fisk']],['word'=>'cat','translation'=>'katt','sentence'=>'The cat sleeps.','wrong_options'=>['hund','ko','mus']]],'results'=>[]];
+$robotImage=fn($alt)=>['file'=>'ai_'.str_repeat('b',32).'.png','alt'=>$alt,'crop'=>['x'=>50,'y'=>50,'zoom'=>100]];
+$imageQuiz=['id'=>'q_img','teacher_id'=>'t1','publication'=>'published','title'=>'Bildvalsquiz','type'=>'image_choice','settings'=>['quiz_mode'=>'training','required_correct'=>1,'language'=>'sv','tts_enabled'=>false],
+'items'=>[['question'=>'Vilken är en katt?','image'=>null,'choices'=>[['id'=>'c1','image'=>$robotImage('Katt'),'correct'=>true],['id'=>'c2','image'=>$robotImage('Hund'),'correct'=>false]]]],'results'=>[]];
+writeJSON(QUIZZES_FILE,['q_fixture'=>$quiz,'aabbccdd'=>$legacy,'q_draft'=>$draft,'q_other'=>$other,'q_sort'=>$sortQuiz,'q_order'=>$orderQuiz,'q_gloss'=>$glossQuiz,'q_img'=>$imageQuiz]);
 writeJSON(DATA_DIR.'flashcards.json',['d_fixture'=>['id'=>'d_fixture','teacher_id'=>'t1','title'=>'Separata kort','active'=>true,'cards'=>[['front'=>'A','back'=>'B'],['front'=>'C','back'=>'D']],'results'=>[['student_name'=>'OLD_PRIVATE_DECK_RESULT']]]]);
 writeJSON(STATS_FILE,[]);
 ''', encoding='utf-8')

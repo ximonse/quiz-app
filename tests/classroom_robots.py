@@ -134,6 +134,11 @@ def run_robots(fixture: Path):
 
         quiz = assign('quiz:q_fixture', 'classes:' + classroom)
         flashcards = assign('cards:q_fixture', 'classes:' + classroom)
+        # Every quiz type, assigned to the whole class: (content, quiz id, player page).
+        type_routes = [('quiz:q_gloss', 'q_gloss', '/play/quiz.php?'), ('quiz:q_img', 'q_img', '/play/image-quiz.php?'),
+                       ('quiz:q_sort', 'q_sort', '/play/sort-quiz.php?'), ('quiz:q_order', 'q_order', '/play/order-quiz.php?'),
+                       ('cards:q_gloss', None, '/play/flashcards.php?'), ('cards:q_sort', None, '/play/flashcards.php?')]
+        typed = [(assign(content, 'classes:' + classroom), content, quiz_id, player) for content, quiz_id, player in type_routes]
         deck = assign('deck:d_fixture', 'groups:' + group_a)
         boundary = 'RobotPDFUploadBoundary'
         parts = []
@@ -146,7 +151,7 @@ def run_robots(fixture: Path):
         check(teacher.request('/admin/classes.php', raw=b''.join(parts), headers={'Content-Type': 'multipart/form-data; boundary='+boundary})[0] == 200, 'Robot PDF upload failed')
         pdf_assignment = (set(state()['assignments']) - before).pop()
         pdf_file = state()['assignments'][pdf_assignment]['file']
-        print('Robots: 32 pupils, 4 PHP workers, concurrent quiz/flashcard/material traffic', flush=True)
+        print('Robots: 32 pupils, 4 PHP workers, concurrent traffic in every quiz type plus flashcards and material', flush=True)
 
         def journey(index):
             student, pin = pupils[index], pins[index]
@@ -187,6 +192,20 @@ def run_robots(fixture: Path):
             if index >= 16:
                 check(robot.request('/student/open.php?assignment='+pdf_assignment)[1].startswith('%PDF'), 'Authorized download failed')
             check(robot.request('/data/materials/'+pdf_file)[0] == 403, 'Direct PDF request accepted')
+            # Each robot works through every quiz type in its own order, on rotating servers.
+            for n in range(len(typed)):
+                assignment, content, quiz_id, player = typed[(index + n) % len(typed)]
+                status, page, url = robot.request('/student/open.php?assignment='+assignment, base=bases[(index+n) % 4])
+                check(status == 200 and player in url and 'classroomContext=' in page, 'Wrong player for '+content+': '+url)
+                if quiz_id:
+                    check(robot.request('/api/quiz-data.php?id='+quiz_id)[0] == 200, 'Quiz data unavailable: '+quiz_id)
+                done = {'student_id':student['id'], 'assignment_id':assignment, 'attempt_id':attempt_id(content+':'+student['id']),
+                        'seq':1, 'right':0 if not quiz_id else 3, 'wrong':0 if not quiz_id else index % 3,
+                        'cards':4 if not quiz_id else 0, 'completed':True}
+                check(robot.request('/api/classroom-activity.php', payload=done, base=bases[(index+n+1) % 4])[0] == 200, 'Activity rejected: '+content)
+                if quiz_id:
+                    finish = {'quiz_id':quiz_id, 'student_id':student['id'], 'student_name':student['name'], 'score':3, 'total':3+index % 3, 'errors':[]}
+                    check(robot.request('/api/save-result.php', payload=finish, base=bases[(index+n+2) % 4])[0] == 200, 'Result rejected: '+quiz_id)
             # The established modern result endpoint also receives simultaneous finishes.
             result = {'quiz_id':'q_fixture','student_id':student['id'],'student_name':'Spoofed Name',
                       'score':last-last//4,'total':last,'errors':[]}
@@ -206,6 +225,16 @@ def run_robots(fixture: Path):
                   and row['completed'] == (last==12), 'Concurrent quiz data lost or mixed')
             card = data['attempts'][attempt_id('cards:'+student['id'])]
             check(card['cards'] == 6 and card['completed'], 'Concurrent flashcard data lost')
+        for assignment, content, quiz_id, player in typed:
+            for i, student in enumerate(pupils):
+                row = data['attempts'].get(attempt_id(content+':'+student['id']))
+                check(row and row['completed'] and row['assignment_id'] == assignment
+                      and (row['cards'] == 4 if not quiz_id else row['wrong'] == i % 3), 'Lost or mixed activity: '+content)
+        saved_quizzes = json.loads((fixture/'data/quizzes.json').read_text('utf-8'))
+        pupil_ids = {s['id'] for s in pupils}
+        for quiz_id in ['q_gloss', 'q_img', 'q_sort', 'q_order']:
+            saved = [r['student_id'] for r in saved_quizzes[quiz_id]['results'] if r.get('student_id') in pupil_ids]
+            check(len(saved) == len(set(saved)) == 32, 'Concurrent results lost: '+quiz_id)
         downloads = [a for a in data['attempts'].values() if a['assignment_id'] == pdf_assignment]
         check(len(downloads) == 16, 'Download records lost or mixed')
         results = json.loads((fixture/'data/quizzes.json').read_text('utf-8'))['q_fixture']['results']
@@ -286,7 +315,7 @@ def run_robots(fixture: Path):
                   'PHP runtime error in '+logfile.name+': '+log_text[-1500:])
         report={**counts,'pupils':32,'php_workers':4,'duration_seconds':round(time.monotonic()-started,2),
                 'request_p95_ms':round(sorted(timings)[int(len(timings)*.95)]*1000),
-                'scenarios':['concurrent quiz/card work','8 abandoned attempts','8 reconnecting pupils',
+                'scenarios':['concurrent quiz/card work','fact, glossary, image, sort and order quizzes plus glossary and sort flashcards','8 abandoned attempts','8 reconnecting pupils',
                              'duplicate/out-of-order delivery','16 authorized PDF downloads',
                              'cross-group denials','shared-device stale tabs','reset/removal revocation',
                              '32 modern and 128 legacy result saves']}
