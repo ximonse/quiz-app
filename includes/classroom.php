@@ -160,11 +160,17 @@ function classroomPlayer(string $contentId, string $kind): void {
     if (isset($_GET['assignment']) && (!$assignment || !classroomContent($assignment))) { http_response_code(403); exit('Uppgiften är inte tillgänglig.'); }
     $GLOBALS['classroom_player']=['student'=>$student,'assignment'=>$assignment];
 }
-function classroomPlayerBar(): void {
+// $back: the quiz's start page. Players pass it so a pupil without an account gets
+// "← Start" here instead of a login link; pages without it keep the login link.
+function classroomPlayerBar(?string $back = null): void {
     $context=$GLOBALS['classroom_player'] ?? null;
-    echo '<div class="classroom-bar" style="padding:10px 16px;display:flex;gap:20px;flex-wrap:wrap;background:#eff6ff;color:#172554;font:16px system-ui">';
-    if (!$context) { echo '<a href="../student/">Elevinloggning</a></div>'; return; }
-    echo '<a href="../student/">Mina uppgifter</a><span>'.classroomEscape($context['student']['name']).'</span><form action="../student/" method="post">'.csrfField().'<button name="action" value="logout">Logga ut / byt elev</button></form></div>';
+    $link='color:var(--accent,#1f4f99);text-decoration:none;font-weight:600';
+    echo '<div class="classroom-bar" style="box-sizing:border-box;max-width:var(--bar-width,none);margin:0 auto;padding:8px 16px 0;display:flex;align-items:center;gap:6px 18px;flex-wrap:wrap;color:var(--text-primary,#111c2b);font:15px/1.4 system-ui,sans-serif">';
+    if (!$context) {
+        echo $back !== null ? '<a href="'.classroomEscape($back).'" style="'.$link.'">&larr; Start</a></div>' : '<a href="../student/">Elevinloggning</a></div>';
+        return;
+    }
+    echo '<a href="../student/" style="'.$link.'">&larr; Mina uppgifter</a><span>'.classroomEscape($context['student']['name']).'</span><form action="../student/" method="post" style="margin:0 0 0 auto">'.csrfField().'<button name="action" value="logout" style="background:none;border:0;padding:0;margin:0;border-radius:4px;cursor:pointer;color:var(--accent,#1f4f99);font:inherit;font-weight:400;text-decoration:underline">Logga ut / byt elev</button></form></div>';
     if (!isset($_GET['preview'])) {
         $settings=['assignment_id'=>$context['assignment']['id'] ?? null,'student_id'=>$context['student']['id'],'kind'=>$context['assignment']['kind'] ?? null,'csrf'=>getCsrfToken()];
         echo '<script>window.classroomContext='.json_encode($settings,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT).';</script><script src="../engine/classroom.js?v='.filemtime(__DIR__.'/../engine/classroom.js').'"></script>';

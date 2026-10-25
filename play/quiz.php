@@ -24,6 +24,7 @@ if (!$quizId || !$studentName) {
     <link rel="stylesheet" href="../engine/themes.css?v=<?= filemtime(__DIR__ . '/../engine/themes.css') ?>">
     <script src="../engine/browser-id.js?v=<?= filemtime(__DIR__ . '/../engine/browser-id.js') ?>"></script>
     <style>
+        :root { --bar-width: 32rem; }
         @keyframes answerPulseOnce {
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
             40% { transform: scale(1.035); box-shadow: 0 0 14px 4px rgba(34,197,94,0.45); }
@@ -58,7 +59,7 @@ if (!$quizId || !$studentName) {
     <script src="../engine/quiz-engine.js?v=<?= filemtime(__DIR__ . '/../engine/quiz-engine.js') ?>"></script>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
-<?php classroomPlayerBar(); ?>
+<?php classroomPlayerBar('index.php?id='.urlencode($quizId)); ?>
 <div id="root"></div>
 
 <script type="text/babel">
@@ -298,20 +299,20 @@ function App() {
         if (quiz.type === 'glossary' && direction === 'forward' && phase !== 'text') {
             return (
                 <div {...speakProps(promptText, promptLang(direction, phase))}>
-                    <p className="text-lg mb-2" style={{color: 'var(--text-secondary)'}}>
+                    <p className="text-xl mb-2 text-center" style={{color: 'var(--text-secondary)'}}>
                         {promptText.replace(highlightText, `**${highlightText}**`).split('**').map((part, i) =>
                             i % 2 === 1
                                 ? <strong key={i} style={{color: 'var(--accent)'}}>{part}</strong>
                                 : part
                         )}
                     </p>
-                    <p className="text-sm" style={{color: 'var(--text-secondary)'}}>
+                    <p className="text-sm text-center" style={{color: 'var(--text-secondary)'}}>
                         Vad betyder <strong style={{color: 'var(--accent)'}}>{highlightText}</strong>?
                     </p>
                 </div>
             );
         }
-        return <p className="text-lg" style={{color: 'var(--text-primary)'}} {...speakProps(promptText, promptLang(direction, phase))}>{promptText}</p>;
+        return <p className="text-2xl font-bold text-center leading-snug" style={{color: 'var(--text-primary)'}} {...speakProps(promptText, promptLang(direction, phase))}>{promptText}</p>;
     }
 
     return (
@@ -319,7 +320,6 @@ function App() {
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2 min-w-0">
-                    <a href={'index.php?id=' + encodeURIComponent(QUIZ_ID)} className="text-xs shrink-0 hover:underline" style={{color: 'var(--accent)'}}>&larr; Start</a>
                     <h2 className="text-sm font-medium truncate" style={{color: 'var(--text-primary)'}}>{quiz.title}</h2>
                 </div>
                 <div className="flex items-center gap-2">

@@ -1,0 +1,31 @@
+/* Pupil players (image, sort, order). Loaded after image-choice.css and only on play pages,
+   so the teacher editor and review views keep their look. Depth comes from soft module
+   shadows, not dark outlines. */
+:root{--bar-width:900px;--line:#cfd8e3;--line-strong:#9aa8ba;--soft:#f5f7fb;--shadow:0 8px 13px -2px #111c2b52;--chip-shadow:0 2px 5px -1px #111c2b40}
+body{min-height:100vh;background:linear-gradient(160deg,#f3f6fa,#eef1f8) fixed}
+.player-main{max-width:900px;padding:6px 16px 24px}
+
+/* Header: the quiz name is a small label; the question carries the page. */
+.player-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 8px}
+.player-title{display:flex;align-items:baseline;gap:4px 12px;flex-wrap:wrap;min-width:0}
+.player-main h1{margin:0;font-size:15px;font-weight:600;line-height:1.3}
+.player-main #progress{margin:0;font-size:14px;color:var(--muted)}
+.player-main .eyebrow:empty{display:none}
+.player-main .eyebrow{margin:0 0 8px}
+.mute-button{position:relative;flex-shrink:0;padding:2px 6px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font-size:12px;line-height:1.3;font-weight:400}
+.mute-button::after{content:"";position:absolute;inset:-8px}
+.mute-button:hover{border-color:var(--line-strong)}
+
+/* Question card */
+.player-main .question-card{margin:0 0 16px;padding:24px 26px;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.player-main #question{margin:0 auto 6px;max-width:34em;text-align:center;font-size:clamp(22px,3.4vw,30px);line-height:1.25;font-weight:700}
+.player-main #instructions{margin:0 auto;max-width:40em;text-align:center;color:var(--muted)}
+.player-main .feedback{text-align:center}
+.player-main .actions{justify-content:center;margin-top:6px}
+.player-main .actions button{padding:8px 26px;border:1px solid var(--blue);border-radius:9px;box-shadow:var(--chip-shadow)}
+
+/* Image choices */
+.player-main .choice{border-radius:12px}
+.player-main .choice:not([aria-pressed=true],.correct,.wrong,.missed){box-shadow:var(--chip-shadow)}
+
+@media(max-width:460px){.player-main{padding:4px 12px 18px}.player-main .question-card{padding:16px 14px}}

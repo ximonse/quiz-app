@@ -18,6 +18,7 @@ if (!$quizId) { header('Location: index.php'); exit; }
     <script src="../engine/tts.js?v=<?= filemtime(__DIR__ . '/../engine/tts.js') ?>"></script>
     <script src="../engine/hold-speak.js?v=<?= filemtime(__DIR__ . '/../engine/hold-speak.js') ?>"></script>
     <style>
+        :root { --bar-width: 32rem; }
         .card { perspective: 1000px; cursor: pointer; }
         .card-inner { transition: transform 0.5s; transform-style: preserve-3d; position: relative; }
         .card.flipped .card-inner { transform: rotateY(180deg); }
@@ -26,10 +27,9 @@ if (!$quizId) { header('Location: index.php'); exit; }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
-<?php classroomPlayerBar(); ?>
+<?php classroomPlayerBar('index.php?id='.urlencode($quizId)); ?>
 <div class="max-w-lg mx-auto p-4">
-    <div class="flex items-center justify-between mb-6">
-        <a href="index.php?id=<?= urlencode($quizId) ?>" class="text-sm hover:underline" style="color: var(--accent)">&larr; Start</a>
+    <div class="flex items-center justify-end mb-6">
         <div class="flex items-center gap-2">
             <span id="counter" class="text-sm" style="color: var(--text-secondary)">1/0</span>
             <button id="mute-btn" onclick="toggleMute()" class="text-xs px-1.5 py-0.5 rounded border" style="background: var(--card-bg); color: var(--text-secondary); border-color: var(--border)"></button>

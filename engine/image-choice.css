@@ -4,9 +4,6 @@
 @media(min-width:700px){.choice-grid:has(>:nth-child(5)){grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:460px){main{padding:14px}.question-card{padding:14px}.choice-grid{gap:8px}.choice img,.review-choice img{height:130px}.choice{padding:7px}.question-top{align-items:flex-start}h2{font-size:19px}}
 
-.player-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.mute-button{background:transparent;border-color:transparent;color:var(--ink);font-size:24px;line-height:1;padding:6px 8px;flex-shrink:0}
-.mute-button:hover{background:#e3e9f1}
 .choice.correct,.choice.wrong,.choice.missed{box-shadow:none}
 
 /* The image is the full answer button; controls only change its viewport. */
