@@ -36,15 +36,16 @@ function OrderEngine(items, settings = {}) {
         const {index, item} = presentation;
         const result = evaluateOrder(item, placedIds); attempts++; shown[index]++;
         queue.shift();
+        let final;
         if (result.correct) {
             mastery[index] = (mastery[index] || 0) + 1;
-            if (mastery[index] >= required) mastered++; else queue.push(index);
+            if (mastery[index] >= required) { mastered++; final = true; } else { queue.push(index); final = false; }
         } else {
             mistakes++;
             errors.push({item_index: index, given: [...placedIds], wrong: Object.keys(result.statuses).filter(id => result.statuses[id] === 'wrong')});
-            if (!test) queue.push(index);
+            if (!test) { queue.push(index); final = false; } else final = true;
         }
-        return {...result, reveal: presentation.reveal};
+        return {...result, reveal: presentation.reveal, itemIndex: index, itemFinal: final};
     }
     function progress() { return {mastered, total: items.length, attempts, mistakes, required, answered: shown.filter(n => n > 0).length, complete: queue.length === 0}; }
     function results() { return {score: mastered, total: attempts, errors: [...errors]}; }

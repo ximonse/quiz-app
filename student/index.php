@@ -23,6 +23,15 @@ $data=classroomRead(); $student=classroomStudent($data);
 <?php else: ?>
 <header><div><p class="muted">Hej <?= classroomEscape($student['name']) ?></p><h1>Mina uppgifter</h1></div><form method="post"><?= csrfField() ?><button name="action" value="logout" class="secondary">Logga ut / byt elev</button></form></header>
 <?php
+$dueCount=count(repetitionDueQueue($student['id']));
+if ($dueCount): ?>
+<section class="panel repetition-panel">
+<h2>Lite repetition idag</h2>
+<p><?= $dueCount===1 ? 'Ett bra tillfälle att öva på en fråga du haft svårt för.' : 'Ett bra tillfälle att öva på '.$dueCount.' frågor du haft svårt för.' ?></p>
+<a class="button" href="../play/review.php">Öva lite</a>
+</section>
+<?php endif; ?>
+<?php
 // Default order works without JavaScript: unfinished first, newest first within each group.
 $cards=[];
 foreach ($data['assignments'] ?? [] as $id=>$a) {

@@ -3,6 +3,7 @@
     const root=document.getElementById('image-player');
     const $=id=>document.getElementById(id); const preview=root.dataset.preview==='1';
     let quiz,engine,item,selected=new Set(),submitted=false;
+    const wrongCounts={}; // item index -> accumulated wrong tries, for the spaced-repetition signal
     const imageNode=image=>{
         const img=document.createElement('img'); img.alt=image.alt;
         img.src='../api/question-image.php?file='+encodeURIComponent(image.file);
@@ -55,6 +56,8 @@
         if (submitted) return; submitted=true;
         const result=engine.submit([...selected]); updateProgress();
         window.ClassroomTracker?.answer(result.correct, engine.progress().complete);
+        if (!result.correct) wrongCounts[result.itemIndex]=(wrongCounts[result.itemIndex]||0)+1;
+        if (result.itemFinal) { window.ClassroomTracker?.question(result.itemIndex, wrongCounts[result.itemIndex]||0); delete wrongCounts[result.itemIndex]; }
         for (const button of $('choices').querySelectorAll('button')) {
             const state=result.statuses[button.dataset.id]; button.disabled=true;
             if (state) { const label={correct:'✓ Rätt!',wrong:'✕ Fel',missed:'✓ Rätt!'}[state]; button.classList.add(state); button.querySelector('.choice-status').textContent=label; button.setAttribute('aria-label',button.getAttribute('aria-label')+'. '+(state==='missed'?'Rätt svar, missat':label)); }

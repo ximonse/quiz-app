@@ -23,10 +23,21 @@ PDF status records an authorized download request, not whether the pupil read or
 
 Existing anonymous history is not automatically assigned to pupils from names or browser IDs. Public practice remains available. Logged-in practice on a matching assignment is recorded in the classroom overview; unrelated public quizzes do not become assignments automatically.
 
+## Spaced repetition (FSRS)
+
+A teacher can mark a fact or glossary quiz with settings.spaced_repetition (checkbox "Lägg till i elevernas repetition" in admin/edit.php). Not available on sort/order/image_choice quizzes — there is no review player for those yet.
+
+Once a pupil has done such a quiz as a normal assignment, classroomRecord() creates one card per question in data/repetition.json, keyed `<student_id>:<quiz_id>:<question_index>`. Each engine (quiz-engine.js, order-engine.js, image-choice-engine.js, sort-engine.js) now returns `itemIndex`/`itemFinal` on submit; the players use that to count, per question, how many wrong tries happened before it was mastered, and report it once via the new `ClassroomTracker.question(key, wrongAttempts)` (separate from the existing `.answer()`, which still counts every raw attempt for the pupil's flawless/done/shaky grading — unchanged). 0 wrong attempts maps to an FSRS "Good" rating, 1 to "Hard", 2+ to "Again" (a lapse).
+
+includes/repetition.php implements the FSRS DSR model (Stability/Difficulty/Retrievability) with the algorithm's published default parameters — no local training. `student/index.php` shows a calm "Repetition" panel (no counts of right/wrong, no timers) when `repetitionDueQueue()` has due cards, max 10/day, linking to play/review.php — a small standalone multiple-choice player, independent of the per-type engines, that only pulls fact/glossary questions. api/repetition-review.php records each answer there.
+
+Known limitation: cards are keyed by the question's array index, so reordering a marked quiz's questions can misattribute a card's history. Accepted trade-off, not worth a migration for now.
+
 ## Validation
 
 - python tests/classroom-http.test.py: isolated temporary app copy and synthetic accounts, including ownership, classes/groups, both login routes, PIN limits/reset, partial/completed activity, status privacy, materials and removal.
 - Add --robots to run 32 synthetic pupils against four PHP server processes sharing fixture-only data and sessions. The suite checks simultaneous quiz/card activity, partial work, reconnection snapshots, duplicate/out-of-order requests, cross-group isolation, shared-device changes, reset/removal and all 128 legacy result saves.
 - Add --serve to leave the synthetic fixture running for browser QA until interrupted. No real data or config.local.php is copied.
 - node --test tests/classroom-tracker.test.js: partial progress, unique card flips, offline retry, in-flight updates.
+- php tests/repetition.test.php: FSRS stability/difficulty/due-date math, wrong-attempt-to-rating mapping, due-queue filtering/capping.
 - Existing PHP service, browser-ID and quiz-engine suites remain applicable.

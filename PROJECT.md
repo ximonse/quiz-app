@@ -175,6 +175,7 @@ Två sätt att öva:
 - `data/quizzes.json` - Alla quiz
 - `data/stats.json` - Statistik per quiz
 - `data/classroom.json` - Klasser, grupper, elevkonton, uppdrag och övningsaktivitet
+- `data/repetition.json` - Spaced-repetition-kort (FSRS) per elev och fråga, se nedan
 - `data/materials/` - Uppladdade PDF:er (ska skyddas med `.htaccess`)
 
 ## Datastruktur
@@ -260,7 +261,7 @@ Mening 1;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord
 
 All testdata är syntetisk och körs i engångskopior av appen; riktiga konton och quiz rörs aldrig.
 
-- Enhetstester: `node --test tests/*.test.js engine/*.test.js` och `php tests/ai-service.test.php`
+- Enhetstester: `node --test tests/*.test.js engine/*.test.js` och `php tests/ai-service.test.php tests/repetition.test.php`
 - Klassrum via HTTP: `python tests/classroom-http.test.py`, med `--robots` för 32 robotelever samtidigt i alla quiztyper
 - Webbläsare (kräver PHP, Python och Node): `cd tests/browser && npm install && npm test`
   - spelar sorterings- och ordningsquiz, sorteringsredigeraren och håll-för-uppläsning med mus och touch

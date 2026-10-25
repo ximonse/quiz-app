@@ -43,6 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $quiz['settings']['spelling_mode'] = $_POST['spelling_mode'] ?? 'student_choice';
         $quiz['settings']['generate_flashcards'] = isset($_POST['generate_flashcards']);
         $quiz['settings']['flashcard_mix_directions'] = isset($_POST['flashcard_mix_directions']);
+        $quiz['settings']['spaced_repetition'] = isset($_POST['spaced_repetition']);
 
         // Time lock
         $opens = trim($_POST['time_lock_opens'] ?? '');
@@ -228,6 +229,9 @@ $s = $quiz['settings'];
                     </label>
                     <label class="flex items-center gap-2 text-sm cursor-pointer" style="color: var(--text-primary)">
                         <input type="checkbox" name="flashcard_mix_directions" <?= !empty($s['flashcard_mix_directions']) ? 'checked' : '' ?>> Blanda riktning i flashcards (båda hållen för varje kort)
+                    </label>
+                    <label class="flex items-center gap-2 text-sm cursor-pointer" style="color: var(--text-primary)">
+                        <input type="checkbox" name="spaced_repetition" <?= !empty($s['spaced_repetition']) ? 'checked' : '' ?>> Lägg till i elevernas repetition
                     </label>
                 </div>
             </div>

@@ -3,6 +3,7 @@
     const root = document.getElementById('sort-player');
     const $ = id => document.getElementById(id); const preview = root.dataset.preview === '1';
     let quiz, engine, presentation, board, submitted = false;
+    const wrongCounts = {}; // item index -> accumulated wrong objects, for the spaced-repetition signal
     const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
     const imageNode = image => {
         const img = document.createElement('img'); img.alt = image.alt; img.draggable = false;
@@ -63,6 +64,8 @@
         const result = engine.submit(placements); const complete = engine.progress().complete;
         const ids = Object.keys(result.statuses);
         ids.forEach((id, i) => window.ClassroomTracker?.answer(result.statuses[id] === 'correct', complete && i === ids.length - 1));
+        wrongCounts[result.itemIndex] = (wrongCounts[result.itemIndex] || 0) + result.wrong;
+        if (result.itemFinal) { window.ClassroomTracker?.question(result.itemIndex, wrongCounts[result.itemIndex]); delete wrongCounts[result.itemIndex]; }
         const nodes = [...$('board').querySelectorAll('.sort-object')];
         for (const el of nodes) if (result.statuses[el.dataset.id] === 'correct') el.classList.add('correct');
         const wrong = nodes.filter(el => result.statuses[el.dataset.id] === 'wrong');

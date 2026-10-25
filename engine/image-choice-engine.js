@@ -21,17 +21,18 @@ function ImageChoiceEngine(items, settings = {}) {
         const item = current(); if (!item) throw new Error('Quiz complete');
         const result = evaluateImageChoices(item, selectedIds); attempts++;
         choiceCounts.right += result.right; choiceCounts.wrong += result.wrong; choiceCounts.missed += result.missed;
+        let final;
         if (result.correct) {
             mastery[item.index] = (mastery[item.index] || 0) + 1;
-            if (mastery[item.index] >= required) { mastered++; queue.shift(); }
-            else queue.push(queue.shift());
+            if (mastery[item.index] >= required) { mastered++; queue.shift(); final = true; }
+            else { queue.push(queue.shift()); final = false; }
         } else {
             mistakes++;
             errors.push({item_index:item.index, given:[...selectedIds], correct:item.choices.filter(c=>c.correct).map(c=>c.id),
                 selected_correct:result.right, selected_wrong:result.wrong, missed:result.missed});
-            if (settings.quiz_mode === 'test') queue.shift(); else queue.push(queue.shift());
+            if (settings.quiz_mode === 'test') { queue.shift(); final = true; } else { queue.push(queue.shift()); final = false; }
         }
-        return result;
+        return {...result, itemIndex: item.index, itemFinal: final};
     }
     function progress() { return {mastered,total:items.length,attempts,mistakes,required,complete:queue.length===0}; }
     function results() { return {score:mastered,total:attempts,errors:[...errors],choice_counts:{...choiceCounts}}; }
