@@ -51,6 +51,10 @@ function aiValidateDocument(array $input, string $teacherId): array {
         if (!is_int($settings[$key]) || $settings[$key] < 1 || $settings[$key] > 10) throw new QuizAiError("$key must be 1 to 10.");
     foreach (['reverse_enabled','tts_enabled','generate_flashcards','flashcard_mix_directions','spaced_repetition'] as $key)
         if (!is_bool($settings[$key])) throw new QuizAiError("$key must be boolean.");
+    // No review player exists yet for sort/order/image_choice questions, so the setting
+    // would silently do nothing there — reject it instead of accepting a dead flag.
+    if ($settings['spaced_repetition'] && !in_array($type, ['fact', 'glossary'], true))
+        throw new QuizAiError('spaced_repetition is only available for fact and glossary quizzes.');
     if (!is_string($settings['language']) || !preg_match('/^[a-z]{2}(-[A-Z]{2})?$/D', $settings['language'])) throw new QuizAiError('Invalid language.');
     if ($settings['time_lock'] !== null) {
         if (!is_array($settings['time_lock']) || array_diff(array_keys($settings['time_lock']), ['opens','closes'])) throw new QuizAiError('Invalid time_lock.');
