@@ -41,6 +41,8 @@ if (isset($quiz['active']) && $quiz['active'] === false) {
     exit;
 }
 unset($quiz['pending_document'], $quiz['ai_requests'], $quiz['results']);
+// Internal retry receipts are never part of pupil-facing quiz data.
+unset($quiz['save_receipts']);
 $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
 ?>
 <!DOCTYPE html>
@@ -50,12 +52,11 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title><?= htmlspecialchars($quiz['title']) ?> - Quiz</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../assets/vendor/tailwind-3.4.19.css">
     <script src="../engine/browser-id.js?v=<?= filemtime(__DIR__ . '/../engine/browser-id.js') ?>"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="../assets/vendor/react-18.3.1.min.js"></script>
+    <script src="../assets/vendor/react-dom-18.3.1.min.js"></script>
+    <script src="../assets/vendor/babel-7.29.11.min.js"></script>
     <style>
         :root {
             --bg-from: #f0f9ff;
@@ -184,7 +185,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
     </style>
-</head>
+<script src="../engine/result-save.js?v=1"></script></head>
 <body>
     <?php classroomPlayerBar(); ?>
     <div id="root"></div>
@@ -982,11 +983,7 @@ $quiz_json = json_encode($quiz, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JS
                         localStorage.setItem(storageKey, JSON.stringify(sessionData));
                     }
 
-                    await fetch('../api/save-stats.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(statsData)
-                    });
+                    await QuizSave.send('../api/save-stats.php', statsData);
                 } catch (err) {
                     console.error('Failed to save stats:', err);
                 }

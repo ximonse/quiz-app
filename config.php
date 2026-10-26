@@ -155,41 +155,41 @@ function updateStatsOnQuizCreate($teacher_id, $quiz_type) {
     // Uppdatera teacher_stats.json
     $teacher_stats_file = DATA_DIR . 'teacher_stats.json';
     updateJSONLocked($teacher_stats_file, function (&$teacher_stats) use ($teacher_id, $quiz_type) {
-    if (!isset($teacher_stats[$teacher_id])) {
-        $teacher_stats[$teacher_id] = [
-            'total_quizzes' => 0,
-            'total_attempts' => 0,
-            'total_completed' => 0,
-            'last_activity' => null,
-            'quiz_types' => ['fact' => 0, 'glossary' => 0]
-        ];
-    }
+        if (!isset($teacher_stats[$teacher_id])) {
+            $teacher_stats[$teacher_id] = [
+                'total_quizzes' => 0,
+                'total_attempts' => 0,
+                'total_completed' => 0,
+                'last_activity' => null,
+                'quiz_types' => ['fact' => 0, 'glossary' => 0]
+            ];
+        }
 
-    $teacher_stats[$teacher_id]['total_quizzes']++;
-    $teacher_stats[$teacher_id]['quiz_types'][$quiz_type] = ($teacher_stats[$teacher_id]['quiz_types'][$quiz_type] ?? 0) + 1;
-    $teacher_stats[$teacher_id]['last_activity'] = date('Y-m-d H:i:s');
+        $teacher_stats[$teacher_id]['total_quizzes']++;
+        $teacher_stats[$teacher_id]['quiz_types'][$quiz_type] = ($teacher_stats[$teacher_id]['quiz_types'][$quiz_type] ?? 0) + 1;
+        $teacher_stats[$teacher_id]['last_activity'] = date('Y-m-d H:i:s');
 
     });
 
     // Uppdatera system_stats.json
     $system_stats_file = DATA_DIR . 'system_stats.json';
     updateJSONLocked($system_stats_file, function (&$system_stats) use ($quiz_type) {
-    $system_stats += [
-        'total_teachers' => 0,
-        'total_quizzes' => 0,
-        'total_attempts' => 0,
-        'total_completed' => 0,
-        'quiz_types' => ['fact' => 0, 'glossary' => 0],
-        'last_updated' => null
-    ];
+        $system_stats += [
+            'total_teachers' => 0,
+            'total_quizzes' => 0,
+            'total_attempts' => 0,
+            'total_completed' => 0,
+            'quiz_types' => ['fact' => 0, 'glossary' => 0],
+            'last_updated' => null
+        ];
 
-    $system_stats['total_quizzes']++;
-    $system_stats['quiz_types'][$quiz_type] = ($system_stats['quiz_types'][$quiz_type] ?? 0) + 1;
-    $system_stats['last_updated'] = date('Y-m-d H:i:s');
+        $system_stats['total_quizzes']++;
+        $system_stats['quiz_types'][$quiz_type] = ($system_stats['quiz_types'][$quiz_type] ?? 0) + 1;
+        $system_stats['last_updated'] = date('Y-m-d H:i:s');
 
-    // Uppdatera antal lärare
-    $teachers = readJSON(TEACHERS_FILE);
-    $system_stats['total_teachers'] = count($teachers);
+        // Uppdatera antal lärare
+        $teachers = readJSON(TEACHERS_FILE);
+        $system_stats['total_teachers'] = count($teachers);
 
     });
 }

@@ -177,7 +177,7 @@ if (isset($quiz_stats['attempts']) && is_array($quiz_stats['attempts'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Statistik - <?= htmlspecialchars($quiz['title'] ?? ($is_flashcard ? 'Flashcard-deck' : 'Quiz')) ?></title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="assets/vendor/tailwind-3.4.19.css">
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen p-4">
     <div class="max-w-6xl mx-auto">

@@ -49,13 +49,7 @@
     }
 
     async function save(q, wrong) {
-        try {
-            await fetch('../api/repetition-review.php', {
-                method: 'POST', credentials: 'same-origin', keepalive: true,
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.reviewCsrf },
-                body: JSON.stringify({ quiz_id: q.quiz_id, question_index: q.question_index, wrong_attempts: wrong })
-            });
-        } catch { /* Tyst — sparas inte, men stör inte elevens flöde. */ }
+        return QuizSave.send('../api/repetition-review.php', {quiz_id:q.quiz_id, question_index:q.question_index, wrong_attempts:wrong});
     }
 
     function finish() {

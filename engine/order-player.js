@@ -74,10 +74,9 @@
         $('quiz-title').textContent = 'Klart!'; $('progress').textContent = `${root.dataset.name}: ${results.score} rätt av ${results.total} besvarade frågor.`;
         if (preview) { $('preview-label').textContent = 'Förhandsvisning · inget elevresultat sparades'; return; }
         try {
-            const response = await fetch('../api/save-result.php', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({quiz_id: root.dataset.id, student_name: root.dataset.name, student_id: window.classroomContext?.student_id || null, browser_id: getQuizBrowserId(), ...results})});
-            const saved = await response.json();
+            const saved = await QuizSave.send('../api/save-result.php', {quiz_id: root.dataset.id, student_name: root.dataset.name, student_id: window.classroomContext?.student_id || null, browser_id: getQuizBrowserId(), ...results});
             if (saved.reason === 'training_only') { $('preview-label').textContent = 'Träning · inget testresultat sparades'; return; }
-            if (!response.ok || !saved.saved) throw new Error('Resultatet kunde inte sparas.');
+            if (!saved.saved) throw new Error('Resultatet kunde inte sparas.');
         } catch (e) { $('player-error').textContent = e.message; }
     }
     $('check').addEventListener('click', check); $('next').addEventListener('click', render);

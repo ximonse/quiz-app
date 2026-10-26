@@ -5,7 +5,7 @@ const path = require('path');
 const runs = [
     ['sort-player.js'], ['order-player.js'], ['sort-editor.js'],
     ['hold-speak-drag.js', 'mouse'], ['hold-speak-drag.js', 'touch'], ['hold-speak.js'],
-    ['pupil-robots.js']
+    ['pupil-robots.js'], ['result-save.js']
 ];
 let failed = 0;
 for (const [file, ...args] of runs) {

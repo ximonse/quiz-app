@@ -26,7 +26,7 @@ foreach (repetitionDueQueue($student['id'],10) as $card) {
     $queue[]=['quiz_id'=>$card['quiz_id'],'question_index'=>$card['question_index'],'prompt'=>$prompt,'answer'=>$answer,'options'=>$options];
 }
 ?>
-<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Repetition</title><link rel="stylesheet" href="../assets/classroom.css"></head>
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Repetition</title><link rel="stylesheet" href="../assets/classroom.css"><script src="../engine/result-save.js?v=1"></script></head>
 <body class="classroom"><main class="pupil-home">
 <header><div><p class="muted">Hej <?= classroomEscape($student['name']) ?></p><h1>Repetition</h1></div><a class="button secondary" href="../student/">Till mina uppgifter</a></header>
 <?php if (!$queue): ?>
