@@ -62,7 +62,7 @@ def admin(form, who=None, token=None):
 try:
     for folder in ['admin', 'ai', 'api', 'assets', 'engine', 'includes', 'play', 'q']:
         shutil.copytree(root / folder, fixture / folder)
-    for name in ['config.php', 'index.php', 'admin.php', 'flashcards-admin.php', 'stats.php']:
+    for name in ['config.php', 'index.php', 'admin.php', 'flashcards-admin.php', 'stats.php', 'edit-flashcard.php', 'test-upload.php', 'test-error.php', 'test-stats.php']:
         shutil.copy2(root / name, fixture / name)
     (fixture / 'data/materials').mkdir(parents=True)
     (fixture / 'sessions').mkdir()
@@ -113,6 +113,21 @@ return false;
     teacher_csrf = csrf(teacher, '/index.php')
     status, text, _ = req(teacher, '/index.php', form={'username':'fixture','password':'fixture-pass','csrf_token':teacher_csrf})
     check(status == 200 and 'Klasser och uppgifter' in text, 'Teacher login failed')
+    for diagnostic in ['test-upload.php', 'test-error.php', 'test-stats.php']:
+        check(req(client(), '/' + diagnostic)[0] == 410, 'Public diagnostic is available: ' + diagnostic)
+    # A valid raster named .php must be stored as a raster, never with its supplied suffix.
+    import base64
+    png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=')
+    def image_upload(blob, filename):
+        boundary = 'quiz-upload-fixture-boundary'
+        body = ('--'+boundary+'\r\nContent-Disposition: form-data; name="csrf_token"\r\n\r\n'+teacher_csrf+'\r\n' +
+                '--'+boundary+'\r\nContent-Disposition: form-data; name="action"\r\n\r\nupload_image\r\n' +
+                '--'+boundary+'\r\nContent-Disposition: form-data; name="image"; filename="'+filename+'"\r\nContent-Type: image/png\r\n\r\n').encode() + blob + ('\r\n--'+boundary+'--\r\n').encode()
+        return req(teacher, '/edit-flashcard.php?deck_id=d_fixture', raw=body, headers={'Content-Type':'multipart/form-data; boundary='+boundary})
+    uploaded = json.loads(image_upload(png, 'unsafe.php')[1])
+    check(uploaded.get('success') and uploaded['filename'].endswith('.png'), 'Upload retained an executable extension')
+    check(not json.loads(image_upload(b'not an image', 'fake.png')[1]).get('success'), 'Invalid raster accepted')
+
     check(admin({'action':'class','name':'6A'})[0] == 200, 'Class create failed')
     c1 = next(iter(state()['classes']))
     admin({'action':'class','name':'6B'})
@@ -169,6 +184,45 @@ return false;
     saved_quizzes=json.loads((fixture/'data/quizzes.json').read_text('utf-8'))
     saved_result=saved_quizzes['q_fixture']['results'][-1]
     check(saved_result['student_id']==alex['id'] and saved_result['student_name']=='Alex Test','Result trusted typed identity')
+    retry_result={**wrong_identity, 'request_id':'d'*32}
+    before_count=len(saved_quizzes['q_fixture']['results'])
+    check(req(pupil,'/api/save-result.php',payload=retry_result)[0]==200,'Receipt result failed')
+    check(req(pupil,'/api/save-result.php',payload=retry_result)[0]==200,'Receipt retry failed')
+    check(len(json.loads((fixture/'data/quizzes.json').read_text('utf-8'))['q_fixture']['results'])==before_count+1,'Retry duplicated result')
+    check(req(pupil,'/api/save-result.php',payload={**retry_result,'score':99})[0]==409,'Conflicting result retry accepted')
+    legacy_result={'quiz_id':'aabbccdd','student_id':alex['id'],'student_name':'Alex','completed':True,'time_seconds':12,'total_errors':0,'request_id':'e'*32}
+    for _ in range(2):
+        check(req(pupil,'/api/save-stats.php',payload=legacy_result)[0]==200,'Legacy receipt retry failed')
+    check(json.loads((fixture/'data/stats.json').read_text('utf-8'))['aabbccdd']['total_attempts']==1,'Legacy retry duplicated result')
+    # Failure after the classroom commit leaves durable, retryable delivery.
+    quiz_path=fixture/'data/quizzes.json'
+    quizzes=json.loads(quiz_path.read_text('utf-8'))
+    quizzes['q_fixture']['settings']['spaced_repetition']=True
+    quiz_path.write_text(json.dumps(quizzes),encoding='utf-8')
+    repetition_path=fixture/'data/repetition.json'
+    repetition_path.write_text('{broken',encoding='utf-8')
+    review_activity={'student_id':alex['id'],'assignment_id':quiz_a,'attempt_id':'f'*32,'seq':1,'right':1,'wrong':0,'cards':0,'completed':False,'answers':[{'q':'0','w':0}]}
+    check(req(pupil,'/api/classroom-activity.php',payload=review_activity,token=pupil_csrf)[0]==503,'Broken repetition data was not rejected')
+    check(repetition_path.read_text('utf-8')=='{broken','Broken repetition data was overwritten')
+    queued=state()['repetition_outbox']
+    check(len(queued)==1,'Failed repetition delivery was lost')
+    repetition_path.write_text('{}',encoding='utf-8')
+    for _ in range(2):
+        check(req(pupil,'/api/classroom-activity.php',payload=review_activity,token=pupil_csrf)[0]==200,'Failed repetition delivery did not resume')
+    key=alex['id']+':q_fixture:0'
+    check(json.loads(repetition_path.read_text('utf-8'))['cards'][key]['reps']==1,'Resumed delivery duplicated review')
+    # Simulate successful repetition write followed by failed acknowledgement.
+    classroom=state(); classroom['repetition_outbox']=queued
+    (fixture/'data/classroom.json').write_text(json.dumps(classroom),encoding='utf-8')
+    check(req(pupil,'/api/classroom-activity.php',payload=review_activity,token=pupil_csrf)[0]==200,'Delivery acknowledgement did not resume')
+    check(not state()['repetition_outbox'] and json.loads(repetition_path.read_text('utf-8'))['cards'][key]['reps']==1,'Acknowledgement retry duplicated review')
+    review_answer={'quiz_id':'q_fixture','question_index':0,'wrong_attempts':1,'request_id':'9'*32}
+    for _ in range(2):
+        check(req(pupil,'/api/repetition-review.php',payload=review_answer,token=pupil_csrf)[0]==200,'Review retry failed')
+    check(json.loads(repetition_path.read_text('utf-8'))['cards'][key]['reps']==2,'Review retry counted twice')
+    quizzes=json.loads(quiz_path.read_text('utf-8')); quizzes['q_fixture']['settings']['spaced_repetition']=False
+    quiz_path.write_text(json.dumps(quizzes),encoding='utf-8')
+
     check('/q/aabbccdd.html?' in req(pupil,'/student/open.php?assignment='+legacy_a)[2], 'Legacy player failed')
     for n, (content, player) in enumerate([('quiz:q_sort','/play/sort-quiz.php?'),('cards:q_sort','/play/flashcards.php?'),('quiz:q_order','/play/order-quiz.php?')], 1):
         drag_a=assign(content)

@@ -103,9 +103,10 @@ function repetitionCardKey(string $studentId, string $quizId, int $questionIndex
     return $studentId . ':' . $quizId . ':' . $questionIndex;
 }
 // $answers: list of ['q' => question index, 'w' => wrong attempts before mastery].
-function repetitionRecordAnswers(string $studentId, string $quizId, array $answers): void {
+function repetitionRecordAnswers(string $studentId, string $quizId, array $answers, ?string $requestId = null): void {
     if (!$answers) return;
-    repetitionUpdate(function (&$data) use ($studentId, $quizId, $answers) {
+    repetitionUpdate(function (&$data) use ($studentId, $quizId, $answers, $requestId) {
+        if ($requestId !== null && isset($data['receipts'][$requestId])) return;
         foreach ($answers as $a) {
             $rating = repetitionRatingFromWrongAttempts((int) $a['w']);
             $key = repetitionCardKey($studentId, $quizId, (int) $a['q']);
@@ -115,6 +116,7 @@ function repetitionRecordAnswers(string $studentId, string $quizId, array $answe
             ];
             $data['cards'][$key] = array_merge($card, fsrsReview($card, $rating));
         }
+        if ($requestId !== null) $data['receipts'][$requestId] = true;
     });
 }
 // Mest försenade (lägst stability bland de förfallna) frågorna, max $limit — se

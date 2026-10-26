@@ -45,8 +45,8 @@ if ($action === 'batch_import_fact') {
         exit;
     }
 
-    $quizzes = readJSON(QUIZZES_FILE);
-    $stats = readJSON(STATS_FILE);
+    $quizzes = [];
+    $stats = [];
     $created_count = 0;
 
     $current_title = null;
@@ -178,10 +178,13 @@ if ($action === 'batch_import_fact') {
     error_log('Batch fact: Created ' . $created_count . ' quizzes');
     error_log('Total quizzes in array: ' . count($quizzes));
 
-    $write_result = writeJSON(QUIZZES_FILE, $quizzes);
+    $write_result = updateJSONLocked(QUIZZES_FILE, function (&$current) use ($quizzes) {
+        if (array_intersect_key($current, $quizzes)) throw new RuntimeException('Identifier collision. Try again.');
+        $current += $quizzes; return true;
+    });
     error_log('Write quizzes result: ' . ($write_result ? 'success' : 'failed'));
 
-    writeJSON(STATS_FILE, $stats);
+    updateJSONLocked(STATS_FILE, function (&$current) use ($stats) { $current += $stats; });
 
     echo json_encode(['success' => true, 'created' => $created_count]);
 }
@@ -213,8 +216,8 @@ elseif ($action === 'batch_import_gloss') {
         exit;
     }
 
-    $quizzes = readJSON(QUIZZES_FILE);
-    $stats = readJSON(STATS_FILE);
+    $quizzes = [];
+    $stats = [];
     $created_count = 0;
 
     $current_title = null;
@@ -363,10 +366,13 @@ elseif ($action === 'batch_import_gloss') {
     error_log('Batch gloss: Created ' . $created_count . ' quizzes');
     error_log('Total quizzes in array: ' . count($quizzes));
 
-    $write_result = writeJSON(QUIZZES_FILE, $quizzes);
+    $write_result = updateJSONLocked(QUIZZES_FILE, function (&$current) use ($quizzes) {
+        if (array_intersect_key($current, $quizzes)) throw new RuntimeException('Identifier collision. Try again.');
+        $current += $quizzes; return true;
+    });
     error_log('Write quizzes result: ' . ($write_result ? 'success' : 'failed'));
 
-    writeJSON(STATS_FILE, $stats);
+    updateJSONLocked(STATS_FILE, function (&$current) use ($stats) { $current += $stats; });
 
     echo json_encode(['success' => true, 'created' => $created_count]);
 }

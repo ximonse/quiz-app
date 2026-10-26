@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 require_once '../config.php';
 require_once '../includes/browser-ids.php';
 require_once __DIR__.'/../includes/classroom.php';
+require_once __DIR__.'/../includes/result-storage.php';
 
 // Läs inkommande JSON
 $input = json_decode(file_get_contents('php://input'), true);
@@ -35,6 +36,8 @@ try {
                 'question_errors' => []
             ];
         }
+
+        if (!resultRequest($stats[$quiz_id], $input)) return;
 
         // Uppdatera statistik
         $stats[$quiz_id]['total_attempts']++;
@@ -108,7 +111,7 @@ try {
     });
 
     // Uppdatera teacher_stats.json och system_stats.json
-    updateExtendedStats($quiz_id, $completed);
+    updateExtendedStats($quiz_id, $completed, $input);
 } catch (RuntimeException $e) {
     http_response_code(503);
     echo json_encode(['error' => 'Statistiken kunde inte sparas. Försök igen.']);
@@ -118,7 +121,7 @@ try {
 echo json_encode(['success' => true]);
 
 // Funktion för att uppdatera utökad statistik
-function updateExtendedStats($quiz_id, $completed) {
+function updateExtendedStats($quiz_id, $completed, $input) {
     // Läs quiz-data för att få teacher_id och quiz-typ
     $quizzes = readJSON(QUIZZES_FILE);
     if (!isset($quizzes[$quiz_id])) return;
@@ -128,7 +131,7 @@ function updateExtendedStats($quiz_id, $completed) {
 
     // Uppdatera teacher_stats.json
     $teacher_stats_file = __DIR__ . '/../data/teacher_stats.json';
-    updateJSONLocked($teacher_stats_file, function (&$teacher_stats) use ($teacher_id, $completed) {
+    updateJSONLocked($teacher_stats_file, function (&$teacher_stats) use ($teacher_id, $completed, $input) {
 
         if (!isset($teacher_stats[$teacher_id])) {
             $teacher_stats[$teacher_id] = [
@@ -140,6 +143,7 @@ function updateExtendedStats($quiz_id, $completed) {
             ];
         }
 
+        if (!resultRequest($teacher_stats[$teacher_id], $input)) return;
         $teacher_stats[$teacher_id]['total_attempts']++;
         if ($completed) {
             $teacher_stats[$teacher_id]['total_completed']++;
@@ -150,12 +154,13 @@ function updateExtendedStats($quiz_id, $completed) {
 
     // Uppdatera system_stats.json
     $system_stats_file = __DIR__ . '/../data/system_stats.json';
-    updateJSONLocked($system_stats_file, function (&$system_stats) use ($completed) {
+    updateJSONLocked($system_stats_file, function (&$system_stats) use ($completed, $input) {
         if (!$system_stats) $system_stats = [
             'total_teachers' => 0, 'total_quizzes' => 0, 'total_attempts' => 0,
             'total_completed' => 0, 'quiz_types' => ['fact' => 0, 'glossary' => 0], 'last_updated' => null
         ];
 
+        if (!resultRequest($system_stats, $input)) return;
         $system_stats['total_attempts']++;
         if ($completed) {
             $system_stats['total_completed']++;

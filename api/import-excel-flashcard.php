@@ -150,8 +150,14 @@ function readSheetData($zip, $sharedStrings) {
  * Sparar en bild från xlsx till data/images/
  */
 function saveImageFromXlsx($zip, $imagePath) {
+    $entry = $zip->statName($imagePath);
+    if (!$entry || $entry['size'] > 5 * 1024 * 1024) return null;
     $imageData = $zip->getFromName($imagePath);
     if (!$imageData) return null;
+
+    $info = @getimagesizefromstring($imageData);
+    $types = ['image/jpeg'=>'jpg','image/png'=>'png','image/gif'=>'gif','image/webp'=>'webp'];
+    if (!$info || !isset($types[$info['mime']]) || $info[0]>8000 || $info[1]>8000 || $info[0]*$info[1]>24000000) return null;
 
     // Skapa images-mapp om den inte finns
     if (!file_exists(IMAGE_DIR)) {
@@ -159,10 +165,7 @@ function saveImageFromXlsx($zip, $imagePath) {
     }
 
     // Bestäm filtyp
-    $extension = strtolower(pathinfo($imagePath, PATHINFO_EXTENSION));
-    if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-        $extension = 'png'; // Default
-    }
+    $extension = $types[$info['mime']];
 
     // Generera unikt filnamn
     $filename = generateID('img_') . '.' . $extension;
@@ -298,7 +301,10 @@ try {
         'cards' => $cards
     ];
 
-    writeJSON(FLASHCARDS_FILE, $flashcards);
+    updateJSONLocked(FLASHCARDS_FILE, function (&$current) use ($deck_id, $flashcards) {
+        if (isset($current[$deck_id])) throw new RuntimeException('Identifier collision. Try again.');
+        $current[$deck_id] = $flashcards[$deck_id];
+    });
 
     // Initiera statistik
     $stats[$deck_id] = [
@@ -310,7 +316,7 @@ try {
         'attempts' => [],
         'card_difficulty' => []
     ];
-    writeJSON(STATS_FILE, $stats);
+    updateJSONLocked(STATS_FILE, function (&$current) use ($deck_id, $stats) { $current[$deck_id] ??= $stats[$deck_id]; });
 
     // Räkna kort med bilder
     $cardsWithImages = count(array_filter($cards, fn($c) => isset($c['image'])));

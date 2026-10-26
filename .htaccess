@@ -1,6 +1,12 @@
 RewriteEngine On
 RewriteBase /quiz-app/
 
+# Block retired diagnostics even when old copies remain on the server.
+RewriteRule ^test-(?:upload|error|stats)\.php(?:/.*)?$ - [G,L,NC]
+# Keep data, locks and temporary files private. Only static raster uploads may
+# be requested directly; PHP serves authorized materials through its endpoint.
+RewriteRule ^data/(?!images/[^/]+\.(?:png|jpe?g|gif|webp)$) - [F,L,NC]
+
 # Forward Bearer authentication to PHP on CGI/FastCGI hosting.
 RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 

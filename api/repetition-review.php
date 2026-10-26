@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/../config.php';
 require_once __DIR__.'/../includes/classroom.php';
+require_once __DIR__.'/../includes/result-storage.php';
 header('Content-Type: application/json'); header('Cache-Control: no-store');
 if ($_SERVER['REQUEST_METHOD']!=='POST') { http_response_code(405); exit(json_encode(['error'=>'POST required'])); }
 $student=classroomStudent();
@@ -14,9 +15,10 @@ if (!is_string($quizId) || $quizId==='' || !is_int($questionIndex) || $questionI
 try {
     // Kortet måste redan finnas för den här eleven — det skapades av classroomRecord()
     // när quizet ursprungligen gjordes. Den här endpointen kan bara uppdatera, inte skapa.
-    repetitionUpdate(function (&$data) use ($student,$quizId,$questionIndex,$wrong) {
+    repetitionUpdate(function (&$data) use ($student,$quizId,$questionIndex,$wrong,$input) {
         $key=repetitionCardKey($student['id'],$quizId,$questionIndex);
         if (!isset($data['cards'][$key])) throw new DomainException('Frågan hittades inte i din repetition.');
+        if (!resultRequest($data['cards'][$key], $input)) return;
         $rating=repetitionRatingFromWrongAttempts($wrong);
         $data['cards'][$key]=array_merge($data['cards'][$key],fsrsReview($data['cards'][$key],$rating));
     });

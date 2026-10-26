@@ -3,13 +3,10 @@
 require_once __DIR__.'/repetition.php';
 if (!defined('CLASSROOM_FILE')) define('CLASSROOM_FILE', DATA_DIR . 'classroom.json');
 function classroomRead(): array {
-    if (!is_file(CLASSROOM_FILE)) return [];
-    $data = json_decode(file_get_contents(CLASSROOM_FILE), true);
-    if (!is_array($data)) throw new RuntimeException('Klassdata kunde inte läsas.');
-    return $data;
+    return readJSON(CLASSROOM_FILE);
 }
 function classroomUpdate(callable $change) {
-    return updateJSONLocked(CLASSROOM_FILE, function (&$data) use ($change) { if (is_file(CLASSROOM_FILE) && !is_array(json_decode(file_get_contents(CLASSROOM_FILE),true))) throw new RuntimeException('Klassdata kunde inte läsas.'); return $change($data); });
+    return updateJSONLocked(CLASSROOM_FILE, $change);
 }
 function classroomOwned(array $data, string $kind, string $id, string $teacher): array {
     $row = $data[$kind][$id] ?? null;
@@ -133,8 +130,7 @@ function classroomPupilState(array $rows, string $kind): array {
     return ['state'=>'shaky','label'=>'Klart – kör gärna en gång till','action'=>'Kör igen','todo'=>false];
 }
 function classroomRecord(array $student, array $input): void {
-    $pendingAnswers=null; $repetitionQuizId=null;
-    classroomUpdate(function (&$data) use ($student,$input,&$pendingAnswers,&$repetitionQuizId) {
+    classroomUpdate(function (&$data) use ($student,$input) {
         $current=classroomStudent($data);
         if (!$current || $current['id']!==$student['id'] || ($input['student_id'] ?? '')!==$current['id']) throw new DomainException('Logga in igen.');
         $assignment=classroomOwned($data,'assignments',(string)($input['assignment_id'] ?? ''),$student['teacher_id']);
@@ -158,18 +154,27 @@ function classroomRecord(array $student, array $input): void {
         $alreadyApplied=(int)($old['answers_applied'] ?? 0);
         // v1 av repetitionsspelaren kan bara visa enkla fakta/glos-frågor.
         if (count($answers)>$alreadyApplied && $assignment['kind']==='quiz' && in_array($content['type'] ?? '',['fact','glossary'],true) && !empty($content['settings']['spaced_repetition'])) {
-            $pendingAnswers=array_slice($answers,$alreadyApplied);
-            $repetitionQuizId=$assignment['content_id'];
+            foreach (array_slice($answers,$alreadyApplied,true) as $offset=>$answer) {
+                // Persist delivery intent before releasing the classroom lock.
+                $data['repetition_outbox'][$id.':'.$offset]=[
+                    'student_id'=>$student['id'], 'quiz_id'=>$assignment['content_id'], 'answer'=>$answer
+                ];
+            }
         }
         $data['attempts'][$id]=[
             'student_id'=>$student['id'],'assignment_id'=>$assignment['id'],'teacher_id'=>$student['teacher_id'],
             'seq'=>$input['seq'],'right'=>max($old['right'] ?? 0,$input['right']),'wrong'=>max($old['wrong'] ?? 0,$input['wrong']),
             'cards'=>max($old['cards'] ?? 0,$input['cards']),'completed'=>!empty($old['completed']) || ($input['completed'] ?? false)===true,
-            'answers_applied'=>count($answers),
+            'answers_applied'=>max($alreadyApplied,count($answers)),
             'started'=>$old['started'] ?? gmdate('c'),'updated'=>gmdate('c')
         ];
     });
-    if ($pendingAnswers) repetitionRecordAnswers($student['id'],$repetitionQuizId,$pendingAnswers);
+    // A duplicate sequence must still resume a previously failed delivery.
+    foreach (classroomRead()['repetition_outbox'] ?? [] as $requestId=>$entry) {
+        if ($entry['student_id']!==$student['id']) continue;
+        repetitionRecordAnswers($entry['student_id'],$entry['quiz_id'],[$entry['answer']],$requestId);
+        classroomUpdate(function (&$data) use ($requestId) { unset($data['repetition_outbox'][$requestId]); });
+    }
 }
 function classroomResultIdentity(array $input): void {
     $student=classroomStudent();

@@ -29,25 +29,43 @@ define('QUIZZES_FILE', DATA_DIR . 'quizzes.json');
 define('STATS_FILE', DATA_DIR . 'stats.json');
 define('IMAGE_DIR', DATA_DIR . 'images/');
 
+// Fail safely for web requests; never expose server paths or silently claim success.
+if (PHP_SAPI !== 'cli') set_exception_handler(function (Throwable $error): void {
+    error_log(get_class($error).': '.$error->getMessage());
+    http_response_code($error instanceof DomainException ? 409 : 503);
+    $message = 'Kunde inte sparas eller läsas. Försök igen eller kontakta din lärare.';
+    if (str_contains($_SERVER['SCRIPT_NAME'] ?? '', '/api/')) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error'=>$message], JSON_UNESCAPED_UNICODE);
+    } else {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo $message;
+    }
+});
+
 // Hjälpfunktioner
 function writeFileLocked($file, $contents) {
     return file_put_contents($file, $contents, LOCK_EX);
 }
 
 function readJSON($file) {
-    if (!file_exists($file)) {
-        writeFileLocked($file, '{}');
-        return [];
-    }
-    $content = file_get_contents($file);
-    return json_decode($content, true) ?: [];
+    if (!file_exists($file)) return [];
+    $content = @file_get_contents($file);
+    if ($content === false) throw new RuntimeException('Data could not be read. No changes were saved.');
+    try { $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR); }
+    catch (JsonException $e) { throw new RuntimeException('Invalid JSON. No changes were saved.', 0, $e); }
+    if (!is_array($data)) throw new RuntimeException('Invalid data file. No changes were saved.');
+    return $data;
 }
 
 function writeJSON($file, $data) {
     $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     if ($json === false) return false;
     $temporary = $file . '.tmp.' . bin2hex(random_bytes(4));
-    if (file_put_contents($temporary, $json) === false) return false;
+    if (file_put_contents($temporary, $json) !== strlen($json)) {
+        @unlink($temporary);
+        return false;
+    }
     // Windows readers can briefly deny replacement of an otherwise valid file.
     // Retry the atomic rename; never remove the existing destination first.
     $attempts = PHP_OS_FAMILY === 'Windows' ? 10 : 1;
@@ -63,7 +81,7 @@ function updateJSONLocked($file, callable $update) {
     $lock = fopen($file . '.lock', 'c');
     if (!$lock || !flock($lock, LOCK_EX)) throw new RuntimeException('Could not lock data file');
     try {
-        $data = file_exists($file) ? (json_decode(file_get_contents($file), true) ?: []) : [];
+        $data = readJSON($file);
         $result = $update($data);
         if (!writeJSON($file, $data)) throw new RuntimeException('Could not write data file');
         return $result;
@@ -136,8 +154,7 @@ function requireValidCsrf($expects_json = false) {
 function updateStatsOnQuizCreate($teacher_id, $quiz_type) {
     // Uppdatera teacher_stats.json
     $teacher_stats_file = DATA_DIR . 'teacher_stats.json';
-    $teacher_stats = file_exists($teacher_stats_file) ? json_decode(file_get_contents($teacher_stats_file), true) : [];
-
+    updateJSONLocked($teacher_stats_file, function (&$teacher_stats) use ($teacher_id, $quiz_type) {
     if (!isset($teacher_stats[$teacher_id])) {
         $teacher_stats[$teacher_id] = [
             'total_quizzes' => 0,
@@ -149,14 +166,15 @@ function updateStatsOnQuizCreate($teacher_id, $quiz_type) {
     }
 
     $teacher_stats[$teacher_id]['total_quizzes']++;
-    $teacher_stats[$teacher_id]['quiz_types'][$quiz_type]++;
+    $teacher_stats[$teacher_id]['quiz_types'][$quiz_type] = ($teacher_stats[$teacher_id]['quiz_types'][$quiz_type] ?? 0) + 1;
     $teacher_stats[$teacher_id]['last_activity'] = date('Y-m-d H:i:s');
 
-    writeJSON($teacher_stats_file, $teacher_stats);
+    });
 
     // Uppdatera system_stats.json
     $system_stats_file = DATA_DIR . 'system_stats.json';
-    $system_stats = file_exists($system_stats_file) ? json_decode(file_get_contents($system_stats_file), true) : [
+    updateJSONLocked($system_stats_file, function (&$system_stats) use ($quiz_type) {
+    $system_stats += [
         'total_teachers' => 0,
         'total_quizzes' => 0,
         'total_attempts' => 0,
@@ -166,14 +184,14 @@ function updateStatsOnQuizCreate($teacher_id, $quiz_type) {
     ];
 
     $system_stats['total_quizzes']++;
-    $system_stats['quiz_types'][$quiz_type]++;
+    $system_stats['quiz_types'][$quiz_type] = ($system_stats['quiz_types'][$quiz_type] ?? 0) + 1;
     $system_stats['last_updated'] = date('Y-m-d H:i:s');
 
     // Uppdatera antal lärare
     $teachers = readJSON(TEACHERS_FILE);
     $system_stats['total_teachers'] = count($teachers);
 
-    writeJSON($system_stats_file, $system_stats);
+    });
 }
 
 // Bilduppladdning
@@ -192,20 +210,24 @@ function uploadImage($file) {
         }
 
         // Validera filtyp
-        $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        $file_type = mime_content_type($file['tmp_name']);
+        if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'] ?? '')) {
+            return ['success' => false, 'error' => 'Ingen giltig bilduppladdning.'];
+        }
+        $allowed_types = ['image/jpeg'=>'jpg', 'image/png'=>'png', 'image/gif'=>'gif', 'image/webp'=>'webp'];
+        $info = @getimagesize($file['tmp_name']);
+        $file_type = $info['mime'] ?? '';
 
-        if (!in_array($file_type, $allowed_types)) {
+        if (!isset($allowed_types[$file_type]) || $info[0] > 8000 || $info[1] > 8000 || $info[0] * $info[1] > 24000000) {
             return ['success' => false, 'error' => 'Ogiltig filtyp (' . $file_type . '). Endast JPG, PNG, GIF och WebP tillåts.'];
         }
 
         // Validera filstorlek (max 5MB)
-        if ($file['size'] > 5 * 1024 * 1024) {
+        if (filesize($file['tmp_name']) > 5 * 1024 * 1024) {
             return ['success' => false, 'error' => 'Filen är för stor (' . round($file['size']/1024/1024, 2) . ' MB). Max 5MB tillåts.'];
         }
 
         // Generera unikt filnamn
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $extension = $allowed_types[$file_type];
         $filename = generateID('img_') . '.' . $extension;
         $filepath = IMAGE_DIR . $filename;
 
