@@ -2,7 +2,7 @@
 
 ## Verktyg och beroenden
 
-Verifierad lokal miljö: PHP 8.4, Node 24 och Python 3.14 på Windows. CI använder PHP 8.4, Node 24 och Python 3.12. Python 3.12 eller senare krävs av testernas städning; Node 20 eller senare krävs av byggverktygen. Driften behöver bara PHP och Apache.
+Verifierad lokal miljö: PHP 8.4, Node 24 och Python 3.14 på Windows. CI använder Ubuntu 24.04, PHP 8.4, Node 24 och Python 3.12. Ubuntu-versionen är låst eftersom Playwright 1.56.1 inte stöder Ubuntu 26.04. Python 3.12 eller senare krävs av testernas städning; Node 20 eller senare krävs av byggverktygen. Driften behöver bara PHP och Apache.
 
 Produktionsbiblioteken är exakt låsta i `package.json` och `package-lock.json`: React/ReactDOM 18.3.1, Babel Standalone 7.29.11 och QRCode.js 1.0.0. Tailwind 3.4.19 bygger statisk CSS. Webbläsartesterna har en separat låsfil med Playwright 1.56.1.
 
