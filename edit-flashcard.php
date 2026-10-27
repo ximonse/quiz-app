@@ -77,7 +77,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     if ($updated_cards && count($updated_cards) > 0) {
         $flashcards[$deck_id]['cards'] = $updated_cards;
-        writeJSON(FLASHCARDS_FILE, $flashcards);
+        updateJSONLocked(FLASHCARDS_FILE, function (&$current) use ($deck_id, $teacher_id, $flashcards) {
+            if (($current[$deck_id]['teacher_id'] ?? null) !== $teacher_id) throw new RuntimeException('Deck no longer available.');
+            $editable = array_intersect_key($flashcards[$deck_id], array_flip(['title','subject','grade','tags','language','cards']));
+            $current[$deck_id] = array_replace($current[$deck_id], $editable);
+        });
         header('Location: flashcards-admin.php?updated=1');
         exit;
     }
@@ -89,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Redigera - <?= htmlspecialchars($deck['title']) ?></title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="assets/vendor/tailwind-3.4.19.css">
 </head>
 <body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen p-4">
     <div class="max-w-4xl mx-auto">

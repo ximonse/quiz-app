@@ -34,7 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'active' => true,
                 'created' => date('Y-m-d H:i:s')
             ];
-            writeJSON(TEACHERS_FILE, $teachers);
+            updateJSONLocked(TEACHERS_FILE, function (&$current) use ($teacher_id, $teachers) {
+                if (isset($current[$teacher_id])) throw new RuntimeException('Identifier collision. Try again.');
+                $current[$teacher_id] = $teachers[$teacher_id];
+            });
             $success = "Lärare skapad!";
         }
     }
@@ -42,8 +45,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'toggle_active') {
         $teacher_id = $_POST['teacher_id'] ?? '';
         if (isset($teachers[$teacher_id])) {
-            $teachers[$teacher_id]['active'] = !$teachers[$teacher_id]['active'];
-            writeJSON(TEACHERS_FILE, $teachers);
+            $teachers = updateJSONLocked(TEACHERS_FILE, function (&$current) use ($teacher_id) {
+                if (isset($current[$teacher_id])) $current[$teacher_id]['active'] = !$current[$teacher_id]['active'];
+                return $current;
+            });
             $success = "Status uppdaterad!";
         }
     }
@@ -51,8 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete_teacher') {
         $teacher_id = $_POST['teacher_id'] ?? '';
         if (isset($teachers[$teacher_id])) {
-            unset($teachers[$teacher_id]);
-            writeJSON(TEACHERS_FILE, $teachers);
+            $teachers = updateJSONLocked(TEACHERS_FILE, function (&$current) use ($teacher_id) { unset($current[$teacher_id]); return $current; });
             $success = "Lärare raderad!";
         }
     }
@@ -61,8 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $teacher_id = $_POST['teacher_id'] ?? '';
         $new_password = $_POST['new_password'] ?? '';
         if (isset($teachers[$teacher_id]) && $new_password) {
-            $teachers[$teacher_id]['password_hash'] = password_hash($new_password, PASSWORD_DEFAULT);
-            writeJSON(TEACHERS_FILE, $teachers);
+            $hash = password_hash($new_password, PASSWORD_DEFAULT);
+            updateJSONLocked(TEACHERS_FILE, function (&$current) use ($teacher_id, $hash) {
+                if (isset($current[$teacher_id])) $current[$teacher_id]['password_hash'] = $hash;
+            });
             $success = "Lösenord återställt!";
         }
     }
@@ -83,7 +89,7 @@ foreach ($stats as $quiz_stats) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Super Admin Panel</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="assets/vendor/tailwind-3.4.19.css">
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen p-4">
     <div class="max-w-6xl mx-auto">

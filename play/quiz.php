@@ -17,10 +17,10 @@ if (!$quizId || !$studentName) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quiz</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="../assets/vendor/tailwind-3.4.19.css">
+    <script src="../assets/vendor/react-18.3.1.min.js"></script>
+    <script src="../assets/vendor/react-dom-18.3.1.min.js"></script>
+    <script src="../assets/vendor/babel-7.29.11.min.js"></script>
     <link rel="stylesheet" href="../engine/themes.css?v=<?= filemtime(__DIR__ . '/../engine/themes.css') ?>">
     <script src="../engine/browser-id.js?v=<?= filemtime(__DIR__ . '/../engine/browser-id.js') ?>"></script>
     <style>
@@ -57,7 +57,7 @@ if (!$quizId || !$studentName) {
     <script src="../engine/tts.js?v=<?= filemtime(__DIR__ . '/../engine/tts.js') ?>"></script>
     <script src="../engine/hold-speak.js?v=<?= filemtime(__DIR__ . '/../engine/hold-speak.js') ?>"></script>
     <script src="../engine/quiz-engine.js?v=<?= filemtime(__DIR__ . '/../engine/quiz-engine.js') ?>"></script>
-</head>
+<script src="../engine/result-save.js?v=1"></script></head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
 <?php classroomPlayerBar('index.php?id='.urlencode($quizId)); ?>
 <div id="root"></div>
@@ -200,18 +200,10 @@ function App() {
 
         if (result.complete) {
             const results = engine.getResults();
-            if (!PREVIEW) fetch('../api/save-result.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    quiz_id: QUIZ_ID,
-                    student_name: STUDENT_NAME,
-                    student_id: window.classroomContext?.student_id || null,
-                    browser_id: getQuizBrowserId(),
-                    score: results.score,
-                    total: results.total,
-                    errors: results.errors
-                })
+            if (!PREVIEW) QuizSave.send('../api/save-result.php', {
+                quiz_id: QUIZ_ID, student_name: STUDENT_NAME,
+                student_id: window.classroomContext?.student_id || null,
+                browser_id: getQuizBrowserId(), score: results.score, total: results.total, errors: results.errors
             });
             setStatus('diploma');
             return;

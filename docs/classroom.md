@@ -29,7 +29,7 @@ A teacher can mark a fact or glossary quiz with settings.spaced_repetition (chec
 
 Once a pupil has done such a quiz as a normal assignment, classroomRecord() creates one card per question in data/repetition.json, keyed `<student_id>:<quiz_id>:<question_index>`. Each engine (quiz-engine.js, order-engine.js, image-choice-engine.js, sort-engine.js) now returns `itemIndex`/`itemFinal` on submit; the players use that to count, per question, how many wrong tries happened before it was mastered, and report it once via the new `ClassroomTracker.question(key, wrongAttempts)` (separate from the existing `.answer()`, which still counts every raw attempt for the pupil's flawless/done/shaky grading — unchanged). 0 wrong attempts maps to an FSRS "Good" rating, 1 to "Hard", 2+ to "Again" (a lapse).
 
-includes/repetition.php implements the FSRS DSR model (Stability/Difficulty/Retrievability) with the algorithm's published default parameters — no local training. `student/index.php` shows a calm "Repetition" panel (no counts of right/wrong, no timers) when `repetitionDueQueue()` has due cards, max 10/day, linking to play/review.php — a small standalone multiple-choice player, independent of the per-type engines, that only pulls fact/glossary questions. api/repetition-review.php records each answer there.
+includes/repetition.php implements a local FSRS DSR model (Stability/Difficulty/Retrievability), without local training. The parameter values were copied during implementation; exact upstream parity has not been independently verified. `student/index.php` shows a calm "Repetition" panel (no counts of right/wrong, no timers) when `repetitionDueQueue()` has due cards, max 10 per visit (not a persisted daily allowance), linking to play/review.php — a small standalone multiple-choice player, independent of the per-type engines, that only pulls fact/glossary questions. api/repetition-review.php records each answer there.
 
 Known limitation: cards are keyed by the question's array index, so reordering a marked quiz's questions can misattribute a card's history. Accepted trade-off, not worth a migration for now.
 
@@ -41,3 +41,7 @@ Known limitation: cards are keyed by the question's array index, so reordering a
 - node --test tests/classroom-tracker.test.js: partial progress, unique card flips, offline retry, in-flight updates.
 - php tests/repetition.test.php: FSRS stability/difficulty/due-date math, wrong-attempt-to-rating mapping, due-queue filtering/capping.
 - Existing PHP service, browser-ID and quiz-engine suites remain applicable.
+
+## Reliable saves
+
+All JSON transactions now reject unreadable or malformed existing data. Result players display save status and retry with the same request ID; server receipts prevent duplicate results. Classroom-to-repetition delivery uses a durable outbox and receipts across the two files. See [storage and retry contracts](development.md#lagringskontrakt) for recovery and offline limits.

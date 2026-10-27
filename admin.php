@@ -85,7 +85,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'created' => date('Y-m-d H:i:s'),
                     'questions' => $questions
                 ];
-                writeJSON(QUIZZES_FILE, $quizzes);
+                updateJSONLocked(QUIZZES_FILE, function (&$current) use ($quiz_id, $quizzes) {
+                    if (isset($current[$quiz_id])) throw new RuntimeException('Identifier collision. Try again.');
+                    $current[$quiz_id] = $quizzes[$quiz_id];
+                });
 
                 // Initiera statistik
                 $stats[$quiz_id] = [
@@ -97,7 +100,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'question_errors' => [],
                     'misspellings' => [] // För glosquiz: ['word' => ['misspelling1', 'misspelling2']]
                 ];
-                writeJSON(STATS_FILE, $stats);
+                updateJSONLocked(STATS_FILE, function (&$current) use ($quiz_id, $stats) {
+                    $current[$quiz_id] ??= $stats[$quiz_id];
+                });
 
                 // Uppdatera utökad statistik
                 updateStatsOnQuizCreate($teacher_id, $quiz_type);
@@ -113,13 +118,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($action === 'delete_quiz') {
         $quiz_id = $_POST['quiz_id'] ?? '';
         if (isset($quizzes[$quiz_id]) && $quizzes[$quiz_id]['teacher_id'] === $teacher_id) {
-            unset($quizzes[$quiz_id]);
-            writeJSON(QUIZZES_FILE, $quizzes);
+            $quizzes = updateJSONLocked(QUIZZES_FILE, function (&$current) use ($quiz_id, $teacher_id) {
+                if (($current[$quiz_id]['teacher_id'] ?? null) !== $teacher_id) throw new RuntimeException('Object no longer available.');
+                unset($current[$quiz_id]);
+                return $current;
+            });
 
             // Ta bort statistik också
             if (isset($stats[$quiz_id])) {
-                unset($stats[$quiz_id]);
-                writeJSON(STATS_FILE, $stats);
+                updateJSONLocked(STATS_FILE, function (&$current) use ($quiz_id) { unset($current[$quiz_id]); });
             }
 
             $success = "Quiz raderad!";
@@ -132,8 +139,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($action === 'toggle_quiz') {
         $quiz_id = $_POST['quiz_id'] ?? '';
         if (isset($quizzes[$quiz_id]) && $quizzes[$quiz_id]['teacher_id'] === $teacher_id) {
-            $quizzes[$quiz_id]['active'] = !($quizzes[$quiz_id]['active'] ?? true);
-            writeJSON(QUIZZES_FILE, $quizzes);
+            $quizzes = updateJSONLocked(QUIZZES_FILE, function (&$current) use ($quiz_id, $teacher_id) {
+                if (($current[$quiz_id]['teacher_id'] ?? null) !== $teacher_id) throw new RuntimeException('Object no longer available.');
+                $current[$quiz_id]['active'] = !($current[$quiz_id]['active'] ?? true);
+                return $current;
+            });
 
             $status = $quizzes[$quiz_id]['active'] ? 'aktiverat' : 'inaktiverat';
             $success = "Quiz $status!";
@@ -286,7 +296,10 @@ if ((isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_O
                     'created' => date('Y-m-d H:i:s'),
                     'questions' => $questions
                 ];
-                writeJSON(QUIZZES_FILE, $quizzes);
+                updateJSONLocked(QUIZZES_FILE, function (&$current) use ($quiz_id, $quizzes) {
+                    if (isset($current[$quiz_id])) throw new RuntimeException('Identifier collision. Try again.');
+                    $current[$quiz_id] = $quizzes[$quiz_id];
+                });
 
                 // Initiera statistik
                 $stats[$quiz_id] = [
@@ -298,7 +311,9 @@ if ((isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_O
                     'question_errors' => [],
                     'misspellings' => [] // För glosquiz: ['word' => ['misspelling1', 'misspelling2']]
                 ];
-                writeJSON(STATS_FILE, $stats);
+                updateJSONLocked(STATS_FILE, function (&$current) use ($quiz_id, $stats) {
+                    $current[$quiz_id] ??= $stats[$quiz_id];
+                });
 
                 // Uppdatera utökad statistik
                 updateStatsOnQuizCreate($teacher_id, $quiz_type);
@@ -332,8 +347,8 @@ foreach ($my_quizzes as $qid => $quiz) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lärar-admin - <?= htmlspecialchars($teacher_name) ?></title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="assets/vendor/tailwind-3.4.19.css">
+    <script src="assets/vendor/qrcode-1.0.0.min.js"></script>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen p-4">
     <div class="max-w-6xl mx-auto">

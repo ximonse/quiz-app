@@ -2,6 +2,7 @@
 require_once '../config.php';
 require_once '../includes/browser-ids.php';
 require_once __DIR__.'/../includes/classroom.php';
+require_once __DIR__.'/../includes/result-storage.php';
 
 header('Content-Type: application/json');
 
@@ -41,6 +42,8 @@ try {
                 'card_difficulty' => []
             ];
         }
+
+        if (!resultRequest($stats[$deck_id], $input)) return;
 
         // Räkna genomsnittlig grade
         $all_grades = [];

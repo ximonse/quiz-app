@@ -54,7 +54,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'created' => date('Y-m-d H:i:s'),
                     'cards' => $cards
                 ];
-                writeJSON(FLASHCARDS_FILE, $flashcards);
+                updateJSONLocked(FLASHCARDS_FILE, function (&$current) use ($deck_id, $flashcards) {
+                    if (isset($current[$deck_id])) throw new RuntimeException('Identifier collision. Try again.');
+                    $current[$deck_id] = $flashcards[$deck_id];
+                });
 
                 // Initiera statistik
                 $stats[$deck_id] = [
@@ -66,7 +69,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'attempts' => [],
                     'card_difficulty' => []
                 ];
-                writeJSON(STATS_FILE, $stats);
+                updateJSONLocked(STATS_FILE, function (&$current) use ($deck_id, $stats) {
+                    $current[$deck_id] ??= $stats[$deck_id];
+                });
 
                 $success = "Flashcard-deck skapad! ID: $deck_id";
                 $my_decks = array_filter($flashcards, function($d) use ($teacher_id) {
@@ -79,13 +84,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($action === 'delete_deck') {
         $deck_id = $_POST['deck_id'] ?? '';
         if (isset($flashcards[$deck_id]) && $flashcards[$deck_id]['teacher_id'] === $teacher_id) {
-            unset($flashcards[$deck_id]);
-            writeJSON(FLASHCARDS_FILE, $flashcards);
+            $flashcards = updateJSONLocked(FLASHCARDS_FILE, function (&$current) use ($deck_id, $teacher_id) {
+                if (($current[$deck_id]['teacher_id'] ?? null) !== $teacher_id) throw new RuntimeException('Object no longer available.');
+                unset($current[$deck_id]);
+                return $current;
+            });
 
             // Ta bort statistik också
             if (isset($stats[$deck_id])) {
-                unset($stats[$deck_id]);
-                writeJSON(STATS_FILE, $stats);
+                updateJSONLocked(STATS_FILE, function (&$current) use ($deck_id) { unset($current[$deck_id]); });
             }
 
             $success = "Deck raderat!";
@@ -98,8 +105,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($action === 'toggle_deck') {
         $deck_id = $_POST['deck_id'] ?? '';
         if (isset($flashcards[$deck_id]) && $flashcards[$deck_id]['teacher_id'] === $teacher_id) {
-            $flashcards[$deck_id]['active'] = !($flashcards[$deck_id]['active'] ?? true);
-            writeJSON(FLASHCARDS_FILE, $flashcards);
+            $flashcards = updateJSONLocked(FLASHCARDS_FILE, function (&$current) use ($deck_id, $teacher_id) {
+                if (($current[$deck_id]['teacher_id'] ?? null) !== $teacher_id) throw new RuntimeException('Object no longer available.');
+                $current[$deck_id]['active'] = !($current[$deck_id]['active'] ?? true);
+                return $current;
+            });
 
             $status = $flashcards[$deck_id]['active'] ? 'aktiverat' : 'inaktiverat';
             $success = "Deck $status!";
@@ -169,7 +179,10 @@ if ((isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_O
                     'created' => date('Y-m-d H:i:s'),
                     'cards' => $cards
                 ];
-                writeJSON(FLASHCARDS_FILE, $flashcards);
+                updateJSONLocked(FLASHCARDS_FILE, function (&$current) use ($deck_id, $flashcards) {
+                    if (isset($current[$deck_id])) throw new RuntimeException('Identifier collision. Try again.');
+                    $current[$deck_id] = $flashcards[$deck_id];
+                });
 
                 // Initiera statistik
                 $stats[$deck_id] = [
@@ -181,7 +194,9 @@ if ((isset($_FILES['csv_file']) && $_FILES['csv_file']['error'] === UPLOAD_ERR_O
                     'attempts' => [],
                     'card_difficulty' => []
                 ];
-                writeJSON(STATS_FILE, $stats);
+                updateJSONLocked(STATS_FILE, function (&$current) use ($deck_id, $stats) {
+                    $current[$deck_id] ??= $stats[$deck_id];
+                });
 
                 $success = "Deck skapad från CSV! " . count($cards) . " kort laddades. ID: $deck_id";
                 $my_decks = array_filter($flashcards, function($d) use ($teacher_id) {
@@ -212,8 +227,8 @@ foreach ($my_decks as $did => $deck) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flashcard Admin - <?= htmlspecialchars($teacher_name) ?></title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="assets/vendor/tailwind-3.4.19.css">
+    <script src="assets/vendor/qrcode-1.0.0.min.js"></script>
 </head>
 <body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen p-4">
     <div class="max-w-6xl mx-auto">

@@ -1,11 +1,44 @@
 name: Deploy via SFTP
 on:
+  pull_request:
+    branches: ["main"]
   push:
     branches: ["main"]
 
 jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: fileinfo, zip, simplexml
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tests/browser/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: git diff --exit-code -- assets/vendor
+      - run: npm test
+      - run: npm ci --prefix tests/browser --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+        working-directory: tests/browser
+      - run: npm test
+        working-directory: tests/browser
+
   deploy:
-    runs-on: ubuntu-latest
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Install lftp
@@ -29,5 +62,8 @@ jobs:
               --exclude-glob backup-*/ \
               --exclude-glob .claude/ \
               --exclude-glob tests/ \
+              --exclude-glob node_modules/ \
+              --exclude-glob scripts/ \
+              --exclude-glob test-*.php \
               ./ /customers/a/b/a/ximon.se/httpd.www/quiz-app/
           "

@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/browser-ids.php';
 require_once __DIR__.'/../includes/classroom.php';
+require_once __DIR__.'/../includes/result-storage.php';
 
 header('Content-Type: application/json');
 
@@ -51,8 +52,9 @@ if (($quiz['type'] ?? '') === 'image_choice' && isset($input['choice_counts']) &
     }
 }
 
-updateJSONLocked(QUIZZES_FILE, function (&$lockedQuizzes) use ($quizId, $result) {
+updateJSONLocked(QUIZZES_FILE, function (&$lockedQuizzes) use ($quizId, $result, $input) {
     if (!isset($lockedQuizzes[$quizId])) throw new RuntimeException('Quiz not found');
+    if (!resultRequest($lockedQuizzes[$quizId], $input)) return;
     $lockedQuizzes[$quizId]['results'][] = $result;
 });
 
