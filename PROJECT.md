@@ -1,5 +1,7 @@
 # Quiz App - Projektdokumentation
 
+Aktuell drift och testning: [utvecklingsguiden](docs/development.md). Aktuell AI- och publiceringsmodell: [AI-guiden](docs/ai-connection.md).
+
 ## Syfte
 En webbbaserad quiz-applikation för lärare och elever. Lärare skapar quiz (kunskapsquiz eller glosquiz) och elever genomför dem. Systemet samlar statistik för att hjälpa lärare identifiera svåra frågor och följa elevernas framsteg.
 
@@ -24,7 +26,7 @@ Två sätt att öva:
 
 **Utan konto (publik länk/QR)**
 - Skriver in sitt namn
-- Genomför quiz via `q/index.php`
+- Genomför aktuella quiz via `play/`; äldre länkar använder `q/index.php`
 - Resultat sparas som tidigare och kopplas inte automatiskt till elevkonton
 
 ### Klasser, grupper och uppdrag
@@ -35,6 +37,10 @@ Två sätt att öva:
 - Detaljer: `docs/classroom.md`
 
 ## Quiz-typer
+
+### Bildvalsquiz (image_choice)
+- 2–6 bildalternativ per fråga, ett eller flera rätta svar
+- Format och redigeringsflöde finns i [AI-guiden](docs/ai-connection.md)
 
 ### Kunskapsquiz (fact)
 - Fråga med 4 svarsalternativ (1 rätt, 3 fel)
@@ -97,7 +103,7 @@ Två sätt att öva:
    - Separata knappar för Kunskapsquiz och Glosquiz
 4. **AI-hjälp**: Generera quiz med AI (olika prompter för kunskap vs glosor)
 
-### Quiz-gränssnitt (q/index.php)
+### Quiz-gränssnitt (`play/`, äldre format i `q/`)
 **För Kunskapsquiz**
 - Visa fråga
 - 4 svarsalternativ i slumpmässig ordning
@@ -180,12 +186,14 @@ Två sätt att öva:
 
 ## Datastruktur
 
+Exemplen nedan visar äldre quiz och statistik. Aktuella quiz använder `items` och `settings`; fullständiga format för alla fem quiztyper finns i [AI-guiden](docs/ai-connection.md) och valideras i `ai/validation.php`.
+
 ### Quiz-objekt
 ```php
 [
     'id' => 'unique_id',
     'title' => 'Quiz-titel',
-    'type' => 'fact' eller 'glossary',
+    'type' => 'fact' eller 'glossary', // Detta exempel visar det äldre questions-formatet.
     'language' => 'sv' eller 'es',
     'spelling_mode' => 'easy', 'puritan' eller 'student_choice',
     'subject' => 'Matematik',
@@ -225,8 +233,9 @@ Två sätt att öva:
 
 ## Teknisk stack
 - PHP (backend, sessions, JSON-filhantering)
-- Vanilla JavaScript (frontend-logik)
-- TailwindCSS (styling)
+- React 18 och vanlig JavaScript (frontend-logik)
+- TailwindCSS 3, statiskt byggd CSS (styling)
+- Exakt låsta lokala bibliotek i `assets/vendor/`; se `package.json`
 - Web Speech API (text-to-speech för glosquiz)
 
 ## Specialfunktioner
@@ -259,18 +268,20 @@ Mening 1;Ord;Rätt översättning;Fel övers 1;Fel övers 2;Fel övers 3;Fel ord
 
 ## Tester
 
+Samlad kontroll: `npm test` i projektroten. Se [utvecklingsguiden](docs/development.md) för byggsteg och verktygskrav.
+
 All testdata är syntetisk och körs i engångskopior av appen; riktiga konton och quiz rörs aldrig.
 
-- Enhetstester: `node --test tests/*.test.js engine/*.test.js` och `php tests/ai-service.test.php tests/repetition.test.php`
+- Enhetstester: `node --test tests/*.test.js engine/*.test.js` och `php tests/ai-service.test.php` och `php tests/repetition.test.php`
 - Klassrum via HTTP: `python tests/classroom-http.test.py`, med `--robots` för 32 robotelever samtidigt i alla quiztyper
-- Webbläsare (kräver PHP, Python och Node): `cd tests/browser && npm install && npm test`
+- Webbläsare (kräver PHP, Python och Node): `cd tests/browser && npm ci --ignore-scripts && npx playwright install chromium && npm test`
   - spelar sorterings- och ordningsquiz, sorteringsredigeraren och håll-för-uppläsning med mus och touch
   - `pupil-robots.js`: fyra elever (dator, iPad, iPhone) loggar in och spelar alla uppdrag till slut
   - `npm run themes` tar skärmdumpar av alla teman; bilderna hamnar i `tests/browser/screenshots/`
 
 ## Utvecklingshistorik
 
-### Senaste uppdateringar (2026-02-11)
+### Tidigare uppdateringar (2026-02-11)
 1. **Omvänd glosträning**: Glosquiz kör nu både framåt och bakåt med separata inställningar för svarsläge och antal korrekta svar per fas.
 2. **Glosformat utökat**: CSV/Excel/AI-prompt stödjer omvända felsvar (`Fel ord 1..3`) för riktning ord ↔ översättning.
 3. **Semikolon standardiserat**: Import använder enbart `;` som separator, utan fallback till `,`.
