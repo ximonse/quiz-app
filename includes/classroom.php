@@ -31,8 +31,14 @@ function classroomCredentials(array $students): array {
         $exists = false;
         foreach ($students as $student) if (classroomCode($student['code']) === classroomCode($code)) $exists = true;
     } while ($exists);
+    return ['code'=>$code] + classroomNewPin();
+}
+// Ny PIN och QR utan att röra befintlig data. password_hash kostar ett par hundra
+// millisekunder per elev, så den som byter PIN för många elever ska kunna hasha
+// FÖRE skrivlåset tas — annars väntar varje elevs quizsparning på det låset.
+function classroomNewPin(): array {
     $pin = str_pad((string)random_int(0,9999),4,'0',STR_PAD_LEFT);
-    return ['code'=>$code,'pin'=>$pin,'pin_hash'=>password_hash($pin,PASSWORD_DEFAULT),'qr'=>bin2hex(random_bytes(24))];
+    return ['pin'=>$pin,'pin_hash'=>password_hash($pin,PASSWORD_DEFAULT),'qr'=>bin2hex(random_bytes(24))];
 }
 function classroomStudent(?array $data = null): ?array {
     $session = $_SESSION['pupil'] ?? null;
@@ -50,15 +56,22 @@ function classroomLogin(string $code, string $qr, string $pin): bool {
         foreach ($data['students'] ?? [] as $sid=>$s) {
             if (($qr !== '' && hash_equals($s['qr'],$qr)) || ($qr === '' && classroomCode($s['code']) === classroomCode($code))) { $studentId=$sid; break; }
         }
-        // Both login routes share a per-account limit; an IP limit also covers unknown codes.
+        // Both login routes share a per-account limit. The IP limit applies ONLY when
+        // the code or QR matched no pupil, because its job is to throttle someone
+        // enumerating unknown codes. A whole class sits behind one school IP, so
+        // counting their PIN typos there locked out everyone in the room — including
+        // pupils typing correctly — once 60 mistakes landed within the window.
+        // Guessing the PIN of a known account stays capped at 8 attempts.
         $account = hash('sha256','account:'.($studentId ?? classroomCode($code)));
         $ip = hash('sha256','ip:'.($_SERVER['REMOTE_ADDR'] ?? 'local'));
-        foreach ([$account=>8,$ip=>60] as $key=>$limit) {
+        $limits = [$account=>8];
+        if ($studentId === null) $limits[$ip] = 60;
+        foreach ($limits as $key=>$limit) {
             if (($data['login_limits'][$key]['count'] ?? 0)>=$limit) return null;
         }
         $student = $data['students'][$studentId] ?? null;
         if (!$student || empty($student['active']) || !preg_match('/^[0-9]{4}$/D',$pin) || !password_verify($pin,$student['pin_hash'])) {
-            foreach ([$account,$ip] as $key) {
+            foreach (array_keys($limits) as $key) {
                 $row = $data['login_limits'][$key] ?? ['count'=>0,'until'=>$now+900];
                 $row['count']++; $data['login_limits'][$key]=$row;
             }
@@ -154,7 +167,12 @@ function classroomRecord(array $student, array $input): void {
         $alreadyApplied=(int)($old['answers_applied'] ?? 0);
         // v1 av repetitionsspelaren kan bara visa enkla fakta/glos-frågor.
         if (count($answers)>$alreadyApplied && $assignment['kind']==='quiz' && in_array($content['type'] ?? '',['fact','glossary'],true) && !empty($content['settings']['spaced_repetition'])) {
-            foreach (array_slice($answers,$alreadyApplied,true) as $offset=>$answer) {
+            // Längden måste vara null: array_slice tar $length som tredje argument,
+            // och preserve_keys som fjärde. Med bara "true" där blev längden 1, så
+            // allt utom det första nya svaret tappades medan answers_applied ändå
+            // räknade upp till alla — tysta förluster som aldrig retriades.
+            // Nycklarna bevaras för att outbox-nyckeln ska bli stabil per svar.
+            foreach (array_slice($answers,$alreadyApplied,null,true) as $offset=>$answer) {
                 // Persist delivery intent before releasing the classroom lock.
                 $data['repetition_outbox'][$id.':'.$offset]=[
                     'student_id'=>$student['id'], 'quiz_id'=>$assignment['content_id'], 'answer'=>$answer

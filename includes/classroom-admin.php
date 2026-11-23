@@ -1,14 +1,30 @@
 <?php
 require_once __DIR__.'/classroom.php';
-// New PIN and QR for one pupil. The caller has already checked ownership and that
-// the pupil is active. Returns the plain PIN so it can be shown on a login card.
-function classroomResetLogin(array &$data, string $id): string {
-    $credentials=classroomCredentials($data['students']);
+// New PIN and QR for one pupil, from credentials prepared OUTSIDE the lock by
+// classroomNewPin(). A reset keeps the word code, so nothing here depends on the
+// rest of the data and no hashing has to happen while the write lock is held.
+// The caller has already checked ownership and that the pupil is active.
+// Returns the plain PIN so it can be shown on a login card.
+function classroomResetLogin(array &$data, string $id, array $credentials): string {
     $data['students'][$id]['version']++;
     unset($data['login_limits'][hash('sha256','account:'.$id)]);
     $data['students'][$id]['pin_hash']=$credentials['pin_hash'];
     $data['students'][$id]['qr']=$credentials['qr'];
     return $credentials['pin'];
+}
+// Vilka elev-id som en PIN-återställning gäller, validerat till form och antal
+// innan något hashas — en riggad POST ska inte kunna bränna CPU på 100 hashar.
+function classroomResetTargets(string $action, array $post): array {
+    if ($action==='reset') {
+        $id=(string)($post['student_id'] ?? '');
+        return $id===''?[]:[$id];
+    }
+    $ids=$post['student_ids'] ?? [];
+    if (!is_array($ids)) throw new DomainException('Välj minst en elev.');
+    foreach ($ids as $sid) if (!is_string($sid)) throw new DomainException('Välj minst en elev.');
+    $ids=array_values(array_unique($ids));
+    if (!$ids || count($ids)>100) throw new DomainException('Välj 1–100 elever.');
+    return $ids;
 }
 // Take a pupil out of use: login revoked, group memberships pruned. The row and the
 // pupil's attempts are kept, so the teacher keeps the practice history.
@@ -22,6 +38,11 @@ function classroomRemovePupil(array &$data, string $id): void {
 function classroomAdminAction(string $teacher, array $post, array $files): string {
     $action=(string)($post['action'] ?? '');
     $uploaded=null;
+    // Hasha nya PIN-koder innan transaktionen öppnas. 30 elever tog annars flera
+    // sekunder med klassdatafilen låst, och varje elevs quizsparning väntade.
+    $prepared=[];
+    if (in_array($action,['reset','reset_many'],true))
+        foreach (classroomResetTargets($action,$post) as $sid) $prepared[$sid]=classroomNewPin();
     if ($action==='assign' && ($post['content'] ?? '')==='material') {
         $file=$files['pdf'] ?? [];
         if (($file['error'] ?? UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK || ($file['size'] ?? 0)>20*1024*1024 || !is_uploaded_file($file['tmp_name'])) throw new DomainException('Välj en PDF på högst 20 MB.');
@@ -32,7 +53,7 @@ function classroomAdminAction(string $teacher, array $post, array $files): strin
         if (!move_uploaded_file($file['tmp_name'],$dir.$uploaded)) throw new RuntimeException('PDF-filen kunde inte sparas.');
     }
     try {
-        $result=classroomUpdate(function (&$data) use ($teacher,$post,$action,$uploaded) {
+        $result=classroomUpdate(function (&$data) use ($teacher,$post,$action,$uploaded,$prepared) {
             if ($action==='class') {
                 $id='c_'.bin2hex(random_bytes(8));
                 $data['classes'][$id]=['id'=>$id,'teacher_id'=>$teacher,'name'=>classroomText($post['name'] ?? '')];
@@ -81,23 +102,19 @@ function classroomAdminAction(string $teacher, array $post, array $files): strin
                     classroomRemovePupil($data,$id);
                     return 'Eleven är borttagen och kan inte längre logga in.';
                 }
-                return ['message'=>'Ny PIN och QR-kod skapade. Tidigare inloggningar är avslutade.','cards'=>[['id'=>$id,'pin'=>classroomResetLogin($data,$id)]]];
+                return ['message'=>'Ny PIN och QR-kod skapade. Tidigare inloggningar är avslutade.','cards'=>[['id'=>$id,'pin'=>classroomResetLogin($data,$id,$prepared[$id])]]];
             }
             // Ny PIN för flera valda elever, eller en hel klass via klassfiltret.
             // Allt valideras före första skrivningen: en främmande eller borttagen
             // elev i listan avbryter hela omgången utan att något ändras.
             if ($action==='reset_many') {
-                $ids=$post['student_ids'] ?? [];
-                if (!is_array($ids)) throw new DomainException('Välj minst en elev.');
-                foreach ($ids as $sid) if (!is_string($sid)) throw new DomainException('Välj minst en elev.');
-                $ids=array_values(array_unique($ids));
-                if (!$ids || count($ids)>100) throw new DomainException('Välj 1–100 elever.');
+                $ids=array_keys($prepared);
                 foreach ($ids as $sid) {
                     $s=classroomOwned($data,'students',$sid,$teacher);
                     if (empty($s['active'])) throw new DomainException('Eleven har tagits bort.');
                 }
                 $cards=[];
-                foreach ($ids as $sid) $cards[]=['id'=>$sid,'pin'=>classroomResetLogin($data,$sid)];
+                foreach ($ids as $sid) $cards[]=['id'=>$sid,'pin'=>classroomResetLogin($data,$sid,$prepared[$sid])];
                 $count=count($cards);
                 return ['message'=>$count.($count===1?' elev har':' elever har').' fått ny PIN och QR-kod. Tidigare inloggningar är avslutade.','cards'=>$cards];
             }
