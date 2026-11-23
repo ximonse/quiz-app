@@ -6,7 +6,12 @@ header('Cache-Control: no-store');
 $teacher=getCurrentTeacherID(); $error='';
 if ($_SERVER['REQUEST_METHOD']==='POST') {
     requireValidCsrf();
-    try { $_SESSION['classroom_message']=classroomAdminAction($teacher,$_POST,$_FILES); header('Location: classes.php'.(in_array($_POST['action'] ?? '',['students','reset'],true)?'?cards=1':'')); exit; }
+    try {
+        $_SESSION['classroom_message']=classroomAdminAction($teacher,$_POST,$_FILES);
+        // Behåll lärarens klassfilter över omdirigeringen, så listan ser likadan ut efteråt.
+        $query=array_filter(['cards'=>in_array($_POST['action'] ?? '',['students','reset','reset_many'],true)?'1':'','class'=>(string)($_POST['class'] ?? '')]);
+        header('Location: classes.php'.($query?'?'.http_build_query($query):'')); exit;
+    }
     catch (DomainException $e) { $error=$e->getMessage(); }
     catch (RuntimeException $e) { $error='Ändringen kunde inte sparas. Försök igen.'; }
 }
@@ -26,13 +31,15 @@ function classOptions(array $classes, string $selected=''): void { foreach ($cla
 <div class="grid"><section class="panel"><h2>Skapa klass</h2><form method="post"><?= csrfField() ?><input type="hidden" name="action" value="class"><label for="class-name">Klassnamn</label><input id="class-name" name="name" maxlength="100" required><p><button>Skapa klass</button></p></form></section>
 <section class="panel"><h2>Lägg till elever</h2><?php if (!$classes): ?><p>Skapa en klass först.</p><?php else: ?><form method="post"><?= csrfField() ?><input type="hidden" name="action" value="students"><label for="new-class">Klass</label><select id="new-class" name="class_id"><?php classOptions($classes); ?></select><label for="names">Elevnamn, ett per rad</label><textarea id="names" name="names" rows="4" required placeholder="Alex&#10;Kim"></textarea><p><button>Skapa elever och inloggningskort</button></p></form><?php endif; ?></section></div>
 <section class="panel"><h2>Elever</h2><form method="get"><label for="class-filter">Visa klass</label><select id="class-filter" name="class"><option value="">Alla klasser</option><?php classOptions($classes,$classFilter); ?></select><p><button class="secondary">Visa</button></p></form>
-<div class="table-wrap"><table><thead><tr><th>Elev</th><th>Klass</th><th>Inloggning</th><th>Hantera</th></tr></thead><tbody>
-<?php foreach ($students as $id=>$s): if ($classFilter!=='' && $s['class_id']!==$classFilter) continue; ?>
-<tr><td><?= classroomEscape($s['name']) ?></td><td><?= classroomEscape($classes[$s['class_id']]['name'] ?? '') ?></td><td><?= classroomEscape($s['code']) ?></td><td><details><summary>Hantera <?= classroomEscape($s['name']) ?></summary>
+<?php $visible=array_filter($students,fn($s)=>$classFilter===''||$s['class_id']===$classFilter); ?>
+<div class="table-wrap"><table><thead><tr><th><input type="checkbox" id="pick-all" form="bulk-reset" aria-label="Markera alla elever i listan"></th><th>Elev</th><th>Klass</th><th>Inloggning</th><th>Hantera</th></tr></thead><tbody>
+<?php foreach ($visible as $id=>$s): ?>
+<tr><td><input type="checkbox" class="pick" name="student_ids[]" value="<?= classroomEscape($id) ?>" form="bulk-reset" aria-label="Välj <?= classroomEscape($s['name']) ?>"></td><td><?= classroomEscape($s['name']) ?></td><td><?= classroomEscape($classes[$s['class_id']]['name'] ?? '') ?></td><td><?= classroomEscape($s['code']) ?></td><td><details><summary>Hantera <?= classroomEscape($s['name']) ?></summary>
 <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="move"><input type="hidden" name="student_id" value="<?= classroomEscape($id) ?>"><label for="move-<?= classroomEscape($id) ?>">Flytta till klass</label><select id="move-<?= classroomEscape($id) ?>" name="class_id"><?php classOptions($classes,$s['class_id']); ?></select><p><button class="secondary">Flytta elev</button></p></form>
 <form method="post" onsubmit="return confirm('Skapa ny PIN och QR-kod? Den gamla QR-koden och pågående inloggningar slutar fungera.')"><?= csrfField() ?><input type="hidden" name="student_id" value="<?= classroomEscape($id) ?>"><button name="action" value="reset" class="secondary">Ny PIN och QR-kod</button></form>
 <form method="post" onsubmit="return confirm('Ta bort eleven? Eleven förlorar inloggning, grupptillhörigheter och tillgång till uppgifter. Tidigare övningsresultat sparas för dig.')"><?= csrfField() ?><input type="hidden" name="student_id" value="<?= classroomEscape($id) ?>"><p><button name="action" value="remove" class="secondary">Ta bort elev</button></p></form></details></td></tr>
-<?php endforeach; ?><?php if (!$students): ?><tr><td colspan="4">Inga elever ännu.</td></tr><?php endif; ?></tbody></table></div></section>
+<?php endforeach; ?><?php if (!$visible): ?><tr><td colspan="5"><?= $students?'Inga elever i den valda klassen.':'Inga elever ännu.' ?></td></tr><?php endif; ?></tbody></table></div>
+<?php if ($visible): ?><form method="post" id="bulk-reset"><?= csrfField() ?><input type="hidden" name="action" value="reset_many"><input type="hidden" name="class" value="<?= classroomEscape($classFilter) ?>"><p><button class="secondary">Ny PIN och QR-kod för valda</button> <span class="muted">Markera eleverna i listan. Filtrera på klass och markera alla för en hel klass.</span></p></form><?php endif; ?></section>
 <section class="panel"><h2>Grupper</h2><p class="muted">Välj elever från en eller flera klasser. En elev kan ingå i flera grupper.</p>
 <?php $editId=(string)($_GET['group'] ?? ''); $edit=$groups[$editId] ?? ['name'=>'','students'=>[]]; ?>
 <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="group"><input type="hidden" name="group_id" value="<?= classroomEscape(isset($groups[$editId])?$editId:'') ?>"><label for="group-name">Gruppnamn</label><input id="group-name" name="name" value="<?= classroomEscape($edit['name']) ?>" required maxlength="100"><div class="members">
@@ -54,5 +61,19 @@ foreach ($recipients as $sid=>$s): $rows=classroomAttempts($data,$aid,$sid); $la
 <?php if ($latest && $a['kind']==='quiz'): ?>Senaste: <?= $latest['right'] ?> rätt · <?= $latest['wrong'] ?> fel · <?= $latest['completed']?'Klart':'Påbörjat' ?><details><summary><?= count($rows) ?> försök</summary><?php foreach ($rows as $r): ?><p><?= classroomEscape((new DateTimeImmutable($r['updated']))->setTimezone(new DateTimeZone('Europe/Stockholm'))->format('Y-m-d H:i')) ?> · <?= $r['right'] ?> rätt · <?= $r['wrong'] ?> fel · <?= $r['completed']?'Klart':'Påbörjat' ?></p><?php endforeach; ?></details>
 <?php elseif ($latest && in_array($a['kind'],['cards','deck'],true)): ?><?= max(array_column($rows,'cards')) ?> kort som mest per övning · <?= count($rows) ?> övningar<?php elseif ($latest): ?>Hämtad<?php else: ?>—<?php endif; ?></td></tr>
 <?php endforeach; ?></tbody></table></div></details><?php endforeach; ?></section>
-<script>const content=document.getElementById('content'); if(content){const update=()=>{const pdf=content.value==='material';document.getElementById('pdf-fields').hidden=!pdf;document.getElementById('pdf').required=pdf;document.getElementById('pdf-title').required=pdf;};content.addEventListener('change',update);update();}</script>
+<script>
+const bulk=document.getElementById('bulk-reset'),pickAll=document.getElementById('pick-all');
+if(bulk){
+  const picks=()=>[...document.querySelectorAll('.pick')],chosen=()=>picks().filter(p=>p.checked);
+  if(pickAll){
+    pickAll.addEventListener('change',()=>picks().forEach(p=>{p.checked=pickAll.checked;}));
+    picks().forEach(p=>p.addEventListener('change',()=>{pickAll.checked=chosen().length===picks().length;}));
+  }
+  bulk.addEventListener('submit',e=>{
+    const n=chosen().length;
+    if(!n){e.preventDefault();alert('Markera minst en elev i listan först.');return;}
+    if(!confirm('Skapa ny PIN och QR-kod för '+n+(n===1?' elev':' elever')+'? De gamla QR-koderna och pågående inloggningar slutar fungera.'))e.preventDefault();
+  });
+}
+const content=document.getElementById('content'); if(content){const update=()=>{const pdf=content.value==='material';document.getElementById('pdf-fields').hidden=!pdf;document.getElementById('pdf').required=pdf;document.getElementById('pdf-title').required=pdf;};content.addEventListener('change',update);update();}</script>
 </main></body></html>

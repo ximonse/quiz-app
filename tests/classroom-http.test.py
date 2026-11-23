@@ -297,6 +297,28 @@ return false;
     check('Hej Kim Test' in req(blocked,'/student/',form={'csrf_token':token,'code':kim['code'],'pin':kim_new_pin})[1], 'Teacher reset did not unlock login')
     req(blocked,'/student/',form={'csrf_token':token,'action':'logout'})
     check('Elevinloggning' in req(blocked,'/student/')[1], 'Logout failed')
+    # Bulk reset: several chosen pupils at once, all-or-nothing, unique PIN each.
+    def new_cards():
+        return dict(re.findall(r'<h2>([^<]*)</h2>.*?PIN: ([0-9]{4})', req(teacher,'/admin/cards.php?new=1')[1], re.S))
+    admin({'action':'students','class_id':c2,'names':'Nour Test\nSam Test'})
+    created=new_cards()
+    roster={s['name']:s for s in state()['students'].values() if s['name'] in ('Nour Test','Sam Test')}
+    nour, sam = roster['Nour Test'], roster['Sam Test']
+    untouched=state()
+    check('hittades inte' in admin({'action':'reset_many','student_ids[]':[nour['id'],'s_nonexistent']})[1], 'Bulk reset accepted an unknown pupil')
+    check(state()==untouched, 'Rejected bulk reset still wrote data')
+    check('tagits bort' in admin({'action':'reset_many','student_ids[]':[nour['id'],alex['id']]})[1], 'Bulk reset accepted a removed pupil')
+    check(state()==untouched, 'Bulk reset with a removed pupil wrote data')
+    check('Välj 1–100 elever' in admin({'action':'reset_many'})[1], 'Empty bulk reset accepted')
+    check('2 elever har fått ny PIN och QR-kod' in admin({'action':'reset_many','student_ids[]':[nour['id'],sam['id'],nour['id']]})[1], 'Bulk reset failed')
+    after=state()['students']
+    check(all(after[s['id']]['version']==s['version']+1 and after[s['id']]['qr']!=s['qr'] and after[s['id']]['code']==s['code'] for s in (nour,sam)), 'Bulk reset left credentials unchanged')
+    fresh=new_cards()
+    check(len(fresh)==2 and fresh['Nour Test']!=fresh['Sam Test'], 'Bulk reset did not issue two separate PIN cards')
+    stale=client(); stale_csrf=csrf(stale)
+    check('Hej Nour Test' not in req(stale,'/student/',form={'csrf_token':stale_csrf,'code':nour['code'],'pin':created['Nour Test']})[1], 'Old PIN worked after bulk reset')
+    renewed=client(); renewed_csrf=csrf(renewed)
+    check('Hej Sam Test' in req(renewed,'/student/',form={'csrf_token':renewed_csrf,'code':sam['code'],'pin':fresh['Sam Test']})[1], 'New PIN failed after bulk reset')
     if '--robots' in sys.argv:
         from classroom_robots import run_robots
         run_robots(fixture)
