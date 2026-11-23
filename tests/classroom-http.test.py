@@ -141,6 +141,9 @@ return false;
     check(len(pins) == 2, 'New PIN cards unavailable')
     alex_pin, kim_pin = pins
     check('pin_hash' not in text and 'qr=' not in text, 'Student list leaked credentials')
+    # The printed card identifies nobody: the QR is only the login address.
+    check('?qr=' not in cards and alex['qr'] not in cards, 'Card QR carried the pupil identity')
+    check(cards.count('/student/')>=2 and 'Elevinloggning: http' in cards, 'Card login address missing')
     check(all(s['pin_hash'] != p for s, p in zip(students, pins)), 'Plain PIN persisted')
     group_form={'action':'group','name':'Blandad grupp','members[]':[alex['id'],kim['id']]}
     admin(group_form)
@@ -297,6 +300,60 @@ return false;
     check('Hej Kim Test' in req(blocked,'/student/',form={'csrf_token':token,'code':kim['code'],'pin':kim_new_pin})[1], 'Teacher reset did not unlock login')
     req(blocked,'/student/',form={'csrf_token':token,'action':'logout'})
     check('Elevinloggning' in req(blocked,'/student/')[1], 'Logout failed')
+    # Bulk reset: several chosen pupils at once, all-or-nothing, unique PIN each.
+    def new_cards():
+        return dict(re.findall(r'<h2>([^<]*)</h2>.*?PIN: ([0-9]{4})', req(teacher,'/admin/cards.php?new=1')[1], re.S))
+    admin({'action':'students','class_id':c2,'names':'Nour Test\nSam Test'})
+    created=new_cards()
+    roster={s['name']:s for s in state()['students'].values() if s['name'] in ('Nour Test','Sam Test')}
+    nour, sam = roster['Nour Test'], roster['Sam Test']
+    untouched=state()
+    check('hittades inte' in admin({'action':'reset_many','student_ids[]':[nour['id'],'s_nonexistent']})[1], 'Bulk reset accepted an unknown pupil')
+    check(state()==untouched, 'Rejected bulk reset still wrote data')
+    check('tagits bort' in admin({'action':'reset_many','student_ids[]':[nour['id'],alex['id']]})[1], 'Bulk reset accepted a removed pupil')
+    check(state()==untouched, 'Bulk reset with a removed pupil wrote data')
+    check('Välj 1–100 elever' in admin({'action':'reset_many'})[1], 'Empty bulk reset accepted')
+    check('2 elever har fått ny PIN och QR-kod' in admin({'action':'reset_many','student_ids[]':[nour['id'],sam['id'],nour['id']]})[1], 'Bulk reset failed')
+    after=state()['students']
+    check(all(after[s['id']]['version']==s['version']+1 and after[s['id']]['qr']!=s['qr'] and after[s['id']]['code']==s['code'] for s in (nour,sam)), 'Bulk reset left credentials unchanged')
+    fresh=new_cards()
+    check(len(fresh)==2 and fresh['Nour Test']!=fresh['Sam Test'], 'Bulk reset did not issue two separate PIN cards')
+    stale=client(); stale_csrf=csrf(stale)
+    check('Hej Nour Test' not in req(stale,'/student/',form={'csrf_token':stale_csrf,'code':nour['code'],'pin':created['Nour Test']})[1], 'Old PIN worked after bulk reset')
+    renewed=client(); renewed_csrf=csrf(renewed)
+    check('Hej Sam Test' in req(renewed,'/student/',form={'csrf_token':renewed_csrf,'code':sam['code'],'pin':fresh['Sam Test']})[1], 'New PIN failed after bulk reset')
+    # Rename and delete a class. Dedicated classes, so the robots and --serve keep c1/c2.
+    def named(kind, name):
+        return next(i for i,row in state()[kind].items() if row['name']==name)
+    admin({'action':'class','name':'Tillfällig 9C'})
+    temp=named('classes','Tillfällig 9C')
+    admin({'action':'students','class_id':temp,'names':'Tove Test'})
+    tove=next(s for s in state()['students'].values() if s['name']=='Tove Test')
+    tove_pin=new_cards()['Tove Test']
+    admin({'action':'group','name':'Tillfällig grupp','members[]':[tove['id']]})
+    tgid=named('groups','Tillfällig grupp')
+    assign('quiz:q_fixture','classes:'+temp)
+    check('Klassens namn är ändrat' in admin({'action':'class_rename','class_id':temp,'name':'9C Omdöpt'})[1], 'Class rename failed')
+    check(state()['classes'][temp]['name']=='9C Omdöpt' and '9C Omdöpt' in req(teacher,'/admin/classes.php')[1], 'Renamed class missing')
+    guarded=state()
+    admin({'action':'class_rename','class_id':temp,'name':'Kapad klass'},other,other_csrf)
+    check(state()==guarded, 'Other teacher renamed a class')
+    admin({'action':'class_delete','class_id':temp},other,other_csrf)
+    check(state()==guarded, 'Other teacher deleted a class')
+    live=client(); live_csrf=csrf(live)
+    check('Hej Tove Test' in req(live,'/student/',form={'csrf_token':live_csrf,'code':tove['code'],'pin':tove_pin})[1], 'Pupil of the temporary class could not log in')
+    check('är borttagen tillsammans med 1 elev' in admin({'action':'class_delete','class_id':temp})[1], 'Class delete failed')
+    purged=state()
+    check(temp not in purged['classes'], 'Deleted class row remained')
+    check(not purged['students'][tove['id']]['active'] and purged['students'][tove['id']]['version']==tove['version']+1, 'Class delete left the pupil active')
+    check(tove['id'] not in purged['groups'][tgid]['students'], 'Class delete kept the group membership')
+    gone=client(); gone_csrf=csrf(gone)
+    check('Hej Tove Test' not in req(gone,'/student/',form={'csrf_token':gone_csrf,'code':tove['code'],'pin':tove_pin})[1], 'Pupil of a deleted class still logged in')
+    # Regression: the overview used to crash on an assignment whose target was gone.
+    status,overview,_=req(teacher,'/admin/classes.php')
+    check(status==200 and 'Borttagen klass' in overview and '9C Omdöpt' not in overview, 'Overview broke after the class was deleted')
+    admin({'action':'class','name':'Tom klass'})
+    check('Klassen Tom klass är borttagen.' in admin({'action':'class_delete','class_id':named('classes','Tom klass')})[1], 'Empty class delete failed')
     if '--robots' in sys.argv:
         from classroom_robots import run_robots
         run_robots(fixture)
