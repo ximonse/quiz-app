@@ -141,6 +141,9 @@ return false;
     check(len(pins) == 2, 'New PIN cards unavailable')
     alex_pin, kim_pin = pins
     check('pin_hash' not in text and 'qr=' not in text, 'Student list leaked credentials')
+    # The printed card identifies nobody: the QR is only the login address.
+    check('?qr=' not in cards and alex['qr'] not in cards, 'Card QR carried the pupil identity')
+    check(cards.count('/student/')>=2 and 'Elevinloggning: http' in cards, 'Card login address missing')
     check(all(s['pin_hash'] != p for s, p in zip(students, pins)), 'Plain PIN persisted')
     group_form={'action':'group','name':'Blandad grupp','members[]':[alex['id'],kim['id']]}
     admin(group_form)
