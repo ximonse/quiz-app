@@ -86,7 +86,8 @@ $glossQuiz=['id'=>'q_gloss','teacher_id'=>'t1','publication'=>'published','title
 $robotImage=fn($alt)=>['file'=>'ai_'.str_repeat('b',32).'.png','alt'=>$alt,'crop'=>['x'=>50,'y'=>50,'zoom'=>100]];
 $imageQuiz=['id'=>'q_img','teacher_id'=>'t1','publication'=>'published','title'=>'Bildvalsquiz','type'=>'image_choice','settings'=>['quiz_mode'=>'training','required_correct'=>1,'language'=>'sv','tts_enabled'=>false],
 'items'=>[['question'=>'Vilken är en katt?','image'=>null,'choices'=>[['id'=>'c1','image'=>$robotImage('Katt'),'correct'=>true],['id'=>'c2','image'=>$robotImage('Hund'),'correct'=>false]]]],'results'=>[]];
-writeJSON(QUIZZES_FILE,['q_fixture'=>$quiz,'aabbccdd'=>$legacy,'q_draft'=>$draft,'q_other'=>$other,'q_sort'=>$sortQuiz,'q_order'=>$orderQuiz,'q_gloss'=>$glossQuiz,'q_img'=>$imageQuiz]);
+$archive=$quiz;$archive['id']='q_archive';$archive['title']='Arkiverat quiz';$archive['results']=[];
+writeJSON(QUIZZES_FILE,['q_fixture'=>$quiz,'aabbccdd'=>$legacy,'q_draft'=>$draft,'q_other'=>$other,'q_sort'=>$sortQuiz,'q_order'=>$orderQuiz,'q_gloss'=>$glossQuiz,'q_img'=>$imageQuiz,'q_archive'=>$archive]);
 writeJSON(DATA_DIR.'flashcards.json',['d_fixture'=>['id'=>'d_fixture','teacher_id'=>'t1','title'=>'Separata kort','active'=>true,'cards'=>[['front'=>'A','back'=>'B'],['front'=>'C','back'=>'D']],'results'=>[['student_name'=>'OLD_PRIVATE_DECK_RESULT']]]]);
 writeJSON(STATS_FILE,[]);
 ''', encoding='utf-8')
@@ -246,6 +247,8 @@ return false;
     req(pupil,'/api/classroom-activity.php',payload=payload,token=pupil_csrf)
     attempt=state()['attempts']['a'*32]
     check(attempt['completed'] and attempt['wrong']==1, 'Out-of-order retry overwrote activity')
+    # The quiz is stored on the attempt, so practice can be summed per quiz later.
+    check(attempt['content_id']=='q_fixture' and attempt['kind']=='quiz', 'Attempt lost the quiz it belongs to')
     home=req(pupil,'/student/')[1]
     check('Klart' in home and '1 rätt' not in home and '1 fel' not in home, 'Pupil status/score privacy failed')
     payload.update(assignment_id=cards_a,attempt_id='b'*32,seq=1,right=0,wrong=0,cards=1,completed=False)
@@ -279,6 +282,8 @@ return false;
     check('Hämtad' in req(pupil,'/student/')[1], 'Download status missing')
     check(req(second,'/student/open.php?assignment='+pdf_a)[0]==403, 'Non-recipient downloaded PDF')
     check(req(pupil,'/data/materials/'+material['file'])[0]==403, 'Direct material access permitted')
+    download=state()['attempts']['download:'+pdf_a+':'+alex['id']]
+    check(download['content_id']==pdf_a and download['kind']=='material', 'Material download lost its content reference')
     # Reset revokes existing sessions and the old QR. Restore access using the unchanged word code.
     admin({'action':'reset','student_id':alex['id']})
     check('Elevinloggning' in req(pupil,'/student/')[1], 'Reset kept session alive')
@@ -354,6 +359,38 @@ return false;
     check(status==200 and 'Borttagen klass' in overview and '9C Omdöpt' not in overview, 'Overview broke after the class was deleted')
     admin({'action':'class','name':'Tom klass'})
     check('Klassen Tom klass är borttagen.' in admin({'action':'class_delete','class_id':named('classes','Tom klass')})[1], 'Empty class delete failed')
+    # Class and pupil practice views. Own class, so the robots keep c1/c2 intact.
+    admin({'action':'class','name':'7D'})
+    pc=named('classes','7D')
+    admin({'action':'students','class_id':pc,'names':'Elin Test\nNoel Test'})
+    pcards=new_cards()
+    elin=next(s for s in state()['students'].values() if s['name']=='Elin Test')
+    live_a=assign('quiz:q_fixture','classes:'+pc)
+    archive_a=assign('quiz:q_archive','classes:'+pc)
+    elin_client=client(); elin_csrf=csrf(elin_client)
+    check('Hej Elin Test' in req(elin_client,'/student/',form={'csrf_token':elin_csrf,'code':elin['code'],'pin':pcards['Elin Test']})[1], 'Practice fixture pupil could not log in')
+    elin_payload={'student_id':elin['id'],'assignment_id':live_a,'attempt_id':'e'*32,'seq':1,'right':2,'wrong':1,'cards':0,'completed':True}
+    check(req(elin_client,'/api/classroom-activity.php',payload=elin_payload,token=elin_csrf)[0]==200,'Practice attempt failed')
+    status,page,_=req(teacher,'/admin/class.php?id='+pc)
+    check(status==200 and 'Testquiz' in page and 'Arkiverat quiz' in page and 'Elin Test' in page, 'Class page missing its assignments or pupils')
+    status,page,_=req(teacher,'/admin/class.php?id='+pc+'&assignment='+live_a)
+    check(status==200 and '2 rätt · 1 fel' in page and 'Inte påbörjat' in page, 'Class assignment view missing practice or a non-started pupil')
+    # Unpublishing the quiz must not hide the practice that already happened.
+    quizzes_file=fixture/'data/quizzes.json'
+    archived=json.loads(quizzes_file.read_text('utf-8')); archived['q_archive']['publication']='draft'
+    quizzes_file.write_text(json.dumps(archived,ensure_ascii=False),encoding='utf-8')
+    status,page,_=req(teacher,'/admin/class.php?id='+pc+'&assignment='+archive_a)
+    check(status==200 and 'Arkiverat quiz' in page, 'Unpublished quiz vanished from the class view')
+    status,page,_=req(teacher,'/admin/pupil.php?id='+elin['id'])
+    check(status==200 and 'Testquiz' in page and 'Arkiverat quiz' in page and '2 rätt · 1 fel' in page, 'Pupil page missing practice')
+    check('Elin Test' in req(teacher,'/admin/pupil.php?q=elin')[1], 'Pupil search failed')
+    check('Alex Test' in req(teacher,'/admin/pupil.php?q=ALEX')[1], 'Pupil search missed a removed pupil')
+    # Exact numbers are not asserted here: two of Alex's attempts on the same quiz
+    # can share a second, and "latest" then falls back to insertion order.
+    gone_page=req(teacher,'/admin/pupil.php?id='+alex['id'])[1]
+    check('borttagen, historiken är kvar' in gone_page and 'Testquiz' in gone_page and 'Klart' in gone_page, 'Removed pupil lost practice history')
+    check('Elin Test' not in req(other,'/admin/class.php?id='+pc)[1], 'Class page leaked to another teacher')
+    check('Testquiz' not in req(other,'/admin/pupil.php?id='+elin['id'])[1], 'Pupil page leaked to another teacher')
     if '--robots' in sys.argv:
         from classroom_robots import run_robots
         run_robots(fixture)

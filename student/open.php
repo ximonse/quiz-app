@@ -12,7 +12,7 @@ if ($a['kind']==='material') {
     classroomUpdate(function (&$latest) use ($student,$a) {
         if (!classroomStudent($latest) || !classroomAllowed($latest,$student,$a)) throw new DomainException('Logga in igen.');
         $key='download:'.$a['id'].':'.$student['id'];
-        $latest['attempts'][$key]=['assignment_id'=>$a['id'],'student_id'=>$student['id'],'teacher_id'=>$student['teacher_id'],'completed'=>true,'updated'=>gmdate('c'),'started'=>gmdate('c'),'right'=>0,'wrong'=>0,'cards'=>0];
+        $latest['attempts'][$key]=['assignment_id'=>$a['id'],'student_id'=>$student['id'],'teacher_id'=>$student['teacher_id'],'content_id'=>$a['content_id'],'kind'=>$a['kind'],'completed'=>true,'updated'=>gmdate('c'),'started'=>gmdate('c'),'right'=>0,'wrong'=>0,'cards'=>0];
     });
     header('Content-Type: application/pdf'); header('Content-Disposition: attachment; filename="material.pdf"'); header('X-Content-Type-Options: nosniff');
     header('Content-Length: '.filesize($file)); readfile($file); exit;

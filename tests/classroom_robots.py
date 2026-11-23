@@ -270,7 +270,8 @@ def run_robots(fixture: Path):
         teacher.admin(action='remove',student_id=pupils[3]['id'])
         check(journeys[3][0].request('/api/classroom-activity.php',payload={**stale,'student_id':pupils[3]['id']})[0] == 401,'Removal failed to revoke active tab')
         teacher_view = teacher.request('/admin/classes.php?assignment='+quiz)[1]
-        check('Robot 04 (borttagen)' in teacher_view and '9 rätt' in teacher_view,'Teacher overview lost removed pupil results')
+        # The pupil name links to pupil.php, so the marker sits just after the link.
+        check('>Robot 04</a> (borttagen)' in teacher_view and '9 rätt' in teacher_view,'Teacher overview lost removed pupil results')
 
         # Exercise old quiz/deck statistics concurrently; these share the same stats file.
         old_before = json.loads((fixture/'data/stats.json').read_text('utf-8')) or {}
