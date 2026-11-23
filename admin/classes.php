@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/../config.php';
 require_once __DIR__.'/../includes/classroom-admin.php';
+require_once __DIR__.'/../includes/classroom-practice.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 header('Cache-Control: no-store');
 $teacher=getCurrentTeacherID(); $error='';
@@ -25,13 +26,14 @@ $decks=is_file(DATA_DIR.'flashcards.json')?json_decode(file_get_contents(DATA_DI
 function classOptions(array $classes, string $selected=''): void { foreach ($classes as $id=>$c) echo '<option value="'.classroomEscape($id).'" '.($id===$selected?'selected':'').'>'.classroomEscape($c['name']).'</option>'; }
 ?>
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Klasser och uppgifter</title><link rel="stylesheet" href="../assets/classroom.css"></head><body class="classroom"><main>
-<header><h1>Klasser och uppgifter</h1><nav><a href="dashboard.php">Mina quiz</a><a href="../student/" target="_blank">Elevinloggning</a><a href="cards.php">Inloggningskort</a></nav></header>
+<header><h1>Klasser och uppgifter</h1><nav><a href="dashboard.php">Mina quiz</a><a href="pupil.php">Hitta elev</a><a href="../student/" target="_blank">Elevinloggning</a><a href="cards.php">Inloggningskort</a></nav></header>
 <?php if ($message): ?><p class="notice" role="status"><?= classroomEscape($message) ?> <?php if (isset($_GET['cards'])): ?><a href="cards.php?new=1">Visa och skriv ut nya inloggningskort</a> · PIN visas i 15 minuter.<?php endif; ?></p><?php endif; ?>
 <?php if ($error): ?><p class="notice error" role="alert"><?= classroomEscape($error) ?></p><?php endif; ?>
 <div class="grid"><section class="panel"><h2>Klasser</h2><form method="post"><?= csrfField() ?><input type="hidden" name="action" value="class"><label for="class-name">Klassnamn</label><input id="class-name" name="name" maxlength="100" required><p><button>Skapa klass</button></p></form>
 <?php foreach ($classes as $cid=>$c): $count=count(array_filter($students,fn($s)=>$s['class_id']===$cid));
 $confirm='Ta bort klassen '.$c['name'].($count?' och dess '.$count.($count===1?' elev':' elever'):'').'?'.($count?' Eleverna förlorar inloggning, grupptillhörigheter och tillgång till uppgifter.':'').' Tidigare övningsresultat sparas för dig.'; ?>
-<details><summary><?= classroomEscape($c['name']) ?> · <?= $count ?> <?= $count===1?'elev':'elever' ?></summary>
+<p><a href="class.php?id=<?= classroomEscape(urlencode($cid)) ?>"><?= classroomEscape($c['name']) ?></a> · <?= $count ?> <?= $count===1?'elev':'elever' ?></p>
+<details><summary>Hantera <?= classroomEscape($c['name']) ?></summary>
 <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="class_rename"><input type="hidden" name="class_id" value="<?= classroomEscape($cid) ?>"><label for="rename-<?= classroomEscape($cid) ?>">Nytt klassnamn</label><input id="rename-<?= classroomEscape($cid) ?>" name="name" value="<?= classroomEscape($c['name']) ?>" maxlength="100" required><p><button class="secondary">Byt namn</button></p></form>
 <form method="post" data-confirm="<?= classroomEscape($confirm) ?>"><?= csrfField() ?><input type="hidden" name="class_id" value="<?= classroomEscape($cid) ?>"><p><button name="action" value="class_delete" class="secondary">Ta bort klass</button></p></form></details>
 <?php endforeach; ?></section>
@@ -40,7 +42,7 @@ $confirm='Ta bort klassen '.$c['name'].($count?' och dess '.$count.($count===1?'
 <?php $visible=array_filter($students,fn($s)=>$classFilter===''||$s['class_id']===$classFilter); ?>
 <div class="table-wrap"><table><thead><tr><th><input type="checkbox" id="pick-all" form="bulk-reset" aria-label="Markera alla elever i listan"></th><th>Elev</th><th>Klass</th><th>Inloggning</th><th>Hantera</th></tr></thead><tbody>
 <?php foreach ($visible as $id=>$s): ?>
-<tr><td><input type="checkbox" class="pick" name="student_ids[]" value="<?= classroomEscape($id) ?>" form="bulk-reset" aria-label="Välj <?= classroomEscape($s['name']) ?>"></td><td><?= classroomEscape($s['name']) ?></td><td><?= classroomEscape($classes[$s['class_id']]['name'] ?? '') ?></td><td><?= classroomEscape($s['code']) ?></td><td><details><summary>Hantera <?= classroomEscape($s['name']) ?></summary>
+<tr><td><input type="checkbox" class="pick" name="student_ids[]" value="<?= classroomEscape($id) ?>" form="bulk-reset" aria-label="Välj <?= classroomEscape($s['name']) ?>"></td><td><a href="pupil.php?id=<?= classroomEscape(urlencode($id)) ?>"><?= classroomEscape($s['name']) ?></a></td><td><a href="class.php?id=<?= classroomEscape(urlencode($s['class_id'])) ?>"><?= classroomEscape($classes[$s['class_id']]['name'] ?? '') ?></a></td><td><?= classroomEscape($s['code']) ?></td><td><details><summary>Hantera <?= classroomEscape($s['name']) ?></summary>
 <form method="post"><?= csrfField() ?><input type="hidden" name="action" value="move"><input type="hidden" name="student_id" value="<?= classroomEscape($id) ?>"><label for="move-<?= classroomEscape($id) ?>">Flytta till klass</label><select id="move-<?= classroomEscape($id) ?>" name="class_id"><?php classOptions($classes,$s['class_id']); ?></select><p><button class="secondary">Flytta elev</button></p></form>
 <form method="post" onsubmit="return confirm('Skapa ny PIN och QR-kod? Den gamla QR-koden och pågående inloggningar slutar fungera.')"><?= csrfField() ?><input type="hidden" name="student_id" value="<?= classroomEscape($id) ?>"><button name="action" value="reset" class="secondary">Ny PIN och QR-kod</button></form>
 <form method="post" onsubmit="return confirm('Ta bort eleven? Eleven förlorar inloggning, grupptillhörigheter och tillgång till uppgifter. Tidigare övningsresultat sparas för dig.')"><?= csrfField() ?><input type="hidden" name="student_id" value="<?= classroomEscape($id) ?>"><p><button name="action" value="remove" class="secondary">Ta bort elev</button></p></form></details></td></tr>
@@ -61,13 +63,9 @@ $confirm='Ta bort klassen '.$c['name'].($count?' och dess '.$count.($count===1?'
 <?php if (!$assignments): ?><p>Inget utdelat ännu.</p><?php endif; ?>
 <?php foreach (array_reverse($assignments,true) as $aid=>$a): $target=$data[$a['target_type']][$a['target_id']]['name'] ?? ($a['target_type']==='classes'?'Borttagen klass':'Borttagen grupp'); ?>
 <details <?= ($_GET['assignment'] ?? '')===$aid?'open':'' ?>><summary><strong><?= classroomEscape($a['title']) ?></strong> · <?= classroomEscape($target) ?> · <?= ['quiz'=>'Quiz','cards'=>'Flashcards','deck'=>'Flashcards','material'=>'PDF'][$a['kind']] ?></summary><div class="table-wrap"><table><thead><tr><th>Elev</th><th>Status</th><th>Övning</th></tr></thead><tbody>
-<?php
-// Mottagarlistan saknas när klassen eller gruppen är borttagen. Historiken i
-// attempts visas ändå, så översikten står kvar i stället för att krascha.
-try { $recipients=classroomRecipients($data,$a); } catch (DomainException $e) { $recipients=[]; }
-foreach ($data['attempts'] ?? [] as $attempt) if ($attempt['assignment_id']===$aid && isset($data['students'][$attempt['student_id']]) && $data['students'][$attempt['student_id']]['teacher_id']===$teacher) $recipients[$attempt['student_id']]=$data['students'][$attempt['student_id']];
+<?php $recipients=classroomAssignmentPupils($data,$a,$teacher);
 foreach ($recipients as $sid=>$s): $rows=classroomAttempts($data,$aid,$sid); $latest=$rows[0] ?? null; ?>
-<tr><td><?= classroomEscape($s['name']) ?><?= empty($s['active'])?' (borttagen)':'' ?></td><td><?= classroomStatus($rows,$a['kind']) ?></td><td>
+<tr><td><a href="pupil.php?id=<?= classroomEscape(urlencode($sid)) ?>"><?= classroomEscape($s['name']) ?></a><?= empty($s['active'])?' (borttagen)':'' ?></td><td><?= classroomStatus($rows,$a['kind']) ?></td><td>
 <?php if ($latest && $a['kind']==='quiz'): ?>Senaste: <?= $latest['right'] ?> rätt · <?= $latest['wrong'] ?> fel · <?= $latest['completed']?'Klart':'Påbörjat' ?><details><summary><?= count($rows) ?> försök</summary><?php foreach ($rows as $r): ?><p><?= classroomEscape((new DateTimeImmutable($r['updated']))->setTimezone(new DateTimeZone('Europe/Stockholm'))->format('Y-m-d H:i')) ?> · <?= $r['right'] ?> rätt · <?= $r['wrong'] ?> fel · <?= $r['completed']?'Klart':'Påbörjat' ?></p><?php endforeach; ?></details>
 <?php elseif ($latest && in_array($a['kind'],['cards','deck'],true)): ?><?= max(array_column($rows,'cards')) ?> kort som mest per övning · <?= count($rows) ?> övningar<?php elseif ($latest): ?>Hämtad<?php else: ?>—<?php endif; ?></td></tr>
 <?php endforeach; ?></tbody></table></div></details><?php endforeach; ?></section>

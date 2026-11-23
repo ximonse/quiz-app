@@ -17,3 +17,5 @@ body.classroom{margin:0;font:16px/1.5 system-ui,sans-serif;color:#1f2937;backgro
 .classroom .assignment.new .assignment-action{background:#2563eb;color:white;padding:6px 18px;font-size:17px;box-shadow:0 4px 8px -2px #2563eb80}
 .classroom .assignment.optional{background:#f8fafc;border-left-color:#94a3b8;box-shadow:0 4px 9px -3px #182d4b24}.classroom .assignment.optional .status{color:#4b5563;font-weight:400}
 @media(max-width:600px){.classroom .assignment{padding:12px 14px 12px 16px;gap:10px}.classroom .assignment h2{font-size:18px}}
+
+.classroom tr.chosen td{background:#eff6ff}

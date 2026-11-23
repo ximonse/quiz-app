@@ -37,6 +37,14 @@ Known limitation: cards are keyed by the question's array index, so reordering a
 
 ## Validation
 
+## Practice views
+
+Each attempt stores `content_id` and `kind` alongside `assignment_id`, written by both writers (`classroomRecord` and the material download in `student/open.php`), so practice can later be summed per quiz across several deliveries. No view reads it yet; totals per quiz are deliberately left for later. Rows written before this keep resolving through `assignment_id`.
+
+`admin/class.php?id=<class>` lists what reached a class — assignments to the class itself plus group assignments that include at least one of its pupils, marked "via grupp X" — and, with `&assignment=<id>`, one row per pupil in the class: status, the latest attempt, the number of attempts and when they last practised. Pupils who have not started are listed too. `admin/pupil.php` does the same per pupil, one row per assignment, with a name search that also finds removed pupils. Both are read-only, reuse `includes/classroom-practice.php`, and take titles from the assignment's own snapshot rather than from `classroomContent`, so practice stays visible after a quiz is unpublished or deleted. Name folding for the search avoids mbstring, which is not loaded everywhere the app runs.
+
+Where two attempts on the same assignment share a second, "latest" falls back to insertion order; the overview has always behaved this way.
+
 - python tests/classroom-http.test.py: isolated temporary app copy and synthetic accounts, including ownership, classes/groups, both login routes, PIN limits/reset, partial/completed activity, status privacy, materials and removal.
 - Add --robots to run 32 synthetic pupils against four PHP server processes sharing fixture-only data and sessions. The suite checks simultaneous quiz/card activity, partial work, reconnection snapshots, duplicate/out-of-order requests, cross-group isolation, shared-device changes, reset/removal and all 128 legacy result saves.
 - Add --serve to leave the synthetic fixture running for browser QA until interrupted. No real data or config.local.php is copied.

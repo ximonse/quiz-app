@@ -163,6 +163,9 @@ function classroomRecord(array $student, array $input): void {
         }
         $data['attempts'][$id]=[
             'student_id'=>$student['id'],'assignment_id'=>$assignment['id'],'teacher_id'=>$student['teacher_id'],
+            // Innehållet sparas på försöket, så övning kan summeras per quiz över
+            // flera utdelningar senare, även om uppgiften eller quizet ändras.
+            'content_id'=>$assignment['content_id'],'kind'=>$assignment['kind'],
             'seq'=>$input['seq'],'right'=>max($old['right'] ?? 0,$input['right']),'wrong'=>max($old['wrong'] ?? 0,$input['wrong']),
             'cards'=>max($old['cards'] ?? 0,$input['cards']),'completed'=>!empty($old['completed']) || ($input['completed'] ?? false)===true,
             'answers_applied'=>max($alreadyApplied,count($answers)),
