@@ -10,6 +10,15 @@ function classroomResetLogin(array &$data, string $id): string {
     $data['students'][$id]['qr']=$credentials['qr'];
     return $credentials['pin'];
 }
+// Take a pupil out of use: login revoked, group memberships pruned. The row and the
+// pupil's attempts are kept, so the teacher keeps the practice history.
+// The caller has already checked ownership and that the pupil is active.
+function classroomRemovePupil(array &$data, string $id): void {
+    $data['students'][$id]['version']++;
+    unset($data['login_limits'][hash('sha256','account:'.$id)]);
+    $data['students'][$id]['active']=false;
+    foreach ($data['groups'] ?? [] as $gid=>$group) $data['groups'][$gid]['students']=array_values(array_diff($group['students'],[$id]));
+}
 function classroomAdminAction(string $teacher, array $post, array $files): string {
     $action=(string)($post['action'] ?? '');
     $uploaded=null;
@@ -28,6 +37,24 @@ function classroomAdminAction(string $teacher, array $post, array $files): strin
                 $id='c_'.bin2hex(random_bytes(8));
                 $data['classes'][$id]=['id'=>$id,'teacher_id'=>$teacher,'name'=>classroomText($post['name'] ?? '')];
                 return 'Klassen är skapad.';
+            }
+            if ($action==='class_rename') {
+                $id=(string)($post['class_id'] ?? ''); classroomOwned($data,'classes',$id,$teacher);
+                $data['classes'][$id]['name']=classroomText($post['name'] ?? '');
+                return 'Klassens namn är ändrat.';
+            }
+            // Klassen tas bort och dess elever tas ur bruk, som vid borttagning av en
+            // enskild elev: raderna och övningshistoriken finns kvar för läraren.
+            // Utdelade uppgifter behålls också, och visas då som "Borttagen klass".
+            if ($action==='class_delete') {
+                $id=(string)($post['class_id'] ?? ''); $class=classroomOwned($data,'classes',$id,$teacher);
+                $pupils=0;
+                foreach ($data['students'] ?? [] as $sid=>$s) {
+                    if ($s['teacher_id']!==$teacher || $s['class_id']!==$id || empty($s['active'])) continue;
+                    classroomRemovePupil($data,$sid); $pupils++;
+                }
+                unset($data['classes'][$id]);
+                return 'Klassen '.$class['name'].' är borttagen'.($pupils?' tillsammans med '.$pupils.($pupils===1?' elev':' elever'):'').'. Tidigare övningsresultat är kvar.';
             }
             if ($action==='students') {
                 $class=(string)($post['class_id'] ?? ''); classroomOwned($data,'classes',$class,$teacher);
@@ -51,10 +78,7 @@ function classroomAdminAction(string $teacher, array $post, array $files): strin
                     $data['students'][$id]['class_id']=$class; return 'Eleven är flyttad. Gruppmedlemskapen är kvar.';
                 }
                 if ($action==='remove') {
-                    $data['students'][$id]['version']++;
-                    unset($data['login_limits'][hash('sha256','account:'.$id)]);
-                    $data['students'][$id]['active']=false;
-                    foreach ($data['groups'] ?? [] as $gid=>$group) $data['groups'][$gid]['students']=array_values(array_diff($group['students'],[$id]));
+                    classroomRemovePupil($data,$id);
                     return 'Eleven är borttagen och kan inte längre logga in.';
                 }
                 return ['message'=>'Ny PIN och QR-kod skapade. Tidigare inloggningar är avslutade.','cards'=>[['id'=>$id,'pin'=>classroomResetLogin($data,$id)]]];

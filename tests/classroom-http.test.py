@@ -319,6 +319,38 @@ return false;
     check('Hej Nour Test' not in req(stale,'/student/',form={'csrf_token':stale_csrf,'code':nour['code'],'pin':created['Nour Test']})[1], 'Old PIN worked after bulk reset')
     renewed=client(); renewed_csrf=csrf(renewed)
     check('Hej Sam Test' in req(renewed,'/student/',form={'csrf_token':renewed_csrf,'code':sam['code'],'pin':fresh['Sam Test']})[1], 'New PIN failed after bulk reset')
+    # Rename and delete a class. Dedicated classes, so the robots and --serve keep c1/c2.
+    def named(kind, name):
+        return next(i for i,row in state()[kind].items() if row['name']==name)
+    admin({'action':'class','name':'Tillfällig 9C'})
+    temp=named('classes','Tillfällig 9C')
+    admin({'action':'students','class_id':temp,'names':'Tove Test'})
+    tove=next(s for s in state()['students'].values() if s['name']=='Tove Test')
+    tove_pin=new_cards()['Tove Test']
+    admin({'action':'group','name':'Tillfällig grupp','members[]':[tove['id']]})
+    tgid=named('groups','Tillfällig grupp')
+    assign('quiz:q_fixture','classes:'+temp)
+    check('Klassens namn är ändrat' in admin({'action':'class_rename','class_id':temp,'name':'9C Omdöpt'})[1], 'Class rename failed')
+    check(state()['classes'][temp]['name']=='9C Omdöpt' and '9C Omdöpt' in req(teacher,'/admin/classes.php')[1], 'Renamed class missing')
+    guarded=state()
+    admin({'action':'class_rename','class_id':temp,'name':'Kapad klass'},other,other_csrf)
+    check(state()==guarded, 'Other teacher renamed a class')
+    admin({'action':'class_delete','class_id':temp},other,other_csrf)
+    check(state()==guarded, 'Other teacher deleted a class')
+    live=client(); live_csrf=csrf(live)
+    check('Hej Tove Test' in req(live,'/student/',form={'csrf_token':live_csrf,'code':tove['code'],'pin':tove_pin})[1], 'Pupil of the temporary class could not log in')
+    check('är borttagen tillsammans med 1 elev' in admin({'action':'class_delete','class_id':temp})[1], 'Class delete failed')
+    purged=state()
+    check(temp not in purged['classes'], 'Deleted class row remained')
+    check(not purged['students'][tove['id']]['active'] and purged['students'][tove['id']]['version']==tove['version']+1, 'Class delete left the pupil active')
+    check(tove['id'] not in purged['groups'][tgid]['students'], 'Class delete kept the group membership')
+    gone=client(); gone_csrf=csrf(gone)
+    check('Hej Tove Test' not in req(gone,'/student/',form={'csrf_token':gone_csrf,'code':tove['code'],'pin':tove_pin})[1], 'Pupil of a deleted class still logged in')
+    # Regression: the overview used to crash on an assignment whose target was gone.
+    status,overview,_=req(teacher,'/admin/classes.php')
+    check(status==200 and 'Borttagen klass' in overview and '9C Omdöpt' not in overview, 'Overview broke after the class was deleted')
+    admin({'action':'class','name':'Tom klass'})
+    check('Klassen Tom klass är borttagen.' in admin({'action':'class_delete','class_id':named('classes','Tom klass')})[1], 'Empty class delete failed')
     if '--robots' in sys.argv:
         from classroom_robots import run_robots
         run_robots(fixture)
