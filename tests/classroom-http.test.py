@@ -87,7 +87,9 @@ $robotImage=fn($alt)=>['file'=>'ai_'.str_repeat('b',32).'.png','alt'=>$alt,'crop
 $imageQuiz=['id'=>'q_img','teacher_id'=>'t1','publication'=>'published','title'=>'Bildvalsquiz','type'=>'image_choice','settings'=>['quiz_mode'=>'training','required_correct'=>1,'language'=>'sv','tts_enabled'=>false],
 'items'=>[['question'=>'Vilken är en katt?','image'=>null,'choices'=>[['id'=>'c1','image'=>$robotImage('Katt'),'correct'=>true],['id'=>'c2','image'=>$robotImage('Hund'),'correct'=>false]]]],'results'=>[]];
 $archive=$quiz;$archive['id']='q_archive';$archive['title']='Arkiverat quiz';$archive['results']=[];
-writeJSON(QUIZZES_FILE,['q_fixture'=>$quiz,'aabbccdd'=>$legacy,'q_draft'=>$draft,'q_other'=>$other,'q_sort'=>$sortQuiz,'q_order'=>$orderQuiz,'q_gloss'=>$glossQuiz,'q_img'=>$imageQuiz,'q_archive'=>$archive]);
+$repQuiz=['id'=>'q_rep','teacher_id'=>'t1','publication'=>'published','title'=>'Repetitionsquiz','type'=>'fact','settings'=>['quiz_mode'=>'training','answer_mode'=>'multiple_choice','required_correct'=>1,'language'=>'sv','generate_flashcards'=>false,'tts_enabled'=>false,'spaced_repetition'=>true],
+'items'=>[['concept'=>'Fyra plus fyra?','description'=>'Åtta','wrong_options'=>['Sju','Nio','Tio']],['concept'=>'Fem plus fem?','description'=>'Tio','wrong_options'=>['Nio','Elva','Tolv']]],'results'=>[]];
+writeJSON(QUIZZES_FILE,['q_fixture'=>$quiz,'aabbccdd'=>$legacy,'q_draft'=>$draft,'q_other'=>$other,'q_sort'=>$sortQuiz,'q_order'=>$orderQuiz,'q_gloss'=>$glossQuiz,'q_img'=>$imageQuiz,'q_archive'=>$archive,'q_rep'=>$repQuiz]);
 writeJSON(DATA_DIR.'flashcards.json',['d_fixture'=>['id'=>'d_fixture','teacher_id'=>'t1','title'=>'Separata kort','active'=>true,'cards'=>[['front'=>'A','back'=>'B'],['front'=>'C','back'=>'D']],'results'=>[['student_name'=>'OLD_PRIVATE_DECK_RESULT']]]]);
 writeJSON(STATS_FILE,[]);
 ''', encoding='utf-8')
@@ -249,6 +251,23 @@ return false;
     check(attempt['completed'] and attempt['wrong']==1, 'Out-of-order retry overwrote activity')
     # The quiz is stored on the attempt, so practice can be summed per quiz later.
     check(attempt['content_id']=='q_fixture' and attempt['kind']=='quiz', 'Attempt lost the quiz it belongs to')
+    # Several new answers delivered in one save must all reach the repetition pool.
+    # array_slice's third argument is the length, so passing preserve_keys there
+    # silently truncated the batch to one answer while answers_applied counted all.
+    def repetition():
+        path=fixture/'data/repetition.json'
+        return json.loads(path.read_text('utf-8'))['cards'] if path.is_file() else {}
+    rep_a=assign('quiz:q_rep')
+    rep_payload={'student_id':alex['id'],'assignment_id':rep_a,'attempt_id':'d'*32,'seq':1,'right':2,'wrong':1,'cards':0,
+                 'completed':True,'answers':[{'q':'0','w':0},{'q':'1','w':2}]}
+    check(req(pupil,'/api/classroom-activity.php',payload=rep_payload,token=pupil_csrf)[0]==200,'Repetition attempt failed')
+    rep_cards={k:v for k,v in repetition().items() if v['quiz_id']=='q_rep' and v['student_id']==alex['id']}
+    check(len(rep_cards)==2, 'Batched answers lost: %d of 2 repetition cards created' % len(rep_cards))
+    check(sorted(c['question_index'] for c in rep_cards.values())==[0,1], 'Repetition cards lost a question')
+    # 2+ wrong attempts is a lapse, 0 wrong is a clean pass.
+    by_index={c['question_index']:c for c in rep_cards.values()}
+    check(by_index[0]['lapses']==0 and by_index[1]['lapses']==1, 'Wrong attempts did not map to FSRS ratings')
+    check(not state().get('repetition_outbox'), 'Repetition outbox was not drained')
     home=req(pupil,'/student/')[1]
     check('Klart' in home and '1 rätt' not in home and '1 fel' not in home, 'Pupil status/score privacy failed')
     payload.update(assignment_id=cards_a,attempt_id='b'*32,seq=1,right=0,wrong=0,cards=1,completed=False)

@@ -154,7 +154,12 @@ function classroomRecord(array $student, array $input): void {
         $alreadyApplied=(int)($old['answers_applied'] ?? 0);
         // v1 av repetitionsspelaren kan bara visa enkla fakta/glos-frågor.
         if (count($answers)>$alreadyApplied && $assignment['kind']==='quiz' && in_array($content['type'] ?? '',['fact','glossary'],true) && !empty($content['settings']['spaced_repetition'])) {
-            foreach (array_slice($answers,$alreadyApplied,true) as $offset=>$answer) {
+            // Längden måste vara null: array_slice tar $length som tredje argument,
+            // och preserve_keys som fjärde. Med bara "true" där blev längden 1, så
+            // allt utom det första nya svaret tappades medan answers_applied ändå
+            // räknade upp till alla — tysta förluster som aldrig retriades.
+            // Nycklarna bevaras för att outbox-nyckeln ska bli stabil per svar.
+            foreach (array_slice($answers,$alreadyApplied,null,true) as $offset=>$answer) {
                 // Persist delivery intent before releasing the classroom lock.
                 $data['repetition_outbox'][$id.':'.$offset]=[
                     'student_id'=>$student['id'], 'quiz_id'=>$assignment['content_id'], 'answer'=>$answer
