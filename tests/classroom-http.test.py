@@ -1,6 +1,7 @@
 """Synthetic, isolated HTTP checks. Never reads local accounts, quizzes or config.local.php.
 Run: python tests/classroom-http.test.py [--robots] [--serve]
 """
+import hashlib
 import http.cookiejar
 import json
 import re
@@ -408,6 +409,34 @@ return false;
     # can share a second, and "latest" then falls back to insertion order.
     gone_page=req(teacher,'/admin/pupil.php?id='+alex['id'])[1]
     check('borttagen, historiken är kvar' in gone_page and 'Testquiz' in gone_page and 'Klart' in gone_page, 'Removed pupil lost practice history')
+    # A class shares one school IP. A pupil mistyping a PIN on a KNOWN code must not
+    # count against that shared limit, or 60 typos lock out everyone in the room.
+    # Only enumeration of unknown codes does. Few requests here: the robots and
+    # --serve run afterwards from this same address.
+    noel=next(s for s in state()['students'].values() if s['name']=='Noel Test')
+    ip_key=hashlib.sha256(b'ip:127.0.0.1').hexdigest()
+    noel_key=hashlib.sha256(('account:'+noel['id']).encode()).hexdigest()
+    counts=lambda: {k:v['count'] for k,v in (state().get('login_limits') or {}).items()}
+    before=counts()
+    typo=client(); typo_csrf=csrf(typo)
+    for _ in range(3):
+        req(typo,'/student/',form={'csrf_token':typo_csrf,'code':noel['code'],'pin':'0000'})
+    after=counts()
+    check(after.get(ip_key,0)==before.get(ip_key,0), 'A known pupil mistyping a PIN still counted against the shared IP limit')
+    check(after.get(noel_key,0)==before.get(noel_key,0)+3, 'Per-account limit stopped counting PIN mistakes')
+    for n in (1,2):
+        unknown=client(); unknown_csrf=csrf(unknown)
+        req(unknown,'/student/',form={'csrf_token':unknown_csrf,'code':'Okand Kod Nummer%d'%n,'pin':'0000'})
+    check(counts().get(ip_key,0)==before.get(ip_key,0)+2, 'Unknown codes no longer count toward the IP limit')
+    # With the IP row saturated, a correct login must still work and enumeration stop.
+    saturated=state(); saturated['login_limits'][ip_key]={'count':60,'until':int(time.time())+900}
+    (fixture/'data/classroom.json').write_text(json.dumps(saturated,ensure_ascii=False),encoding='utf-8')
+    held=client(); held_csrf=csrf(held)
+    check('Hej Noel Test' in req(held,'/student/',form={'csrf_token':held_csrf,'code':noel['code'],'pin':pcards['Noel Test']})[1], 'Saturated IP limit blocked a correct login')
+    walled=client(); walled_csrf=csrf(walled)
+    check('Hej' not in req(walled,'/student/',form={'csrf_token':walled_csrf,'code':'Okand Kod Nummer9','pin':'0000'})[1], 'Saturated IP limit stopped throttling unknown codes')
+    cleared=state(); del cleared['login_limits'][ip_key]
+    (fixture/'data/classroom.json').write_text(json.dumps(cleared,ensure_ascii=False),encoding='utf-8')
     check('Elin Test' not in req(other,'/admin/class.php?id='+pc)[1], 'Class page leaked to another teacher')
     check('Testquiz' not in req(other,'/admin/pupil.php?id='+elin['id'])[1], 'Pupil page leaked to another teacher')
     if '--robots' in sys.argv:
