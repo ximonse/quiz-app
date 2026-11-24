@@ -73,22 +73,6 @@ foreach ($recipients as $sid=>$s): $rows=classroomAttempts($data,$aid,$sid); $la
 <?php endforeach; ?></tbody></table></div></details><?php endforeach; ?><?php panelEnd(); ?>
 <?php panelStart('new-class','Skapa klass'); ?><form method="post"><?= csrfField() ?><input type="hidden" name="action" value="class"><label for="class-name">Klassnamn</label><input id="class-name" name="name" maxlength="100" required><p><button>Skapa klass</button></p></form><?php panelEnd(); ?>
 <script>
-// Hopfällbara moduler. Lägesminnet ligger lokalt per webbläsare, inte i servern, och synkas aldrig mellan enheter.
-(()=>{
-  const KEY='classroom-panels';
-  const panels=[...document.querySelectorAll('details.panel[id]')];
-  let state={};
-  try{state=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){state={};}
-  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}};
-  panels.forEach(p=>{
-    // En panel som sidan öppnar med flit (?group=, ?assignment=) får stå öppen den här gången.
-    if(!p.hasAttribute('data-force-open')&&typeof state[p.id]==='boolean') p.open=state[p.id];
-    p.addEventListener('toggle',()=>{state[p.id]=p.open;save();});
-  });
-  // En länk till en hopfälld panel ska öppna den.
-  const openHash=()=>{const t=location.hash&&document.querySelector(location.hash);if(t&&t.matches('details.panel'))t.open=true;};
-  addEventListener('hashchange',openHash); openHash();
-})();
 // Bekräftelsetexter med elev- och klassnamn ligger i data-confirm, aldrig inline i onsubmit.
 document.querySelectorAll('form[data-confirm]').forEach(f=>f.addEventListener('submit',e=>{if(!confirm(f.dataset.confirm))e.preventDefault();}));
 const bulk=document.getElementById('bulk-reset'),pickAll=document.getElementById('pick-all');
@@ -104,5 +88,25 @@ if(bulk){
     if(!confirm('Skapa ny PIN och QR-kod för '+n+(n===1?' elev':' elever')+'? De gamla QR-koderna och pågående inloggningar slutar fungera.'))e.preventDefault();
   });
 }
-const content=document.getElementById('content'); if(content){const update=()=>{const pdf=content.value==='material';document.getElementById('pdf-fields').hidden=!pdf;document.getElementById('pdf').required=pdf;document.getElementById('pdf-title').required=pdf;};content.addEventListener('change',update);update();}</script>
+const content=document.getElementById('content'); if(content){const update=()=>{const pdf=content.value==='material';document.getElementById('pdf-fields').hidden=!pdf;document.getElementById('pdf').required=pdf;document.getElementById('pdf-title').required=pdf;};content.addEventListener('change',update);update();}
+// Hopfällbara moduler. Lägesminnet ligger lokalt per webbläsare, inte i servern, och synkas aldrig mellan enheter.
+// Ligger sist i skriptet, så ett fel här aldrig kan slå ut bekräftelserna ovanför.
+(()=>{
+  const KEY='classroom-panels';
+  let state={};
+  try{state=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){state={};}
+  document.querySelectorAll('details.panel[id]').forEach(p=>{
+    // En panel som sidan öppnar med flit (?group=, ?assignment=) står öppen den här gången utan att minnas det.
+    if(!p.hasAttribute('data-force-open')&&typeof state[p.id]==='boolean') p.open=state[p.id];
+    const head=p.querySelector(':scope>summary');
+    // Bara lärarens egen klickning sparas, aldrig öppningar som sidan gör själv.
+    if(head) head.addEventListener('click',()=>{state[p.id]=!p.open;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}});
+  });
+  const open=id=>{const t=id&&document.getElementById(id);if(t&&t.matches('details.panel'))t.open=true;};
+  const fromHash=()=>{try{open(decodeURIComponent(location.hash.slice(1)));}catch(e){}};
+  // En länk till en hopfälld panel ska öppna den, även andra gången den klickas.
+  document.querySelectorAll('a[href^="#panel-"]').forEach(a=>a.addEventListener('click',()=>open(a.getAttribute('href').slice(1))));
+  addEventListener('hashchange',fromHash); fromHash();
+})();
+</script>
 </main></body></html>
