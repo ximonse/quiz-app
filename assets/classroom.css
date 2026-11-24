@@ -29,3 +29,9 @@ body.classroom{margin:0;font:16px/1.5 system-ui,sans-serif;color:#1f2937;backgro
 .classroom details.panel[open]>summary::before{transform:rotate(45deg)}
 .classroom details.panel>summary h2{margin:0;font:inherit}
 .classroom .panel-body{margin-top:14px}
+
+/* Compact collapsed headings and class list, scoped to classroom administration. */
+.classroom details.panel:not([open]){padding-top:12px;padding-bottom:12px;margin-bottom:12px}
+.classroom .grid:has(>details.panel:not([open])){row-gap:12px}
+.classroom .class-item-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.classroom .class-manage{margin:4px 0}
