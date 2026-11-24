@@ -19,3 +19,13 @@ body.classroom{margin:0;font:16px/1.5 system-ui,sans-serif;color:#1f2937;backgro
 @media(max-width:600px){.classroom .assignment{padding:12px 14px 12px 16px;gap:10px}.classroom .assignment h2{font-size:18px}}
 
 .classroom tr.chosen td{background:#eff6ff}
+
+/* Hopfällbara arbetsmoduler i klasshanteringen: rubriken ensam är vilolaget. */
+.classroom .grid{align-items:start}
+.classroom details.panel{margin:0 0 24px;align-self:start}
+.classroom details.panel>summary{display:flex;align-items:center;gap:10px;list-style:none;font-size:21px;font-weight:600;line-height:1.3}
+.classroom details.panel>summary::-webkit-details-marker{display:none}
+.classroom details.panel>summary::before{content:"";flex:none;width:9px;height:9px;margin-left:2px;border-right:2px solid #4b5563;border-bottom:2px solid #4b5563;transform:rotate(-45deg);transition:transform .15s}
+.classroom details.panel[open]>summary::before{transform:rotate(45deg)}
+.classroom details.panel>summary h2{margin:0;font:inherit}
+.classroom .panel-body{margin-top:14px}
