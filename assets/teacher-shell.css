@@ -25,3 +25,11 @@
 details[data-more]>summary{list-style:none}
 details[data-more]>summary::-webkit-details-marker{display:none}
 details[data-more]>summary::marker{content:""}
+
+/* Smal skärm: radens handlingar får en egen rad i stället för att klämma
+   titeln till tre bokstäver. Breda skärmar är oförändrade. */
+@media(max-width:700px){
+  .quiz-row{flex-wrap:wrap;gap:6px}
+  .quiz-row>div{flex:0 0 100%;min-width:0}
+  .quiz-row>div:last-child{margin-left:0;justify-content:flex-start}
+}

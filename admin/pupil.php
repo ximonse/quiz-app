@@ -31,7 +31,7 @@ if ($student) {
 ?>
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?= $student?classroomEscape($student['name']):'Hitta elev' ?></title><link rel="stylesheet" href="../assets/classroom.css"><link rel="stylesheet" href="../assets/teacher-shell.css"></head><body class="classroom"><main>
 <?php teacherShell('klasser',$student?$student['name']:'Hitta elev',$student?'Elev':'Sök bland dina elever'); ?>
-<?php if ($student): ?><p class="shortcut"><a href="class.php?id=<?= classroomEscape(urlencode($student['class_id'])) ?>"><?= classroomEscape($classes[$student['class_id']]['name'] ?? 'Klassen') ?></a></p><?php endif; ?>
+<?php if ($student): ?><p class="shortcut">Klass: <a href="class.php?id=<?= classroomEscape(urlencode($student['class_id'])) ?>"><?= classroomEscape($classes[$student['class_id']]['name'] ?? 'Klassen') ?></a></p><?php endif; ?>
 <section class="panel"><h2>Sök elev</h2><form method="get"><label for="q">Elevens namn</label><input id="q" name="q" value="<?= classroomEscape($query) ?>" maxlength="100" autocomplete="off"><p><button class="secondary">Sök</button></p></form>
 <?php if ($query!==''): ?><?php if (!$found): ?><p>Ingen elev matchar <q><?= classroomEscape($query) ?></q>.</p><?php else: ?>
 <?php foreach ($found as $sid=>$s): ?><p><a href="?id=<?= classroomEscape(urlencode($sid)) ?>"><?= classroomEscape($s['name']) ?></a> <span class="muted"><?= classroomEscape($classes[$s['class_id']]['name'] ?? 'Borttagen klass') ?><?= empty($s['active'])?' · borttagen':'' ?></span></p><?php endforeach; ?>
