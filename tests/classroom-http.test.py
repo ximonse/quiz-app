@@ -413,6 +413,18 @@ return false;
     check(req(noel_login,'/api/save-result.php',payload={**noel_base,'score':2,'request_id':'f'*32,'errors':[]})[0]==200,'Clean Noel result failed')
     clean_page=req(teacher,'/admin/pupil.php?id='+noel_pupil['id'])[1]
     check('Tre plus tre?' not in clean_page and 'Inga fel i elevens senaste försök' in clean_page,'A clean latest attempt still showed an older run as the latest')
+    # Skapandet ligger på en egen sida; biblioteket ska bara peka dit.
+    library=req(teacher,'/admin/dashboard.php')[1]
+    check('create.php' in library and 'name="csv_data"' not in library,'Library still carries the create form')
+    create_page=req(teacher,'/admin/create.php')[1]
+    check('name="csv_data"' in create_page and 'Skapa bildvalsquiz' in create_page,'Create page missing the form or the other quiz types')
+    # Ett fel ska behålla utkastet, inte tomma formuläret.
+    broken=req(teacher,'/admin/create.php',form={'csrf_token':teacher_csrf,'action':'create','type':'glossary','title':'Utkast som ska overleva','csv_data':'bara en kolumn'})[1]
+    check('Utkast som ska overleva' in broken and 'bara en kolumn' in broken,'A failed create lost the draft')
+    made=req(teacher,'/admin/create.php',form={'csrf_token':teacher_csrf,'action':'create','type':'glossary','title':'Skapat fran egen sida',
+        'csv_data':'Hunden skaller hogt;hund;dog;katt;fagel;hast','quiz_mode':'training','answer_mode':'multiple_choice','required_correct':'1','language':'sv'})
+    check(made[0]==200 and 'Skapat fran egen sida' in made[1] and 'är skapat' in made[1],'Create did not land in the library with a receipt')
+    check(req(teacher,'/admin/create.php',form={'action':'create','type':'glossary','title':'Utan csrf','csv_data':'a;b;c;d;e;f'})[0]==403,'Create without CSRF was accepted')
     # Vägen från en utdelning till quizets statistik, bara för quiz läraren äger.
     overview=req(teacher,'/admin/classes.php?assignment='+live_a)[1]
     check('stats.php?id=q_fixture' in overview,'Overview lost the link to the quiz statistics')
