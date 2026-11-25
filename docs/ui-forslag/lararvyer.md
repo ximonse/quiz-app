@@ -57,7 +57,7 @@ till oinloggade spelare, alltså det som nu är andrahandsfallet.
 - Den sätts på med en kryssruta i editorn: "Lägg till i elevernas repetition".
 - Den fungerar bara om fyra villkor är uppfyllda samtidigt: quizet är av typ
   `fact` eller `glossary`, det är publicerat, det är utdelat till klass eller
-  grupp, och eleven är inloggad när hon svarar (`classroomRecord()` i
+  grupp, och eleven är inloggad när svaret ges (`classroomRecord()` i
   `includes/classroom.php`).
 - Eleven ser "Lite repetition idag" i `student/index.php`.
 - **Läraren ser ingenting.** Inte hur många kort som är förfallna, inte vem som
@@ -137,7 +137,7 @@ taget, och varje steg är fullt användbart även om nästa aldrig görs.
 Det här var "punkt 3" i den tidigare listan.
 
 **Problemet:** ett sparat resultat i `quizzes.json` innehåller `student_id`, men
-inte vilken klass eleven tillhörde när hon spelade. Att filtrera på elevens
+inte vilken klass eleven tillhörde vid speltillfället. Att filtrera på elevens
 *nuvarande* `class_id` ger fel svar för elever som bytt klass eller tagits bort.
 
 **Två vägar:**
@@ -193,7 +193,30 @@ efter, och fäller ut en elevs felsvar.
   fungerar som nu.
 - Orden i tabellen ovan används konsekvent i alla ändrade vyer.
 
-## 5. Vad som är vad
+## 5. Källor
+
+Läst i `~/.codex/skills/ui-planering/references/principer.md` 2026-11-25. Varje
+princip är kopplad till ett konkret fynd ovan; de vägleder valet, de bevisar inte
+att just denna layout fungerar.
+
+- [NN/g: Consistency and Standards](https://www.nngroup.com/articles/consistency-and-standards/)
+  — ligger bakom begreppstabellen i avsnitt 2 och bakom den gemensamma headern.
+  Fyndet var konkret: "elev" betyder två olika sorters människa beroende på vy,
+  och tre olika sorters publicering saknar skilda ord.
+- [NN/g: Progressive Disclosure](https://www.nngroup.com/articles/progressive-disclosure/)
+  — ligger bakom att "Dela ut" blir radens synliga handling medan kopiera länk
+  och QR flyttar in i "⋯"-menyn. Fri utdelning göms inte, men är inte längre det
+  som syns först, i linje med att inloggade elever är förstahandsfallet. Samma
+  princip motiverar att skapandeformuläret flyttas ur biblioteket.
+- [GOV.UK: Check answers](https://design-system.service.gov.uk/patterns/check-answers/)
+  — ligger bakom att utdelning från raden behåller ett tydligt handlingsverb och
+  ett synligt kvitto ("utdelad till 6A" på raden efteråt). Kontrollen hålls liten
+  eftersom konsekvensen är liten och utdelningen går att göra om.
+
+Simons egna preferenser — kompakta arbetsvyer, liten vertikal padding, bevarad
+läsbar text — är personliga krav och redovisas som sådana, inte som forskning.
+
+## 6. Vad som är vad
 
 - **Fakta:** avsnitt 1, läst i koden i denna repo.
 - **Förslag:** avsnitt 2–4. Inget av det är beslutat, och inget är byggt.
