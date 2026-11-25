@@ -391,6 +391,17 @@ return false;
     check('Hej Elin Test' in req(elin_client,'/student/',form={'csrf_token':elin_csrf,'code':elin['code'],'pin':pcards['Elin Test']})[1], 'Practice fixture pupil could not log in')
     elin_payload={'student_id':elin['id'],'assignment_id':live_a,'attempt_id':'e'*32,'seq':1,'right':2,'wrong':1,'cards':0,'completed':True}
     check(req(elin_client,'/api/classroom-activity.php',payload=elin_payload,token=elin_csrf)[0]==200,'Practice attempt failed')
+    # Frågorna en elev svarade fel på finns bara i quizets egen resultatlista, så
+    # elevvyn läser dem därifrån. Svaret är elevens egen text: ogranskad indata.
+    elin_errors={'quiz_id':'q_fixture','student_id':elin['id'],'student_name':'Elin','score':1,'total':2,'request_id':'b'*32,
+        'errors':[{'item_index':0,'given':'<script>alert(1)</script>','correct':'Fyra'},{'item_index':0,'given':'Tre','correct':'Fyra'},
+                  {'item_index':99,'given':'x','correct':'y'},{'bad':'shape'},{'item_index':'inte ett tal'},'inte ens en lista']}
+    check(req(elin_client,'/api/save-result.php',payload=elin_errors)[0]==200,'Wrong-answer result save failed')
+    wrong_page=req(teacher,'/admin/pupil.php?id='+elin['id'])[1]
+    check('Två plus två?' in wrong_page and '2 försök' in wrong_page,'Pupil page missing the wrong-answer list')
+    check('&lt;script&gt;' in wrong_page and '<script>alert(1)</script>' not in wrong_page,'Pupil answer reached the page unescaped')
+    check('Fråga 100' in wrong_page,'An error for a deleted question lost its fallback label')
+    check('Två plus två?' not in req(other,'/admin/pupil.php?id='+elin['id'])[1],'Wrong answers leaked to another teacher')
     status,page,_=req(teacher,'/admin/class.php?id='+pc)
     check(status==200 and 'Testquiz' in page and 'Arkiverat quiz' in page and 'Elin Test' in page, 'Class page missing its assignments or pupils')
     status,page,_=req(teacher,'/admin/class.php?id='+pc+'&assignment='+live_a)

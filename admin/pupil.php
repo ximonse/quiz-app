@@ -3,6 +3,7 @@
 // Läsvy; all redigering ligger kvar i classes.php.
 require_once __DIR__.'/../config.php';
 require_once __DIR__.'/../includes/classroom-practice.php';
+require_once __DIR__.'/../includes/quiz-errors.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 header('Cache-Control: no-store');
 $teacher=getCurrentTeacherID(); $data=classroomRead();
@@ -17,10 +18,13 @@ $student=null;
 if ($id!=='') { try { $student=classroomOwned($data,'students',$id,$teacher); } catch (DomainException $e) { $student=null; } }
 $rows=[];
 if ($student) {
+    // Svaren per fråga ligger i quizen, inte i klassrummets försök.
+    $quizzes=is_file(QUIZZES_FILE)?(json_decode(file_get_contents(QUIZZES_FILE),true) ?: []):[];
     foreach (classroomPupilAssignments($data,$student) as $aid=>$a) {
         $target=$data[$a['target_type']][$a['target_id']]['name'] ?? ($a['target_type']==='classes'?'Borttagen klass':'Borttagen grupp');
+        $detail=$a['kind']==='quiz'?quizWrongQuestionsHtml($quizzes,(string)$a['content_id'],$student['id'],$teacher):'';
         $rows[]=classroomPracticeRow($data,$aid,$student['id'],$a['kind'])
-            +['first'=>classroomEscape($a['title']).' <span class="muted">'.classroomEscape(classroomKindLabel($a['kind']).' · '.$target).'</span>'];
+            +['first'=>classroomEscape($a['title']).' <span class="muted">'.classroomEscape(classroomKindLabel($a['kind']).' · '.$target).'</span>','detail'=>$detail];
     }
 }
 ?>
@@ -33,7 +37,7 @@ if ($student) {
 <?php if ($id!=='' && !$student): ?><p class="notice error" role="alert">Eleven hittades inte.</p><?php endif; ?>
 <?php if ($student): ?>
 <section class="panel"><h2>Övning</h2>
-<p class="muted"><?= classroomEscape($classes[$student['class_id']]['name'] ?? 'Borttagen klass') ?><?= empty($student['active'])?' · borttagen, historiken är kvar':'' ?> · inloggning <?= classroomEscape($student['code']) ?>. En rad per utdelning, även uppgifter eleven inte börjat på.</p>
+<p class="muted"><?= classroomEscape($classes[$student['class_id']]['name'] ?? 'Borttagen klass') ?><?= empty($student['active'])?' · borttagen, historiken är kvar':'' ?> · inloggning <?= classroomEscape($student['code']) ?>. En rad per utdelning, även uppgifter eleven inte börjat på. Fäll ut felsvaren för att se vilka frågor som satt hårt.</p>
 <?php classroomPracticeTable('Uppgift',$rows); ?></section>
 <?php endif; ?>
 </main></body></html>
