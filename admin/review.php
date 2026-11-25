@@ -1,5 +1,6 @@
 <?php
-require_once __DIR__.'/../config.php'; require_once __DIR__.'/../ai/quiz-service.php';
+require_once __DIR__.'/../config.php';
+require_once __DIR__.'/../includes/teacher-shell.php'; require_once __DIR__.'/../ai/quiz-service.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 $id=$_GET['id']??''; $error='';
 try {
@@ -17,8 +18,8 @@ function reviewImage(array $image): void {
     ?><img src="../api/question-image.php?file=<?= rawurlencode($image['file']) ?>" alt="<?= reviewEscape($image['alt']) ?>" style="<?= reviewEscape($style) ?>"><?php
 }
 ?>
-<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Granska quiz</title><link rel="stylesheet" href="../engine/image-choice.css?v=<?= filemtime(__DIR__ . '/../engine/image-choice.css') ?>"></head>
-<body><main class="review-main"><a href="dashboard.php">← Mina quiz</a><header><p class="eyebrow">Granska · justera · publicera</p><h1><?= reviewEscape($quiz['title']) ?></h1>
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Granska quiz</title><link rel="stylesheet" href="../engine/image-choice.css?v=<?= filemtime(__DIR__ . '/../engine/image-choice.css') ?>"><link rel="stylesheet" href="../assets/teacher-shell.css"></head>
+<body><main class="review-main teacher-page"><?php teacherShell('innehall',$quiz['title'],'Granska · justera · publicera'); ?><header>
 <p><?= $view['publication']==='draft'?'Inte publicerat. Elever kan inte nå quizet ännu.':($view['publication']==='pending'?'Du granskar nya ändringar. Eleverna ser fortfarande den publicerade versionen.':'Quizet är publicerat.') ?></p>
 <nav><a class="button secondary" href="<?= reviewEscape($view['edit_url']) ?>">Redigera frågor</a><a class="button secondary" href="images.php?id=<?= urlencode($id) ?>">Infobilder</a>
 <?php if (isset($quiz['items'])): ?><a class="button secondary" href="../play/<?= quizTypeRoute($quiz['type'])['player'] ?>?id=<?= urlencode($id) ?>&name=Förhandsvisning&preview=1">Prova quizet</a><?php endif; ?></nav></header>

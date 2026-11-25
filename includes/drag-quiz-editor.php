@@ -1,7 +1,8 @@
 <?php
 // Shared editor page for drag-and-drop quiz types (sort, order).
 // $config: type, label, intro, prompt, template, script, uploads (groups of entries with images), flashcards (bool).
-require_once __DIR__.'/../config.php'; require_once __DIR__.'/../ai/quiz-service.php';
+require_once __DIR__.'/../config.php';
+require_once __DIR__.'/../includes/teacher-shell.php'; require_once __DIR__.'/../ai/quiz-service.php';
 // Uploaded files arrive as {group}_files[question][index]; attach them to the matching entry.
 function dragEditorAttach(array &$entries, string $group, int $i, string $teacherId): void {
     $upload=$_FILES[$group.'_files']??null;
@@ -44,13 +45,13 @@ function dragQuizEditor(array $config): void {
     } catch (QuizAiError $e) { $error=$e->getMessage(); }
     $e=fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8'); $s=$doc['settings']; $v=fn($f)=>filemtime(__DIR__.'/../engine/'.$f);
 ?>
-<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Redigera <?= $e($config['label']) ?></title><link rel="stylesheet" href="../engine/image-choice.css?v=<?= $v('image-choice.css') ?>"><link rel="stylesheet" href="../engine/sort-editor.css?v=<?= $v('sort-editor.css') ?>"></head>
-<body><main><a href="dashboard.php">← Mina quiz</a><header><p class="eyebrow"><?= $e(ucfirst($config['label'])) ?></p><h1><?= $id?'Redigera ':'Skapa ' ?><?= $e($config['label']) ?></h1><p><?= $e($config['intro']) ?></p>
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Redigera <?= $e($config['label']) ?></title><link rel="stylesheet" href="../engine/image-choice.css?v=<?= $v('image-choice.css') ?>"><link rel="stylesheet" href="../engine/sort-editor.css?v=<?= $v('sort-editor.css') ?>"><link rel="stylesheet" href="../assets/teacher-shell.css"></head>
+<body><main class="teacher-page"><?php teacherShell('innehall',($id?'Redigera ':'Skapa ').$config['label'],ucfirst($config['label'])); ?><header><p><?= $e($config['intro']) ?></p>
 <?php if ($id): ?><nav><a class="button secondary" href="review.php?id=<?= urlencode($id) ?>">Granska och publicera</a><a class="button secondary" href="images.php?id=<?= urlencode($id) ?>">Lägg till infobild</a></nav><?php endif; ?></header>
 <?php if ($error): ?><p class="error" role="alert"><?= $e($error) ?></p><?php endif; ?>
 <?php if (isset($_GET['saved'])): ?><p class="success" role="status">Sparat för granskning. Publicera när du är nöjd.</p><?php endif; ?>
-<details class="question-card"><summary><strong>Skapa med AI eller klistra in JSON</strong></summary>
-<p>Kopiera prompten till valfri AI, skriv vad quizet ska handla om och klistra in svaret här. Bilder lägger du till efteråt i formuläret.</p>
+<details class="question-card" open><summary><strong>🤖 Hämta AI-prompt för <?= $e($config['label']) ?>, eller klistra in JSON</strong></summary>
+<p>Kopiera prompten till valfri AI (ChatGPT, Claude, Copilot), skriv vad quizet ska handla om och klistra in svaret här. Bilder lägger du till efteråt i formuläret.</p>
 <div class="actions"><button type="button" id="copy-prompt" class="secondary">Kopiera prompt</button><a class="button secondary" href="../assets/templates/<?= $e($config['template']) ?>" download>Ladda ner mall (JSON)</a><span id="copy-status" role="status" aria-live="polite"></span></div>
 <pre id="ai-prompt" hidden><?= $e($config['prompt']) ?></pre>
 <label for="import-json">AI-svar eller JSON</label><textarea id="import-json" rows="6" placeholder='{"title": "...", "type": "<?= $e($config['type']) ?>", "items": [...]}'></textarea>

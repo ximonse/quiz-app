@@ -3,6 +3,7 @@
 // utdelning. Läsvy; all redigering ligger kvar i classes.php.
 require_once __DIR__.'/../config.php';
 require_once __DIR__.'/../includes/classroom-practice.php';
+require_once __DIR__.'/../includes/teacher-shell.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 header('Cache-Control: no-store');
 $teacher=getCurrentTeacherID(); $data=classroomRead(); $id=(string)($_GET['id'] ?? '');
@@ -25,8 +26,9 @@ if ($assignment) {
     }
 }
 ?>
-<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?= classroomEscape($class['name']) ?></title><link rel="stylesheet" href="../assets/classroom.css"></head><body class="classroom"><main>
-<header><h1><?= classroomEscape($class['name']) ?></h1><nav><a href="dashboard.php">Mina quiz</a><a href="classes.php">Klasser och uppgifter</a><a href="pupil.php">Hitta elev</a><a href="cards.php?class=<?= classroomEscape(urlencode($id)) ?>">Inloggningskort</a></nav></header>
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?= classroomEscape($class['name']) ?></title><link rel="stylesheet" href="../assets/classroom.css"><link rel="stylesheet" href="../assets/teacher-shell.css"></head><body class="classroom"><main>
+<?php teacherShell('klasser',$class['name'],'Klass'); ?>
+<p class="shortcut"><a href="cards.php?class=<?= classroomEscape(urlencode($id)) ?>">Inloggningskort för <?= classroomEscape($class['name']) ?></a></p>
 <section class="panel"><h2>Utdelat till klassen</h2>
 <?php if (!$assignments): ?><p>Inget utdelat till den här klassen ännu.</p><?php else: ?>
 <div class="table-wrap"><table><thead><tr><th>Uppgift</th><th>Typ</th><th>Utdelad</th></tr></thead><tbody>
@@ -36,6 +38,11 @@ if ($assignment) {
 <?php if ($assignment): ?>
 <section class="panel"><h2><?= classroomEscape($assignment['title']) ?></h2>
 <p class="muted"><?= classroomEscape(classroomKindLabel($assignment['kind'])) ?><?= $assignment['via_group']!==''?' · utdelad via grupp '.classroomEscape($assignment['via_group']):'' ?> · <?= count($rows) ?> <?= count($rows)===1?'elev':'elever' ?> i klassen. Siffrorna gäller den här utdelningen.</p>
+<?php if ($assignment['kind']==='quiz'):
+    $quizzes=is_file(QUIZZES_FILE)?(json_decode(file_get_contents(QUIZZES_FILE),true) ?: []):[];
+    if (($quizzes[$assignment['content_id']]['teacher_id'] ?? '')===$teacher): ?>
+<p><a href="stats.php?id=<?= classroomEscape(urlencode($assignment['content_id'])) ?>">Statistik för quizet: snitt och svåraste frågorna</a> <span class="muted">Räknar alla som övat på quizet, även utanför den här utdelningen.</span></p>
+<?php endif; endif; ?>
 <?php classroomPracticeTable('Elev',$rows); ?></section>
 <?php elseif ($assignments): ?><p class="muted">Välj en uppgift ovan för att se hur klassens elever övat.</p><?php endif; ?>
 <section class="panel"><h2>Elever i klassen</h2><div class="table-wrap"><table><thead><tr><th>Elev</th><th>Inloggning</th></tr></thead><tbody>

@@ -1,6 +1,7 @@
 <?php
 // admin/stats.php — Quiz statistics + clear results
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/teacher-shell.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 
 $quizId = $_GET['id'] ?? '';
@@ -75,14 +76,11 @@ if (count($results) > 0) {
     <title>Statistik: <?= htmlspecialchars($quiz['title']) ?></title>
     <link rel="stylesheet" href="../assets/vendor/tailwind-3.4.19.css">
     <link rel="stylesheet" href="../engine/themes.css">
+    <link rel="stylesheet" href="../assets/teacher-shell.css">
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
-<div class="max-w-3xl mx-auto p-4">
-    <div class="flex items-center gap-4 mb-6">
-        <a href="dashboard.php" class="text-blue-600 hover:underline text-sm">&larr; Tillbaka</a>
-        <a href="browser-ids.php" class="text-blue-600 hover:underline text-sm">Namn per webbläsare</a>
-        <h1 class="text-2xl font-bold" style="color: var(--text-primary)">📊 <?= htmlspecialchars($quiz['title']) ?></h1>
-    </div>
+<div class="teacher-page">
+    <?php teacherShell('innehall',$quiz['title'],'Statistik för quizet'); ?>
 
     <!-- Overview cards -->
     <div class="grid grid-cols-3 gap-4 mb-6">
@@ -153,7 +151,7 @@ if (count($results) > 0) {
             <?php foreach (array_reverse(array_slice($results, -20)) as $r): ?>
                 <div class="flex items-center justify-between gap-3 py-2 border-b" style="border-color: var(--border)">
                     <div>
-                        <div class="text-sm" style="color: var(--text-primary)"><?= htmlspecialchars($r['student_name']) ?></div>
+                        <div class="text-sm" style="color: var(--text-primary)"><?= htmlspecialchars($r['student_name'] ?? 'Okänd') ?></div>
                         <?php if ($quiz['type'] === 'image_choice'): ?>
                             <?php if (isset($r['choice_counts']['right'], $r['choice_counts']['wrong'], $r['choice_counts']['missed'])): ?>
                                 <div class="text-xs" style="color: var(--text-secondary)">Bildval: <?= (int)$r['choice_counts']['right'] ?> rätt · <?= (int)$r['choice_counts']['wrong'] ?> fel · <?= (int)$r['choice_counts']['missed'] ?> missade</div>
@@ -163,8 +161,10 @@ if (count($results) > 0) {
                         <?php endif; ?>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
-                        <span class="text-sm font-medium" style="color: var(--accent)"><?= $r['score'] ?>/<?= $r['total'] ?></span>
-                        <span class="text-xs" style="color: var(--text-secondary)"><?= date('j/n H:i', strtotime($r['timestamp'])) ?></span>
+                        <span class="text-sm font-medium" style="color: var(--accent)"><?= (int)($r['score'] ?? 0) ?>/<?= (int)($r['total'] ?? 0) ?></span>
+                        <?php // Resultat sparade innan tidsstampeln fanns saknar den helt.
+                        $stamp = !empty($r['timestamp']) ? strtotime((string)$r['timestamp']) : false; ?>
+                        <span class="text-xs" style="color: var(--text-secondary)"><?= $stamp ? date('j/n H:i', $stamp) : 'okänt datum' ?></span>
                     </div>
                 </div>
             <?php endforeach; ?>

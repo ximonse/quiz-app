@@ -4,6 +4,7 @@
 // 'items'-schema (samma som admin/create.php) istället för det gamla
 // 'questions'-schemat, så quizen hamnar i samma format som allt annat i v2.
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/teacher-shell.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 
 $csrfToken = getCsrfToken();
@@ -151,16 +152,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Importera flera quiz</title>
     <link rel="stylesheet" href="../assets/vendor/tailwind-3.4.19.css">
     <link rel="stylesheet" href="../engine/themes.css">
+    <link rel="stylesheet" href="../assets/teacher-shell.css">
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
-<div class="max-w-2xl mx-auto p-4">
-    <div class="flex items-center gap-4 mb-6">
-        <a href="dashboard.php" class="text-blue-600 hover:underline text-sm">&larr; Tillbaka</a>
-        <h1 class="text-xl font-bold" style="color: var(--text-primary)">Importera flera quiz från fil</h1>
-    </div>
+<div class="teacher-page">
+    <?php teacherShell('innehall','Importera flera quiz','Från en fil med flera quiz.'); ?>
 
     <?php if ($createdCount !== null && !$error): ?>
-        <div class="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm">Skapade <?= $createdCount ?> quiz! <a href="dashboard.php" class="underline">Till Mina Quiz</a></div>
+        <div class="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm">Skapade <?= $createdCount ?> quiz! <a href="dashboard.php" class="underline">Till Innehåll</a></div>
     <?php endif; ?>
     <?php if ($error): ?>
         <div class="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm"><?= htmlspecialchars($error) ?></div>

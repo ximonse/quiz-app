@@ -116,7 +116,7 @@ return false;
     teacher = client()
     teacher_csrf = csrf(teacher, '/index.php')
     status, text, _ = req(teacher, '/index.php', form={'username':'fixture','password':'fixture-pass','csrf_token':teacher_csrf})
-    check(status == 200 and 'Klasser och uppgifter' in text, 'Teacher login failed')
+    check(status == 200 and 'Klasser' in text, 'Teacher login failed')
     for diagnostic in ['test-upload.php', 'test-error.php', 'test-stats.php']:
         check(req(client(), '/' + diagnostic)[0] == 410, 'Public diagnostic is available: ' + diagnostic)
     # A valid raster named .php must be stored as a raster, never with its supplied suffix.
@@ -269,6 +269,19 @@ return false;
     by_index={c['question_index']:c for c in rep_cards.values()}
     check(by_index[0]['lapses']==0 and by_index[1]['lapses']==1, 'Wrong attempts did not map to FSRS ratings')
     check(not state().get('repetition_outbox'), 'Repetition outbox was not drained')
+    # Uppföljningen är lärarens enda fönster mot repetitionen.
+    follow=req(teacher,'/admin/followup.php?target=classes:'+c1)[1]
+    pool=re.search(r'Inget i dag <span class="muted">av (\d+)',follow)
+    check('Alex Test' in follow and pool and int(pool.group(1))>=2,'Follow-up missed the pupil repetition pool')
+    # Backdatera ett kort: då ska det räknas som förfallet och frågan namnges.
+    rep_path=fixture/'data/repetition.json'
+    backdated=json.loads(rep_path.read_text('utf-8'))
+    due_key=[k for k,v in backdated['cards'].items() if v['student_id']==alex['id'] and v['question_index']==1][0]
+    backdated['cards'][due_key]['due']='2000-01-01'
+    rep_path.write_text(json.dumps(backdated,ensure_ascii=False),encoding='utf-8')
+    due_view=req(teacher,'/admin/followup.php?target=classes:'+c1)[1]
+    check('1 kort' in due_view and 'Fem plus fem?' in due_view,'Follow-up did not show the overdue card or name its question')
+    check('Alex Test' not in req(other,'/admin/followup.php?target=classes:'+c1)[1],'Follow-up leaked a class to another teacher')
     home=req(pupil,'/student/')[1]
     check('Klart' in home and '1 rätt' not in home and '1 fel' not in home, 'Pupil status/score privacy failed')
     payload.update(assignment_id=cards_a,attempt_id='b'*32,seq=1,right=0,wrong=0,cards=1,completed=False)
@@ -391,6 +404,75 @@ return false;
     check('Hej Elin Test' in req(elin_client,'/student/',form={'csrf_token':elin_csrf,'code':elin['code'],'pin':pcards['Elin Test']})[1], 'Practice fixture pupil could not log in')
     elin_payload={'student_id':elin['id'],'assignment_id':live_a,'attempt_id':'e'*32,'seq':1,'right':2,'wrong':1,'cards':0,'completed':True}
     check(req(elin_client,'/api/classroom-activity.php',payload=elin_payload,token=elin_csrf)[0]==200,'Practice attempt failed')
+    # Frågorna en elev svarade fel på finns bara i quizets egen resultatlista, så
+    # elevvyn läser dem därifrån. Svaret är elevens egen text: ogranskad indata.
+    elin_errors={'quiz_id':'q_fixture','student_id':elin['id'],'student_name':'Elin','score':1,'total':2,'request_id':'b'*32,
+        'errors':[{'item_index':0,'given':'<script>alert(1)</script>','correct':'Fyra'},{'item_index':0,'given':'Tre','correct':'Fyra'},
+                  {'item_index':99,'given':'x','correct':'y'},{'bad':'shape'},{'item_index':'inte ett tal'},'inte ens en lista']}
+    check(req(elin_client,'/api/save-result.php',payload=elin_errors)[0]==200,'Wrong-answer result save failed')
+    wrong_page=req(teacher,'/admin/pupil.php?id='+elin['id'])[1]
+    check('Två plus två?' in wrong_page and '2 försök' in wrong_page,'Pupil page missing the wrong-answer list')
+    check('&lt;script&gt;' in wrong_page and '<script>alert(1)</script>' not in wrong_page,'Pupil answer reached the page unescaped')
+    check('Fråga 100' in wrong_page,'An error for a deleted question lost its fallback label')
+    check('Två plus två?' not in req(other,'/admin/pupil.php?id='+elin['id'])[1],'Wrong answers leaked to another teacher')
+    # Ett felfritt senare försök får inte visa ett äldre försöks fel som "senaste".
+    # Noel används här, så Elins lista står kvar för --serve.
+    noel_login=client(); noel_csrf=csrf(noel_login)
+    noel_pupil=next(s for s in state()['students'].values() if s['name']=='Noel Test')
+    check('Hej Noel Test' in req(noel_login,'/student/',form={'csrf_token':noel_csrf,'code':noel_pupil['code'],'pin':pcards['Noel Test']})[1],'Noel could not log in')
+    noel_base={'quiz_id':'q_fixture','student_id':noel_pupil['id'],'student_name':'Noel','total':2}
+    check(req(noel_login,'/api/save-result.php',payload={**noel_base,'score':1,'request_id':'c'*32,'errors':[{'item_index':1,'given':'Fem','correct':'Sex'}]})[0]==200,'First Noel result failed')
+    check('Tre plus tre?' in req(teacher,'/admin/pupil.php?id='+noel_pupil['id'])[1],'Wrong answer missing before the clean run')
+    check(req(noel_login,'/api/save-result.php',payload={**noel_base,'score':2,'request_id':'f'*32,'errors':[]})[0]==200,'Clean Noel result failed')
+    clean_page=req(teacher,'/admin/pupil.php?id='+noel_pupil['id'])[1]
+    check('Tre plus tre?' not in clean_page and 'Inga fel i elevens senaste försök' in clean_page,'A clean latest attempt still showed an older run as the latest')
+    # Statistiken ska tala ett resultat utan tidsstämpel, inte varna.
+    old_stats=req(teacher,'/admin/stats.php?id=q_fixture')
+    check(old_stats[0]==200 and 'okänt datum' in old_stats[1],'Statistics did not survive a result without a timestamp')
+    # Undermenyn hör till fliken: elevkorten i Klasser, importen i Innehåll.
+    shell_library=req(teacher,'/admin/dashboard.php')[1]
+    shell_classes=req(teacher,'/admin/classes.php')[1]
+    check('Importera flera quiz' in shell_library and 'Inloggningskort' not in shell_library,'Library menu shows the wrong secondary links')
+    check('Inloggningskort' in shell_classes and 'Importera flera quiz' not in shell_classes,'Classes menu shows the wrong secondary links')
+    check('Logga ut' in shell_library and 'Logga ut' in shell_classes,'Logout vanished from the menu')
+    # Skapandet ligger på en egen sida; biblioteket ska bara peka dit.
+    library=req(teacher,'/admin/dashboard.php')[1]
+    check('create.php' in library and 'name="csv_data"' not in library,'Library still carries the create form')
+    create_page=req(teacher,'/admin/create.php')[1]
+    check('name="csv_data"' in create_page and 'Skapa bildvalsquiz' in create_page,'Create page missing the form or the other quiz types')
+    # Ett fel ska behålla utkastet, inte tomma formuläret.
+    broken=req(teacher,'/admin/create.php',form={'csrf_token':teacher_csrf,'action':'create','type':'glossary','title':'Utkast som ska overleva','csv_data':'bara en kolumn'})[1]
+    check('Utkast som ska overleva' in broken and 'bara en kolumn' in broken,'A failed create lost the draft')
+    made=req(teacher,'/admin/create.php',form={'csrf_token':teacher_csrf,'action':'create','type':'glossary','title':'Skapat fran egen sida',
+        'csv_data':'Hunden skaller hogt;hund;dog;katt;fagel;hast','quiz_mode':'training','answer_mode':'multiple_choice','required_correct':'1','language':'sv'})
+    check(made[0]==200 and 'Skapat fran egen sida' in made[1] and 'är skapat' in made[1],'Create did not land in the library with a receipt')
+    check(req(teacher,'/admin/create.php',form={'action':'create','type':'glossary','title':'Utan csrf','csv_data':'a;b;c;d;e;f'})[0]==403,'Create without CSRF was accepted')
+    # Vägen från en utdelning till quizets statistik, bara för quiz läraren äger.
+    overview=req(teacher,'/admin/classes.php?assignment='+live_a)[1]
+    check('stats.php?id=q_fixture' in overview,'Overview lost the link to the quiz statistics')
+    class_view=req(teacher,'/admin/class.php?id='+pc+'&assignment='+live_a)[1]
+    check('stats.php?id=q_fixture' in class_view,'Class view lost the link to the quiz statistics')
+    # Dela ut direkt från innehållslistan, samma handling som i Klasser.
+    board=req(teacher,'/admin/dashboard.php')[1]
+    check('data-assign-panel' in board and 'Dela ut' in board,'Dashboard lost the assign control')
+    check('Publicera quizet' in board,'Dashboard did not say why an unpublished quiz cannot be assigned')
+    check(req(teacher,'/admin/dashboard.php',form={'csrf_token':teacher_csrf,'action':'assign','content':'quiz:q_gloss','target':'classes:'+pc})[0]==200,'Assigning from the dashboard failed')
+    check('Glosquiz' in req(teacher,'/admin/class.php?id='+pc)[1],'Assignment from the dashboard never reached the class')
+    check('utdelad till 7D' in req(teacher,'/admin/dashboard.php')[1],'Dashboard row lost the receipt for where the quiz went')
+    check(req(teacher,'/admin/dashboard.php',form={'action':'assign','content':'quiz:q_gloss','target':'classes:'+pc})[0]==403,'Assigning from the dashboard without CSRF was accepted')
+    # Ett publicerat quiz med ogranskade ändringar har fortfarande en levande
+    # version, så det ska gå att dela ut precis som i Klasser.
+    blocked='Publicera quizet för att kunna dela ut det till en klass.'
+    before_blocked=req(teacher,'/admin/dashboard.php')[1].count(blocked)
+    staged=json.loads((fixture/'data/quizzes.json').read_text('utf-8'))
+    staged['q_sort']['pending_document']={'title':'Sorteringsquiz, ny version'}
+    (fixture/'data/quizzes.json').write_text(json.dumps(staged,ensure_ascii=False),encoding='utf-8')
+    pending_board=req(teacher,'/admin/dashboard.php')[1]
+    check('Ändringar att granska' in pending_board,'Dashboard lost the pending-changes marker')
+    check(pending_board.count(blocked)==before_blocked,'A quiz with pending changes was wrongly blocked from being assigned')
+    restored=json.loads((fixture/'data/quizzes.json').read_text('utf-8'))
+    del restored['q_sort']['pending_document']
+    (fixture/'data/quizzes.json').write_text(json.dumps(restored,ensure_ascii=False),encoding='utf-8')
     status,page,_=req(teacher,'/admin/class.php?id='+pc)
     check(status==200 and 'Testquiz' in page and 'Arkiverat quiz' in page and 'Elin Test' in page, 'Class page missing its assignments or pupils')
     status,page,_=req(teacher,'/admin/class.php?id='+pc+'&assignment='+live_a)

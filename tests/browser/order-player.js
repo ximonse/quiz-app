@@ -61,7 +61,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   // Teacher: import template, save, review, publish, stats and routing.
   await page.goto(base+'/index.php'); await page.fill('[name=username]','fixture'); await page.fill('[name=password]','pw');
   await Promise.all([page.waitForNavigation(),page.click('form button')]);
-  await page.goto(base+'/admin/order-edit.php'); await page.click('summary');
+  await page.goto(base+'/admin/order-edit.php');
+  // AI- och JSON-rutan står öppen från start; se till att den är det oavsett.
+  await page.locator('details:has(#import-json)').evaluate(box => { box.open = true; });
   await page.fill('#import-json',fs.readFileSync(path.join(root,'assets/templates/ordningsquiz-mall.json'),'utf8')); await page.click('#import-replace');
   check(await page.locator('.question-row').count()===2 && await page.locator('.order-edit-object').count()===8,'order import');
   check(await page.locator('#generate-flashcards').count()===0,'no flashcard option for order');

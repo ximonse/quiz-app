@@ -2,6 +2,7 @@
 require_once __DIR__.'/../config.php';
 require_once __DIR__.'/../includes/classroom-admin.php';
 require_once __DIR__.'/../includes/classroom-practice.php';
+require_once __DIR__.'/../includes/teacher-shell.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 header('Cache-Control: no-store');
 $teacher=getCurrentTeacherID(); $error='';
@@ -27,8 +28,8 @@ function panelStart(string $id, string $title, bool $force=false): void { echo '
 function panelEnd(): void { echo '</div></details>'; }
 function classOptions(array $classes, string $selected=''): void { foreach ($classes as $id=>$c) echo '<option value="'.classroomEscape($id).'" '.($id===$selected?'selected':'').'>'.classroomEscape($c['name']).'</option>'; }
 ?>
-<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Klasser och uppgifter</title><link rel="stylesheet" href="../assets/classroom.css"></head><body class="classroom"><main>
-<header><h1>Klasser och uppgifter</h1><nav><a href="dashboard.php">Mina quiz</a><a href="pupil.php">Hitta elev</a><a href="../student/" target="_blank">Elevinloggning</a><a href="cards.php">Inloggningskort</a></nav></header>
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Klasser</title><link rel="stylesheet" href="../assets/classroom.css"><link rel="stylesheet" href="../assets/teacher-shell.css"></head><body class="classroom"><main>
+<?php teacherShell('klasser','Klasser','Klasser, elever, grupper och det du delat ut.'); ?>
 <?php if ($message): ?><p class="notice" role="status"><?= classroomEscape($message) ?> <?php if (isset($_GET['cards'])): ?><a href="cards.php?new=1">Visa och skriv ut nya inloggningskort</a> · PIN visas i 15 minuter.<?php endif; ?></p><?php endif; ?>
 <?php if ($error): ?><p class="notice error" role="alert"><?= classroomEscape($error) ?></p><?php endif; ?>
 <div class="grid"><?php panelStart('classes','Klasser'); ?><?php if (!$classes): ?><p>Ingen klass ännu. <a href="#panel-new-class">Skapa klass längst ner på sidan</a>.</p><?php endif; ?>
@@ -63,7 +64,9 @@ $confirm='Ta bort klassen '.$c['name'].($count?' och dess '.$count.($count===1?'
 <?php panelStart('overview','Utdelat och resultat',isset($_GET['assignment'])); ?><p class="muted">Quiz visar antal rätt och fel svar under försöket, inklusive repetition. Flashcards räknas när kort vänds. Hämtad PDF betyder att filen har begärts via appen.</p>
 <?php if (!$assignments): ?><p>Inget utdelat ännu.</p><?php endif; ?>
 <?php foreach (array_reverse($assignments,true) as $aid=>$a): $target=$data[$a['target_type']][$a['target_id']]['name'] ?? ($a['target_type']==='classes'?'Borttagen klass':'Borttagen grupp'); ?>
-<details <?= ($_GET['assignment'] ?? '')===$aid?'open':'' ?>><summary><strong><?= classroomEscape($a['title']) ?></strong> · <?= classroomEscape($target) ?> · <?= ['quiz'=>'Quiz','cards'=>'Flashcards','deck'=>'Flashcards','material'=>'PDF'][$a['kind']] ?></summary><div class="table-wrap"><table><thead><tr><th>Elev</th><th>Status</th><th>Övning</th></tr></thead><tbody>
+<details <?= ($_GET['assignment'] ?? '')===$aid?'open':'' ?>><summary><strong><?= classroomEscape($a['title']) ?></strong> · <?= classroomEscape($target) ?> · <?= ['quiz'=>'Quiz','cards'=>'Flashcards','deck'=>'Flashcards','material'=>'PDF'][$a['kind']] ?></summary>
+<?php if ($a['kind']==='quiz' && ($quizzes[$a['content_id']]['teacher_id'] ?? '')===$teacher): ?><p><a href="stats.php?id=<?= classroomEscape(urlencode($a['content_id'])) ?>">Statistik för quizet: snitt och svåraste frågorna</a> <span class="muted">Räknar alla som övat på quizet, även utanför den här utdelningen.</span></p><?php endif; ?>
+<div class="table-wrap"><table><thead><tr><th>Elev</th><th>Status</th><th>Övning</th></tr></thead><tbody>
 <?php $recipients=classroomAssignmentPupils($data,$a,$teacher);
 foreach ($recipients as $sid=>$s): $rows=classroomAttempts($data,$aid,$sid); $latest=$rows[0] ?? null; ?>
 <tr><td><a href="pupil.php?id=<?= classroomEscape(urlencode($sid)) ?>"><?= classroomEscape($s['name']) ?></a><?= empty($s['active'])?' (borttagen)':'' ?></td><td><?= classroomStatus($rows,$a['kind']) ?></td><td>

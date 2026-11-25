@@ -79,6 +79,8 @@ function classroomPracticeTable(string $first, array $rows): void {
     echo '<div class="table-wrap"><table><thead><tr><th>'.classroomEscape($first).'</th><th>Status</th><th>Senaste försöket</th><th>Försök</th><th>Senast övat</th></tr></thead><tbody>';
     foreach ($rows as $row) {
         echo '<tr><td>'.$row['first'].'</td><td>'.classroomEscape($row['status']).'</td><td>'.classroomEscape($row['effort']).'</td><td>'.(int)$row['tries'].'</td><td>'.classroomEscape($row['when'] ?? '—').'</td></tr>';
+        // Färdig HTML, redan escapad av den som byggde den. Tom sträng ger ingen rad.
+        if (!empty($row['detail'])) echo '<tr class="detail"><td colspan="5">'.$row['detail'].'</td></tr>';
     }
     if (!$rows) echo '<tr><td colspan="5">Inget att visa.</td></tr>';
     echo '</tbody></table></div>';

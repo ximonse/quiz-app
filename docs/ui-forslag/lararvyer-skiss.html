@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skiss: lärarvyer i quiz-appen</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.5 system-ui,sans-serif;color:#1f2937;background:linear-gradient(120deg,#eff6ff,#faf5ff);min-height:100vh}
+main{max-width:1060px;margin:auto;padding:20px}
+a{color:#1d4ed8}
+.sketch{padding:8px 14px;background:#fef3c7;border-left:4px solid #eab308;font-size:14px;margin-bottom:16px}
+.shell{background:white;border-radius:9px;box-shadow:0 8px 13px -2px #182d4b32;margin-bottom:20px;overflow:hidden}
+.shell-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px 0;flex-wrap:wrap}
+.shell-top h1{font-size:20px;margin:0}
+.shell-top .who{font-size:14px;color:#4b5563}
+.tabs{display:flex;gap:4px;padding:10px 18px 0;border-bottom:1px solid #e5e7eb;flex-wrap:wrap}
+.tabs button{font:inherit;font-size:15px;font-weight:600;padding:8px 14px;border:0;border-bottom:3px solid transparent;background:none;color:#4b5563;cursor:pointer}
+.tabs button[aria-current=page]{color:#1d4ed8;border-bottom-color:#2563eb}
+.shell-side{display:flex;gap:14px;padding:8px 18px 10px;font-size:13px;flex-wrap:wrap}
+.panel{padding:16px 18px;background:white;border-radius:9px;box-shadow:0 8px 13px -2px #182d4b32;margin-bottom:16px}
+details.panel>summary{display:flex;align-items:center;gap:10px;list-style:none;font-size:19px;font-weight:600;cursor:pointer}
+details.panel>summary::-webkit-details-marker{display:none}
+details.panel>summary::before{content:"";flex:none;width:9px;height:9px;border-right:2px solid #4b5563;border-bottom:2px solid #4b5563;transform:rotate(-45deg)}
+details.panel[open]>summary::before{transform:rotate(45deg)}
+.panel h2{font-size:19px;margin:0 0 12px}
+.bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.bar input,.bar select{font:inherit;font-size:14px;padding:4px 8px;border:1px solid #9ca3af;border-radius:5px}
+.spacer{flex:1}
+button.go,a.go{font:inherit;font-size:14px;padding:4px 12px;border:1px solid #2563eb;border-radius:6px;background:#2563eb;color:white;cursor:pointer;text-decoration:none}
+button.quiet,a.quiet{font:inherit;font-size:14px;padding:4px 10px;border:1px solid #cbd5e1;border-radius:6px;background:white;color:#1d4ed8;cursor:pointer;text-decoration:none}
+.row{display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid #e5e7eb;border-radius:7px;margin-bottom:4px;background:#f9fafb}
+.row:hover{background:#f3f4f6}
+.row .main{flex:1;min-width:0}
+.row .title{font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.row .meta{font-size:12.5px;color:#4b5563}
+.row .acts{display:flex;align-items:center;gap:4px;flex:none}
+.chip{font-size:11.5px;padding:1px 8px;border-radius:999px;background:#e0e7ff;color:#3730a3;font-weight:500}
+.chip.type{background:#ede9fe;color:#5b21b6}
+.chip.draft{background:#fef3c7;color:#854d0e}
+.chip.rep{background:#dcfce7;color:#166534}
+.chip.rep-off{background:#fef3c7;color:#854d0e}
+.icon{font-size:14px;padding:3px 6px;border-radius:5px;border:0;background:none;cursor:pointer}
+.icon:hover{background:#e5e7eb}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:4px 10px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top}
+th{font-size:13px;color:#4b5563}
+.muted{color:#4b5563;font-size:13.5px}
+.give{margin:4px 0 10px;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;font-size:14px}
+.give label{font-weight:600;margin-right:6px}
+.give select{font:inherit;font-size:14px;padding:3px 8px;border:1px solid #9ca3af;border-radius:5px}
+.menu{position:relative}
+.menu-body{position:absolute;right:0;top:100%;z-index:5;background:white;border:1px solid #cbd5e1;border-radius:7px;box-shadow:0 8px 16px -4px #182d4b40;padding:6px;min-width:200px}
+.menu-body button{display:block;width:100%;text-align:left;font:inherit;font-size:14px;padding:5px 8px;border:0;background:none;border-radius:5px;cursor:pointer}
+.menu-body button:hover{background:#f3f4f6}
+.behind{color:#9a3412;font-weight:600}
+.ok{color:#166534}
+.hidden{display:none}
+.wrong{margin:6px 0 0;padding-left:18px;font-size:14px}
+.wrong li{margin-bottom:5px}
+h3{font-size:16px;margin:16px 0 6px}
+.hard{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:14.5px;border-bottom:1px solid #f1f5f9}
+.hard .n{color:#b91c1c;font-size:12.5px;flex:none}
+.note{font-size:13px;color:#4b5563;margin:4px 0 0}
+</style>
+</head>
+<body>
+<main>
+<p class="sketch"><strong>Skiss, inte appen.</strong> Alla namn och siffror är påhittade. Tabbarna, "Dela ut", "⋯"-menyn och elevraderna i Uppföljning går att klicka.</p>
+
+<div class="shell">
+  <div class="shell-top">
+    <h1>Quiz</h1>
+    <span class="who">Lärare · Skolan</span>
+  </div>
+  <nav class="tabs">
+    <button data-tab="innehall" aria-current="page">Innehåll</button>
+    <button data-tab="klasser">Klasser</button>
+    <button data-tab="uppfoljning">Uppföljning</button>
+  </nav>
+  <div class="shell-side">
+    <a href="#">Inloggningskort</a>
+    <a href="#">Elevinloggning</a>
+    <a href="#">Oinloggade spelare</a>
+    <a href="#">Importera</a>
+    <a href="#">Logga ut</a>
+  </div>
+</div>
+
+<section id="tab-innehall">
+  <div class="panel">
+    <div class="bar">
+      <h2 style="margin:0">Innehåll <span class="muted">(7)</span></h2>
+      <div class="spacer"></div>
+      <a href="#" class="go">Skapa quiz</a>
+      <input type="search" placeholder="Sök titel, ämne, etikett" style="width:210px">
+      <select><option>Nyast först</option><option>Titel A–Ö</option><option>Ämne</option><option>Typ</option></select>
+    </div>
+
+    <div class="row">
+      <div class="main">
+        <div class="title">Spanska vecka 48 <span class="chip type">Glosor</span> <span class="chip">Spanska</span> <span class="chip rep">Repetition</span></div>
+        <div class="meta">24 glosor · utdelad till 6A, 6B · 31 elevsvar · 2 oinloggade</div>
+      </div>
+      <div class="acts">
+        <button class="go" data-give>Dela ut</button>
+        <a href="#" class="quiet">Statistik</a>
+        <button class="icon" title="Redigera">✏️</button>
+        <span class="menu"><button class="icon" data-menu title="Fler">⋯</button>
+          <div class="menu-body hidden"><button>Granska</button><button>Dela fritt: kopiera länk</button><button>Dela fritt: QR-kod</button><button>Radera</button></div>
+        </span>
+      </div>
+    </div>
+    <div class="give hidden" data-give-panel>
+      <label for="g1">Dela ut till</label>
+      <select id="g1"><option>6A</option><option>6B</option><option>Grupp: Läsgrupp tisdag</option></select>
+      <button class="go">Dela ut</button>
+      <button class="quiet" data-give-cancel>Avbryt</button>
+      <p class="note">Repetitionen samlar kort för klassens elever när de övat.</p>
+    </div>
+
+    <div class="row">
+      <div class="main">
+        <div class="title">Cellens delar <span class="chip type">Begrepp</span> <span class="chip">Biologi</span> <span class="chip rep-off">Repetition: inte utdelad</span></div>
+        <div class="meta">18 frågor · inte utdelad · 0 elevsvar · 7 oinloggade</div>
+      </div>
+      <div class="acts">
+        <button class="go" data-give>Dela ut</button>
+        <a href="#" class="quiet">Statistik</a>
+        <button class="icon" title="Redigera">✏️</button>
+        <span class="menu"><button class="icon" data-menu title="Fler">⋯</button>
+          <div class="menu-body hidden"><button>Granska</button><button>Dela fritt: kopiera länk</button><button>Dela fritt: QR-kod</button><button>Radera</button></div>
+        </span>
+      </div>
+    </div>
+    <div class="give hidden" data-give-panel>
+      <label for="g2">Dela ut till</label>
+      <select id="g2"><option>6A</option><option>6B</option><option>Grupp: Läsgrupp tisdag</option></select>
+      <button class="go">Dela ut</button>
+      <button class="quiet" data-give-cancel>Avbryt</button>
+      <p class="note">Repetition är påslagen i quizet, men samlar inget förrän det är utdelat till en klass.</p>
+    </div>
+
+    <div class="row">
+      <div class="main">
+        <div class="title">Sortera: växt, djur, svamp <span class="chip type">Sortering</span> <span class="chip">Biologi</span></div>
+        <div class="meta">6 uppgifter · utdelad till 6A · 22 elevsvar · 0 oinloggade <span class="muted">· repetition går inte för sorteringsquiz</span></div>
+      </div>
+      <div class="acts">
+        <button class="go" data-give>Dela ut</button>
+        <a href="#" class="quiet">Statistik</a>
+        <button class="icon" title="Redigera">✏️</button>
+        <span class="menu"><button class="icon" data-menu title="Fler">⋯</button>
+          <div class="menu-body hidden"><button>Granska</button><button>Dela fritt: kopiera länk</button><button>Dela fritt: QR-kod</button><button>Radera</button></div>
+        </span>
+      </div>
+    </div>
+    <div class="give hidden" data-give-panel>
+      <label for="g3">Dela ut till</label>
+      <select id="g3"><option>6A</option><option>6B</option></select>
+      <button class="go">Dela ut</button>
+      <button class="quiet" data-give-cancel>Avbryt</button>
+    </div>
+
+    <div class="row">
+      <div class="main">
+        <div class="title">Spanska vecka 47 <span class="chip type">Glosor</span> <span class="chip draft">Ändringar att granska</span></div>
+        <div class="meta">20 glosor · utdelad till 6A · 28 elevsvar</div>
+      </div>
+      <div class="acts">
+        <a href="#" class="go">Granska</a>
+        <a href="#" class="quiet">Statistik</a>
+        <button class="icon" title="Redigera">✏️</button>
+        <span class="menu"><button class="icon" data-menu title="Fler">⋯</button>
+          <div class="menu-body hidden"><button>Dela fritt: kopiera länk</button><button>Dela fritt: QR-kod</button><button>Radera</button></div>
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="tab-klasser" class="hidden">
+  <details class="panel" open><summary>Klasser</summary>
+    <div style="margin-top:12px">
+      <div class="row"><div class="main"><div class="title">6A</div><div class="meta">24 elever · 5 utdelningar</div></div>
+        <div class="acts"><a href="#" class="quiet">Öppna</a><button class="icon" title="Hantera">⋯</button></div></div>
+      <div class="row"><div class="main"><div class="title">6B</div><div class="meta">22 elever · 3 utdelningar</div></div>
+        <div class="acts"><a href="#" class="quiet">Öppna</a><button class="icon" title="Hantera">⋯</button></div></div>
+    </div>
+  </details>
+  <details class="panel"><summary>Elever</summary></details>
+  <details class="panel"><summary>Grupper</summary></details>
+  <details class="panel"><summary>Utdelat</summary></details>
+  <details class="panel"><summary>Lägg till elever</summary></details>
+  <details class="panel"><summary>Skapa klass</summary></details>
+  <p class="muted">Panelerna minns sitt läge per webbläsare. Skapa-funktionerna ligger längst ner; hantera ligger hos det som hanteras.</p>
+</section>
+
+<section id="tab-uppfoljning" class="hidden">
+  <div class="panel">
+    <div class="bar">
+      <h2 style="margin:0">Uppföljning</h2>
+      <div class="spacer"></div>
+      <select><option>6A</option><option>6B</option><option>Grupp: Läsgrupp tisdag</option></select>
+      <select><option>Allt utdelat</option><option>Spanska vecka 48</option><option>Cellens delar</option></select>
+    </div>
+    <table>
+      <thead><tr><th>Elev</th><th>Klart</th><th>Senast övat</th><th>Repetition att göra</th><th>Svagast just nu</th></tr></thead>
+      <tbody>
+        <tr data-pupil><td><a href="#">Alva</a></td><td class="ok">5 av 5</td><td>i dag</td><td>3 kort</td><td>el agua</td></tr>
+        <tr><td colspan="5" class="hidden" data-pupil-detail>
+          <details open><summary>3 frågor blev fel</summary>
+          <p class="muted">Från senast genomförda försöket 2026-11-24. Gäller quizet, inte en enskild utdelning.</p>
+          <ul class="wrong">
+            <li><strong>el agua</strong> <span class="muted">2 försök</span><br>Eleven svarade: <q>luften</q><br><span class="muted">Rätt svar: vattnet</span></li>
+            <li><strong>la ciudad</strong><br>Eleven svarade: <q>landet</q><br><span class="muted">Rätt svar: staden</span></li>
+            <li><strong>el pueblo</strong><br>Eleven svarade: <q>folket</q><br><span class="muted">Rätt svar: byn</span></li>
+          </ul></details>
+        </td></tr>
+        <tr data-pupil><td><a href="#">Noel</a></td><td class="behind">2 av 5</td><td>för 6 dagar sedan</td><td>11 kort</td><td>la ciudad</td></tr>
+        <tr><td colspan="5" class="hidden" data-pupil-detail><p class="muted">Felsvaren fälls ut på samma sätt här.</p></td></tr>
+        <tr data-pupil><td><a href="#">Tove</a></td><td class="ok">5 av 5</td><td>i går</td><td>0 kort</td><td>—</td></tr>
+        <tr><td colspan="5" class="hidden" data-pupil-detail><p class="muted">Felsvaren fälls ut på samma sätt här.</p></td></tr>
+        <tr data-pupil><td><a href="#">Liam</a></td><td class="behind">0 av 5</td><td>aldrig</td><td>0 kort</td><td>—</td></tr>
+        <tr><td colspan="5" class="hidden" data-pupil-detail><p class="muted">Eleven har inte börjat.</p></td></tr>
+      </tbody>
+    </table>
+    <p class="note">Klicka en elevrad för att fälla ut felsvaren. Siffrorna gäller de inloggade eleverna.</p>
+
+    <h3>Svårast i 6A just nu</h3>
+    <div class="hard"><span>el agua → vattnet <span class="muted">Spanska vecka 48</span></span><span class="n">14 fel · 58 %</span></div>
+    <div class="hard"><span>la ciudad → staden <span class="muted">Spanska vecka 48</span></span><span class="n">11 fel · 46 %</span></div>
+    <div class="hard"><span>Cellkärnan <span class="muted">Cellens delar</span></span><span class="n">9 fel · 37 %</span></div>
+    <p class="note">Räknas bara på eleverna i 6A, inte på oinloggade spelare.</p>
+  </div>
+</section>
+
+<script>
+const tabs=[...document.querySelectorAll('.tabs button')];
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(o=>o.removeAttribute('aria-current'));
+  t.setAttribute('aria-current','page');
+  ['innehall','klasser','uppfoljning'].forEach(id=>
+    document.getElementById('tab-'+id).classList.toggle('hidden',id!==t.dataset.tab));
+}));
+document.querySelectorAll('[data-give]').forEach(b=>b.addEventListener('click',()=>{
+  const p=b.closest('.row').nextElementSibling;
+  if(p&&p.hasAttribute('data-give-panel')) p.classList.toggle('hidden');
+}));
+document.querySelectorAll('[data-give-cancel]').forEach(b=>b.addEventListener('click',()=>b.closest('[data-give-panel]').classList.add('hidden')));
+document.querySelectorAll('[data-menu]').forEach(b=>b.addEventListener('click',e=>{
+  e.stopPropagation();
+  const body=b.nextElementSibling, open=!body.classList.contains('hidden');
+  document.querySelectorAll('.menu-body').forEach(m=>m.classList.add('hidden'));
+  body.classList.toggle('hidden',open);
+}));
+addEventListener('click',()=>document.querySelectorAll('.menu-body').forEach(m=>m.classList.add('hidden')));
+document.querySelectorAll('[data-pupil]').forEach(r=>r.addEventListener('click',()=>{
+  const d=r.nextElementSibling.querySelector('[data-pupil-detail]');
+  if(d) d.classList.toggle('hidden');
+}));
+</script>
+</main>
+</body>
+</html>

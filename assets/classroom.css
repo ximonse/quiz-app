@@ -35,3 +35,17 @@ body.classroom{margin:0;font:16px/1.5 system-ui,sans-serif;color:#1f2937;backgro
 .classroom .grid:has(>details.panel:not([open])){row-gap:12px}
 .classroom .class-item-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .classroom .class-manage{margin:4px 0}
+/* Elevlistan: kompakta rader. Marginalen runt radens Hantera-details gjorde raden onödigt hög. */
+.classroom #panel-pupils table th,.classroom #panel-pupils table td{padding:4px 12px}
+.classroom #panel-pupils table td>details{margin:0}
+.classroom #panel-pupils table td>details[open]{margin-bottom:8px}
+/* Felsvar per elev: en utfallbar rad under uppgiften, lugn och indragen. */
+.classroom tr.detail td{padding:0 10px 6px 22px;border-bottom:1px solid #e5e7eb}
+.classroom tr.detail>td>details,.classroom tr.detail>td>p{margin:0}
+.classroom tr.detail>td>details[open]{margin-bottom:4px}
+.classroom .wrong-list{margin:8px 0 4px;padding-left:20px}
+.classroom .wrong-list li{margin-bottom:8px}
+/* Sidspecifik genväg direkt under den gemensamma headern. */
+.classroom .shortcut{margin:-8px 0 16px;font-size:14px}
+/* Uppföljning: markera bara det som faktiskt ligger efter. */
+.classroom td.behind{color:#9a3412;font-weight:600}

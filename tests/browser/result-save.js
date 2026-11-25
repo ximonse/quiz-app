@@ -34,7 +34,7 @@ const fx=startFixture(); let browser;
     await page.goto(fx.base+'/index.php');
     await page.fill('input[name=username]','fixture'); await page.fill('input[name=password]','pw');
     await Promise.all([page.waitForNavigation(),page.locator('form button').click()]);
-    await page.getByText('Skapa nytt quiz',{exact:true}).waitFor();
+    await page.getByText('Dina quiz',{exact:false}).first().waitFor();
     await page.screenshot({path:shot('dashboard-current.png'),fullPage:true});
     check(await page.locator('link[href="../assets/vendor/tailwind-3.4.19.css"]').count()===1,'Dashboard did not use local CSS');
     await browser.close(); console.log(`PASS: ${checks} result retry browser checks`);

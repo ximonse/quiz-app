@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/teacher-shell.php';
 require_once __DIR__ . '/../includes/browser-ids.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 
@@ -15,14 +16,14 @@ $groups = browserIdentityGroups($teacherId, $quizzes, $stats, $flashcards);
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Namn per webbläsare</title>
+    <title>Oinloggade spelare</title>
     <link rel="stylesheet" href="../assets/vendor/tailwind-3.4.19.css">
     <link rel="stylesheet" href="../engine/themes.css">
+    <link rel="stylesheet" href="../assets/teacher-shell.css">
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
-<main class="max-w-3xl mx-auto p-4">
-    <a href="dashboard.php" class="text-blue-600 hover:underline text-sm">&larr; Mina quiz</a>
-    <h1 class="text-2xl font-bold mt-4 mb-2" style="color: var(--text-primary)">Namn per webbläsare</h1>
+<main class="teacher-page">
+    <?php teacherShell('innehall','Oinloggade spelare','Namn per webbläsare, för elever som spelat utan att logga in.'); ?>
     <p class="text-sm mb-6" style="color: var(--text-secondary)">Här visas alla namn som använts med samma webbläsar-ID i dina quiz och flashcards. Flera elever på en delad dator kan få samma ID. En elev som byter webbläsare eller rensar webbläsardata får ett nytt ID. Äldre resultat saknar ID och kan inte kopplas i efterhand.</p>
     <?php if (!$groups): ?>
         <p class="rounded-lg p-4" style="background: var(--card-bg); border: 1px solid var(--border)">Inga resultat med webbläsar-ID ännu.</p>
