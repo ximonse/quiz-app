@@ -426,6 +426,15 @@ return false;
     check(req(noel_login,'/api/save-result.php',payload={**noel_base,'score':2,'request_id':'f'*32,'errors':[]})[0]==200,'Clean Noel result failed')
     clean_page=req(teacher,'/admin/pupil.php?id='+noel_pupil['id'])[1]
     check('Tre plus tre?' not in clean_page and 'Inga fel i elevens senaste försök' in clean_page,'A clean latest attempt still showed an older run as the latest')
+    # Statistiken ska tala ett resultat utan tidsstämpel, inte varna.
+    old_stats=req(teacher,'/admin/stats.php?id=q_fixture')
+    check(old_stats[0]==200 and 'okänt datum' in old_stats[1],'Statistics did not survive a result without a timestamp')
+    # Undermenyn hör till fliken: elevkorten i Klasser, importen i Innehåll.
+    shell_library=req(teacher,'/admin/dashboard.php')[1]
+    shell_classes=req(teacher,'/admin/classes.php')[1]
+    check('Importera flera quiz' in shell_library and 'Inloggningskort' not in shell_library,'Library menu shows the wrong secondary links')
+    check('Inloggningskort' in shell_classes and 'Importera flera quiz' not in shell_classes,'Classes menu shows the wrong secondary links')
+    check('Logga ut' in shell_library and 'Logga ut' in shell_classes,'Logout vanished from the menu')
     # Skapandet ligger på en egen sida; biblioteket ska bara peka dit.
     library=req(teacher,'/admin/dashboard.php')[1]
     check('create.php' in library and 'name="csv_data"' not in library,'Library still carries the create form')

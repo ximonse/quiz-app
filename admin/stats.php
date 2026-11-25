@@ -151,7 +151,7 @@ if (count($results) > 0) {
             <?php foreach (array_reverse(array_slice($results, -20)) as $r): ?>
                 <div class="flex items-center justify-between gap-3 py-2 border-b" style="border-color: var(--border)">
                     <div>
-                        <div class="text-sm" style="color: var(--text-primary)"><?= htmlspecialchars($r['student_name']) ?></div>
+                        <div class="text-sm" style="color: var(--text-primary)"><?= htmlspecialchars($r['student_name'] ?? 'Okänd') ?></div>
                         <?php if ($quiz['type'] === 'image_choice'): ?>
                             <?php if (isset($r['choice_counts']['right'], $r['choice_counts']['wrong'], $r['choice_counts']['missed'])): ?>
                                 <div class="text-xs" style="color: var(--text-secondary)">Bildval: <?= (int)$r['choice_counts']['right'] ?> rätt · <?= (int)$r['choice_counts']['wrong'] ?> fel · <?= (int)$r['choice_counts']['missed'] ?> missade</div>
@@ -161,8 +161,10 @@ if (count($results) > 0) {
                         <?php endif; ?>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
-                        <span class="text-sm font-medium" style="color: var(--accent)"><?= $r['score'] ?>/<?= $r['total'] ?></span>
-                        <span class="text-xs" style="color: var(--text-secondary)"><?= date('j/n H:i', strtotime($r['timestamp'])) ?></span>
+                        <span class="text-sm font-medium" style="color: var(--accent)"><?= (int)($r['score'] ?? 0) ?>/<?= (int)($r['total'] ?? 0) ?></span>
+                        <?php // Resultat sparade innan tidsstampeln fanns saknar den helt.
+                        $stamp = !empty($r['timestamp']) ? strtotime((string)$r['timestamp']) : false; ?>
+                        <span class="text-xs" style="color: var(--text-secondary)"><?= $stamp ? date('j/n H:i', $stamp) : 'okänt datum' ?></span>
                     </div>
                 </div>
             <?php endforeach; ?>

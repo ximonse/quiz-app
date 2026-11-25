@@ -9,15 +9,16 @@
 
 function teacherShellEscape($value): string { return htmlspecialchars((string)$value,ENT_QUOTES,'UTF-8'); }
 
-// Länkar i sidhuvudets andra rad. Hålls korta och i samma ordning överallt.
-function teacherShellSideLinks(): array {
-    return [
-        ['pupil.php','Hitta elev'],
-        ['cards.php','Inloggningskort'],
-        ['browser-ids.php','Oinloggade spelare'],
-        ['batch-import.php','Importera'],
-        ['../index.php?logout=1','Logga ut'],
+// Andra raden hör till fliken man står i, inte till appen som helhet: att visa
+// elevkort i quizbiblioteket och importfunktionen i klassvyn gör bara raden
+// längre utan att hjälpa. Logga ut finns överallt.
+function teacherShellSideLinks(string $current): array {
+    $perTab=[
+        'innehall'=>[['batch-import.php','Importera flera quiz'],['browser-ids.php','Oinloggade spelare']],
+        'klasser'=>[['pupil.php','Hitta elev'],['cards.php','Inloggningskort']],
+        'uppfoljning'=>[['pupil.php','Hitta elev'],['cards.php','Inloggningskort']],
     ];
+    return array_merge($perTab[$current] ?? [],[['../index.php?logout=1','Logga ut']]);
 }
 // $title är sidans egen rubrik, $meta en kort rad under den (valfri).
 // Alla sidor som använder den här ligger i admin/, så länkarna är relativa dit.
@@ -31,7 +32,7 @@ function teacherShell(string $current, string $title, string $meta=''): void {
         echo '<a href="'.teacherShellEscape($href).'"'.($here?' aria-current="page"':'').'>'.teacherShellEscape($label).'</a>';
     }
     echo '</nav><div class="teacher-side">';
-    foreach (teacherShellSideLinks() as [$href,$label]) {
+    foreach (teacherShellSideLinks($current) as [$href,$label]) {
         echo '<a href="'.teacherShellEscape($href).'">'.teacherShellEscape($label).'</a>';
     }
     echo '</div></div>';

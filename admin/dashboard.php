@@ -365,16 +365,6 @@ function filterQuizzes() {
 function toggleInfoModal() {
     document.getElementById('info-modal').classList.toggle('hidden');
 }
-function copyAiPrompt() {
-    const type = document.getElementById('type-input').value;
-    const el = document.getElementById('prompt-' + type);
-    navigator.clipboard.writeText(el.innerText).then(() => alert('Prompt kopierad! Klistra in den i din AI-chatt.'));
-}
-
-// Vid ett sticky-återladdat formulär (efter ett misslyckat försök): visa
-// rätt typ-knapp/CSV-hint/inställningsfält utifrån de återställda värdena.
-selectType(document.getElementById('type-input').value, true);
-toggleReverseFields();
 </script>
 </body>
 </html>

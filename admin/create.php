@@ -196,9 +196,10 @@ function parseCSV($csvText, $type) {
 
                 <!-- AI Prompt Helper -->
                 <div class="mt-2">
-                    <button type="button" onclick="toggleAiPrompt()" class="flex items-center text-purple-600 hover:text-purple-800 font-medium text-xs">
-                        <span class="mr-1">🤖</span> Behöver du hjälp att skapa CSV? Klicka här för AI-prompt
+                    <button type="button" onclick="toggleAiPrompt()" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-800 font-medium text-sm">
+                        <span>🤖</span> <span>Hämta AI-prompt för <span id="ai-prompt-type">glosorna</span></span>
                     </button>
+                    <p class="text-xs text-gray-700 mt-1">Färdig prompt att klistra in i ChatGPT, Claude eller Copilot. Du laddar upp ett foto eller en lista, och får tillbaka CSV att klistra in här.</p>
                     <div id="ai-prompt-box" class="hidden mt-2 p-3 bg-purple-50 border border-purple-100 rounded-lg">
                         <ol class="text-xs text-purple-900 list-decimal list-inside space-y-1 mb-3">
                             <li>Klicka på "📋 Kopiera prompt" nedan.</li>
@@ -437,6 +438,7 @@ function selectType(type, silent) {
     document.getElementById('prompt-glossary').classList.toggle('hidden', type !== 'glossary');
     document.getElementById('prompt-fact').classList.toggle('hidden', type !== 'fact');
     document.getElementById('manual-builder-label-inline').textContent = (type === 'glossary') ? 'glosorna' : 'frågorna';
+    document.getElementById('ai-prompt-type').textContent = (type === 'glossary') ? 'glosorna' : 'frågorna';
     document.getElementById('manual-builder-label').textContent = (type === 'glossary') ? 'Glosor' : 'Frågor';
     document.getElementById('add-row-label').textContent = (type === 'glossary') ? 'glosa' : 'fråga';
     // silent=true (används vid sticky-återladdning) rör inte TTS-kryssrutan,
@@ -546,6 +548,16 @@ function prepareCreateSubmit() {
     }
     return true;
 }
+function copyAiPrompt() {
+    const type = document.getElementById('type-input').value;
+    const el = document.getElementById('prompt-' + type);
+    navigator.clipboard.writeText(el.innerText).then(() => alert('Prompt kopierad! Klistra in den i din AI-chatt.'));
+}
+
+// Vid ett sticky-återladdat formulär (efter ett misslyckat försök): visa
+// rätt typ-knapp/CSV-hint/inställningsfält utifrån de återställda värdena.
+selectType(document.getElementById('type-input').value, true);
+toggleReverseFields();
 </script>
 </body>
 </html>
