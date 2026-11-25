@@ -1,6 +1,8 @@
 # Förslag: lärarvyerna som ett sammanhängande arbetsflöde
 
-Status: **förslag, inget är byggt.** Skiss med syntetiska data:
+Status: **steg 1 och 2 är byggda** (gemensam header, Dela ut från quizraden,
+repetitionsstatus på raden, fri utdelning i radmenyn). Resten av avsnitt 2 och
+hela avsnitt 3 är fortfarande förslag. Skiss med syntetiska data:
 [lararvyer-skiss.html](lararvyer-skiss.html) — öppna lokalt i webbläsaren.
 
 Utgångspunkt från 2026-11-25: inloggade elever är förstahandsfallet, oinloggade
@@ -219,6 +221,11 @@ läsbar text — är personliga krav och redovisas som sådana, inte som forskni
 ## 6. Vad som är vad
 
 - **Fakta:** avsnitt 1, läst i koden i denna repo.
-- **Förslag:** avsnitt 2–4. Inget av det är beslutat, och inget är byggt.
+- **Byggt 2026-11-25:** steg 1 och 2 i avsnitt 2, plus ordlistan i den mån den
+  rör de ändrade vyerna. Redigerarna har kvar sin egen layout med en
+  tillbakalänk, inte hela skalet; det var ett medvetet val, eftersom en
+  fokuserad redigeringssida inte vinner på en flikrad.
+- **Förslag:** resten av avsnitt 2 (steg 3–5 och valet av stilmall) samt
+  avsnitt 3 och 4. Inget av det är beslutat eller byggt.
 - **Levererat separat, före detta dokument:** felsvar per elev på elevsidan, och
   länk från utdelning till quizstatistiken.
