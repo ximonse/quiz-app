@@ -20,3 +20,8 @@
   .teacher-tabs a{padding:7px 10px}
   .teacher-side{padding:8px 14px 10px;gap:10px}
 }
+
+/* Radmenyn i innehållslistan: ingen inbyggd triangel bredvid den egna ikonen. */
+details[data-more]>summary{list-style:none}
+details[data-more]>summary::-webkit-details-marker{display:none}
+details[data-more]>summary::marker{content:""}

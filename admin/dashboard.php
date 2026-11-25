@@ -580,9 +580,9 @@ Nu, invänta mitt material.</pre>
                         <?php endif; endforeach; endif; ?>
                     </div>
                     <div class="text-xs text-gray-700">
-                        <?= $itemCount ?> <?= $itemWord ?> &middot; <?= htmlspecialchars($createdDate) ?>
+                        <?= $itemCount ?> <?= $itemWord ?><?= $createdDate ? ' &middot; '.htmlspecialchars($createdDate) : '' ?>
                         &middot; <?= $reachedNames ? 'utdelad till '.htmlspecialchars(implode(', ', $reachedNames)) : 'inte utdelad' ?>
-                        &middot; <?= $pupilResults ?> elevsvar<?= $guestResults ? ' &middot; '.$guestResults.' oinloggade' : '' ?>
+                        &middot; <?= $pupilResults ?> <?= $pupilResults===1?'elevsvar':'elevsvar' ?><?= $guestResults ? ' &middot; '.$guestResults.($guestResults===1?' oinloggad':' oinloggade') : '' ?>
                     </div>
                 </div>
                 <div class="flex items-center gap-1 ml-4">
