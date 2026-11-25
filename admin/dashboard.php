@@ -222,16 +222,16 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                     <p>Om aktiverat kan eleven bläddra igenom alla glosor som kort (fram/baksida) utan att bli bedömd — bra repetition inför ett test. Avmarkeras automatiskt om du väljer Quizläge "Test", men går att bocka i igen manuellt.</p>
                 </div>
                 <div>
-                    <h3 class="font-bold text-gray-800 mb-1">🔗 Elevlänk</h3>
-                    <p>Klicka på 📋-ikonen bredvid ett quiz i listan för att kopiera länken till eleverna. Eleven skriver in sitt namn och väljer sedan mellan Träning/Test och Flashcards, beroende på vad du aktiverat.</p>
+                    <h3 class="font-bold text-gray-800 mb-1">Dela ut eller dela fritt</h3>
+                    <p><strong>Dela ut</strong> ger quizet till en klass eller grupp, så eleverna hittar det när de loggar in och repetitionen kan börja samla kort. <strong>Dela fritt</strong> ligger i ⋯-menyn på raden och ger en länk eller QR-kod som vem som helst kan spela utan konto; då skriver eleven in sitt namn själv.</p>
                 </div>
                 <div>
                     <h3 class="font-bold text-gray-800 mb-1">📊 Statistik</h3>
-                    <p>Klicka på 📊-ikonen för att se: antal genomförda quiz, snitträtt i procent, de svåraste frågorna (flest fel) och en lista över de senaste 20 resultaten med namn och poäng. Du kan även rensa alla resultat därifrån.</p>
+                    <p>Klicka på 📊-ikonen på raden för att se: antal genomförda quiz, snitträtt i procent, de svåraste frågorna (flest fel) och en lista över de senaste 20 resultaten med namn och poäng. Du kan även rensa alla resultat därifrån.</p>
                 </div>
                 <div>
-                    <h3 class="font-bold text-gray-800 mb-1">✏️ Redigera / 🗑️ Radera</h3>
-                    <p>Ändra inställningar eller uppdatera CSV-datan via ✏️. Radering (🗑️) är permanent och tar bort alla sparade elevresultat för det quizet.</p>
+                    <h3 class="font-bold text-gray-800 mb-1">✏️ Redigera / Radera</h3>
+                    <p>Ändra inställningar eller uppdatera CSV-datan via ✏️. Radering ligger i ⋯-menyn på raden, är permanent och tar bort alla sparade elevresultat för det quizet.</p>
                 </div>
             </div>
         </div>
@@ -519,7 +519,7 @@ Nu, invänta mitt material.</pre>
     <!-- ═══════════ MINA QUIZ ═══════════ -->
     <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold text-gray-800">Mina Quiz (<?= count($myQuizzes) ?>)</h2>
+            <h2 class="text-lg font-bold text-gray-800">Dina quiz (<?= count($myQuizzes) ?>)</h2>
             <div class="flex items-center gap-2">
                 <input type="text" id="search-input" oninput="filterQuizzes()" placeholder="Sök..." class="text-sm px-2 py-1 border border-gray-500 rounded w-40">
                 <label class="text-xs text-gray-700">Sortera:</label>
@@ -552,7 +552,8 @@ Nu, invänta mitt material.</pre>
                 $reachedNames = array_keys($assignedTo[$quiz['id']] ?? []);
                 // Repetition kräver rätt typ, publicerat OCH utdelat; säg vilket som fattas.
                 $repetitionOn = !empty($quiz['settings']['spaced_repetition']) && in_array($type, ['fact','glossary'], true);
-                $canAssign = $reviewState === 'published' && $targets;
+                $liveContent = classroomContent(['kind' => 'quiz', 'content_id' => $quiz['id'], 'teacher_id' => $teacherId]);
+                $canAssign = $liveContent && $targets;
                 $itemWord = $type === 'glossary' ? 'glosor' : 'frågor';
                 $subject = htmlspecialchars($quiz['subject'] ?? '');
                 $tags = htmlspecialchars($quiz['tags'] ?? '');
@@ -571,7 +572,7 @@ Nu, invänta mitt material.</pre>
                         <span class="font-medium text-gray-800 truncate"><?= htmlspecialchars($quiz['title']) ?></span>
                         <span class="text-xs px-2 py-0.5 rounded-full <?= $badgeColor ?>"><?= $typeBadge ?></span>
                         <?php if ($reviewState!=='published'): ?><span class="text-xs text-amber-800"><?= $reviewState==='draft'?'Opublicerat':'Ändringar att granska' ?></span><?php endif; ?>
-                        <?php if ($repetitionOn): ?><span class="text-xs px-2 py-0.5 rounded-full <?= $reachedNames ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800' ?>"><?= $reachedNames ? 'Repetition' : 'Repetition: inte utdelad' ?></span><?php endif; ?>
+                        <?php if ($repetitionOn): ?><span class="text-xs px-2 py-0.5 rounded-full <?= ($reachedNames && $liveContent) ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800' ?>"><?= $reachedNames ? ($liveContent ? 'Repetition' : 'Repetition: inte publicerat') : 'Repetition: inte utdelad' ?></span><?php endif; ?>
                         <?php if ($subject): ?>
                             <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"><?= $subject ?></span>
                         <?php endif; ?>
@@ -620,7 +621,7 @@ Nu, invänta mitt material.</pre>
                 <button type="button" data-assign-cancel class="ml-1 px-3 py-1 rounded-lg border border-gray-400 bg-white text-blue-700 text-sm">Avbryt</button>
                 <?php if ($repetitionOn && !$reachedNames): ?><p class="mt-1 text-xs text-gray-700">Repetitionen börjar samla kort när klassens elever övat på quizet.</p><?php endif; ?>
             </form>
-            <?php elseif ($reviewState==='published'): ?>
+            <?php elseif ($liveContent): ?>
             <p class="mb-2 px-4 text-xs text-gray-700">Skapa en klass i <a href="classes.php" class="text-blue-700 underline">Klasser</a> för att kunna dela ut quizet.</p>
             <?php else: ?>
             <p class="mb-2 px-4 text-xs text-gray-700">Publicera quizet för att kunna dela ut det till en klass.</p>

@@ -143,7 +143,7 @@ $s = $quiz['settings'];
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
 <div class="max-w-2xl mx-auto p-4">
     <div class="flex items-center gap-4 mb-6">
-        <a href="dashboard.php" class="text-blue-600 hover:underline text-sm">&larr; Tillbaka</a>
+        <a href="dashboard.php" class="text-blue-600 hover:underline text-sm">&larr; Innehåll</a>
         <a href="images.php?id=<?= urlencode($quizId) ?>" class="text-blue-600 hover:underline text-sm">Infobild till frågan</a>
         <a href="review.php?id=<?= urlencode($quizId) ?>">Granska och publicera</a>
         <h1 class="text-2xl font-bold" style="color: var(--text-primary)">Redigera: <?= htmlspecialchars($quiz['title']) ?></h1>

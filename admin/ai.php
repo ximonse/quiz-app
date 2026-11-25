@@ -41,7 +41,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f4f9;border:1px so
 </style>
 </head>
 <body><main>
-<a href="dashboard.php">← Mina quiz</a>
+<a href="dashboard.php">← Innehåll</a>
 <h1>ai-api</h1>
 <p>Med en AI-klient som stöder en egen MCP-koppling kan du låta AI:n hitta, läsa, skapa och föreslå ändringar i dina quiz. Nya quiz och ändringar sparas för granskning. Du kontrollerar innehållet och publicerar själv i appen. Kopplingen ger aldrig åtkomst till elevresultat.</p>
 <p class="note"><strong>Förutsättningar:</strong> Du behöver ett konto i en AI-tjänst och en klient som kan ansluta till en extern MCP-server med <code>Authorization: Bearer</code>. Funktionerna kan kräva en betalversion eller ett särskilt abonnemang, till exempel hos ChatGPT, Claude eller Google Antigravity. Kontrollera vad just din version stöder innan du skapar en nyckel: ett betalkonto i sig garanterar inte att den här typen av anslutning fungerar. <a href="https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-connectors-in-chatgpt">ChatGPT</a>, <a href="https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp">Claude</a> och <a href="https://www.antigravity.google/docs/mcp">Antigravity</a> har egna instruktioner.</p>

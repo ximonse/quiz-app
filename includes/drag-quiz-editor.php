@@ -45,7 +45,7 @@ function dragQuizEditor(array $config): void {
     $e=fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8'); $s=$doc['settings']; $v=fn($f)=>filemtime(__DIR__.'/../engine/'.$f);
 ?>
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Redigera <?= $e($config['label']) ?></title><link rel="stylesheet" href="../engine/image-choice.css?v=<?= $v('image-choice.css') ?>"><link rel="stylesheet" href="../engine/sort-editor.css?v=<?= $v('sort-editor.css') ?>"></head>
-<body><main><a href="dashboard.php">← Mina quiz</a><header><p class="eyebrow"><?= $e(ucfirst($config['label'])) ?></p><h1><?= $id?'Redigera ':'Skapa ' ?><?= $e($config['label']) ?></h1><p><?= $e($config['intro']) ?></p>
+<body><main><a href="dashboard.php">← Innehåll</a><header><p class="eyebrow"><?= $e(ucfirst($config['label'])) ?></p><h1><?= $id?'Redigera ':'Skapa ' ?><?= $e($config['label']) ?></h1><p><?= $e($config['intro']) ?></p>
 <?php if ($id): ?><nav><a class="button secondary" href="review.php?id=<?= urlencode($id) ?>">Granska och publicera</a><a class="button secondary" href="images.php?id=<?= urlencode($id) ?>">Lägg till infobild</a></nav><?php endif; ?></header>
 <?php if ($error): ?><p class="error" role="alert"><?= $e($error) ?></p><?php endif; ?>
 <?php if (isset($_GET['saved'])): ?><p class="success" role="status">Sparat för granskning. Publicera när du är nöjd.</p><?php endif; ?>

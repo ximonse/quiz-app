@@ -426,6 +426,19 @@ return false;
     check('Glosquiz' in req(teacher,'/admin/class.php?id='+pc)[1],'Assignment from the dashboard never reached the class')
     check('utdelad till 7D' in req(teacher,'/admin/dashboard.php')[1],'Dashboard row lost the receipt for where the quiz went')
     check(req(teacher,'/admin/dashboard.php',form={'action':'assign','content':'quiz:q_gloss','target':'classes:'+pc})[0]==403,'Assigning from the dashboard without CSRF was accepted')
+    # Ett publicerat quiz med ogranskade ändringar har fortfarande en levande
+    # version, så det ska gå att dela ut precis som i Klasser.
+    blocked='Publicera quizet för att kunna dela ut det till en klass.'
+    before_blocked=req(teacher,'/admin/dashboard.php')[1].count(blocked)
+    staged=json.loads((fixture/'data/quizzes.json').read_text('utf-8'))
+    staged['q_sort']['pending_document']={'title':'Sorteringsquiz, ny version'}
+    (fixture/'data/quizzes.json').write_text(json.dumps(staged,ensure_ascii=False),encoding='utf-8')
+    pending_board=req(teacher,'/admin/dashboard.php')[1]
+    check('Ändringar att granska' in pending_board,'Dashboard lost the pending-changes marker')
+    check(pending_board.count(blocked)==before_blocked,'A quiz with pending changes was wrongly blocked from being assigned')
+    restored=json.loads((fixture/'data/quizzes.json').read_text('utf-8'))
+    del restored['q_sort']['pending_document']
+    (fixture/'data/quizzes.json').write_text(json.dumps(restored,ensure_ascii=False),encoding='utf-8')
     status,page,_=req(teacher,'/admin/class.php?id='+pc)
     check(status==200 and 'Testquiz' in page and 'Arkiverat quiz' in page and 'Elin Test' in page, 'Class page missing its assignments or pupils')
     status,page,_=req(teacher,'/admin/class.php?id='+pc+'&assignment='+live_a)

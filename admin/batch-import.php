@@ -155,12 +155,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
 <div class="max-w-2xl mx-auto p-4">
     <div class="flex items-center gap-4 mb-6">
-        <a href="dashboard.php" class="text-blue-600 hover:underline text-sm">&larr; Tillbaka</a>
+        <a href="dashboard.php" class="text-blue-600 hover:underline text-sm">&larr; Innehåll</a>
         <h1 class="text-xl font-bold" style="color: var(--text-primary)">Importera flera quiz från fil</h1>
     </div>
 
     <?php if ($createdCount !== null && !$error): ?>
-        <div class="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm">Skapade <?= $createdCount ?> quiz! <a href="dashboard.php" class="underline">Till Mina Quiz</a></div>
+        <div class="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm">Skapade <?= $createdCount ?> quiz! <a href="dashboard.php" class="underline">Till Innehåll</a></div>
     <?php endif; ?>
     <?php if ($error): ?>
         <div class="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm"><?= htmlspecialchars($error) ?></div>
