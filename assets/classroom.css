@@ -40,7 +40,10 @@ body.classroom{margin:0;font:16px/1.5 system-ui,sans-serif;color:#1f2937;backgro
 .classroom #panel-pupils table td>details{margin:0}
 .classroom #panel-pupils table td>details[open]{margin-bottom:8px}
 /* Felsvar per elev: en utfallbar rad under uppgiften, lugn och indragen. */
-.classroom tr.detail td{padding-top:0;border-bottom:1px solid #e5e7eb}
-.classroom tr.detail>td>details{margin:0 0 4px}
+.classroom tr.detail td{padding:0 10px 6px 22px;border-bottom:1px solid #e5e7eb}
+.classroom tr.detail>td>details,.classroom tr.detail>td>p{margin:0}
+.classroom tr.detail>td>details[open]{margin-bottom:4px}
 .classroom .wrong-list{margin:8px 0 4px;padding-left:20px}
 .classroom .wrong-list li{margin-bottom:8px}
+/* Sidspecifik genväg direkt under den gemensamma headern. */
+.classroom .shortcut{margin:-8px 0 16px;font-size:14px}

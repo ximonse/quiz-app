@@ -1,0 +1,22 @@
+/* Gemensam header för lärarsidorna. Allt är scopat till .teacher-shell, så filen
+   kan laddas bredvid både classroom.css och Tailwind utan att röra något annat. */
+.teacher-shell{font:16px/1.5 system-ui,sans-serif;color:#1f2937;background:white;border-radius:9px;
+  box-shadow:0 8px 13px -2px #182d4b32;margin:0 0 20px;overflow:hidden}
+.teacher-shell *{box-sizing:border-box}
+.teacher-shell-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px 0;flex-wrap:wrap}
+.teacher-shell-top h1{font-size:22px;margin:0;font-weight:700}
+.teacher-shell-meta{font-size:13.5px;color:#4b5563;margin:2px 0 0}
+.teacher-tabs{display:flex;gap:4px;padding:8px 18px 0;border-bottom:1px solid #e5e7eb;flex-wrap:wrap}
+.teacher-tabs a{font-size:15px;font-weight:600;padding:8px 14px;border-bottom:3px solid transparent;
+  color:#4b5563;text-decoration:none}
+.teacher-tabs a:hover{color:#1d4ed8}
+.teacher-tabs a[aria-current=page]{color:#1d4ed8;border-bottom-color:#2563eb}
+.teacher-side{display:flex;gap:14px;padding:8px 18px 10px;font-size:13px;flex-wrap:wrap}
+.teacher-side a{color:#1d4ed8}
+.teacher-shell :focus-visible{outline:3px solid #a855f7;outline-offset:3px}
+@media(max-width:600px){
+  .teacher-shell-top{padding:10px 14px 0}
+  .teacher-tabs{padding:6px 14px 0}
+  .teacher-tabs a{padding:7px 10px}
+  .teacher-side{padding:8px 14px 10px;gap:10px}
+}

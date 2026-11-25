@@ -116,7 +116,7 @@ return false;
     teacher = client()
     teacher_csrf = csrf(teacher, '/index.php')
     status, text, _ = req(teacher, '/index.php', form={'username':'fixture','password':'fixture-pass','csrf_token':teacher_csrf})
-    check(status == 200 and 'Klasser och uppgifter' in text, 'Teacher login failed')
+    check(status == 200 and 'Klasser' in text, 'Teacher login failed')
     for diagnostic in ['test-upload.php', 'test-error.php', 'test-stats.php']:
         check(req(client(), '/' + diagnostic)[0] == 410, 'Public diagnostic is available: ' + diagnostic)
     # A valid raster named .php must be stored as a raster, never with its supplied suffix.
@@ -412,12 +412,20 @@ return false;
     check('Tre plus tre?' in req(teacher,'/admin/pupil.php?id='+noel_pupil['id'])[1],'Wrong answer missing before the clean run')
     check(req(noel_login,'/api/save-result.php',payload={**noel_base,'score':2,'request_id':'f'*32,'errors':[]})[0]==200,'Clean Noel result failed')
     clean_page=req(teacher,'/admin/pupil.php?id='+noel_pupil['id'])[1]
-    check('Tre plus tre?' not in clean_page and 'Inga fel i senaste' in clean_page,'A clean latest attempt still showed an older run as the latest')
+    check('Tre plus tre?' not in clean_page and 'Inga fel i elevens senaste försök' in clean_page,'A clean latest attempt still showed an older run as the latest')
     # Vägen från en utdelning till quizets statistik, bara för quiz läraren äger.
     overview=req(teacher,'/admin/classes.php?assignment='+live_a)[1]
     check('stats.php?id=q_fixture' in overview,'Overview lost the link to the quiz statistics')
     class_view=req(teacher,'/admin/class.php?id='+pc+'&assignment='+live_a)[1]
     check('stats.php?id=q_fixture' in class_view,'Class view lost the link to the quiz statistics')
+    # Dela ut direkt från innehållslistan, samma handling som i Klasser.
+    board=req(teacher,'/admin/dashboard.php')[1]
+    check('data-assign-panel' in board and 'Dela ut' in board,'Dashboard lost the assign control')
+    check('Publicera quizet' in board,'Dashboard did not say why an unpublished quiz cannot be assigned')
+    check(req(teacher,'/admin/dashboard.php',form={'csrf_token':teacher_csrf,'action':'assign','content':'quiz:q_gloss','target':'classes:'+pc})[0]==200,'Assigning from the dashboard failed')
+    check('Glosquiz' in req(teacher,'/admin/class.php?id='+pc)[1],'Assignment from the dashboard never reached the class')
+    check('utdelad till 7D' in req(teacher,'/admin/dashboard.php')[1],'Dashboard row lost the receipt for where the quiz went')
+    check(req(teacher,'/admin/dashboard.php',form={'action':'assign','content':'quiz:q_gloss','target':'classes:'+pc})[0]==403,'Assigning from the dashboard without CSRF was accepted')
     status,page,_=req(teacher,'/admin/class.php?id='+pc)
     check(status==200 and 'Testquiz' in page and 'Arkiverat quiz' in page and 'Elin Test' in page, 'Class page missing its assignments or pupils')
     status,page,_=req(teacher,'/admin/class.php?id='+pc+'&assignment='+live_a)

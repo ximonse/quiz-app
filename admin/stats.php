@@ -1,6 +1,7 @@
 <?php
 // admin/stats.php — Quiz statistics + clear results
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/teacher-shell.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 
 $quizId = $_GET['id'] ?? '';
@@ -75,14 +76,11 @@ if (count($results) > 0) {
     <title>Statistik: <?= htmlspecialchars($quiz['title']) ?></title>
     <link rel="stylesheet" href="../assets/vendor/tailwind-3.4.19.css">
     <link rel="stylesheet" href="../engine/themes.css">
+    <link rel="stylesheet" href="../assets/teacher-shell.css">
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
 <div class="max-w-3xl mx-auto p-4">
-    <div class="flex items-center gap-4 mb-6">
-        <a href="dashboard.php" class="text-blue-600 hover:underline text-sm">&larr; Tillbaka</a>
-        <a href="browser-ids.php" class="text-blue-600 hover:underline text-sm">Namn per webbläsare</a>
-        <h1 class="text-2xl font-bold" style="color: var(--text-primary)">📊 <?= htmlspecialchars($quiz['title']) ?></h1>
-    </div>
+    <?php teacherShell('innehall',$quiz['title'],'Statistik för quizet'); ?>
 
     <!-- Overview cards -->
     <div class="grid grid-cols-3 gap-4 mb-6">

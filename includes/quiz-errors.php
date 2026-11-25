@@ -73,7 +73,7 @@ function quizWrongQuestionsHtml(array $quizzes, string $quizId, string $studentI
             $stamp=strtotime($result['timestamp']);
             if ($stamp) $when=' '.date('Y-m-d',$stamp);
         }
-        if (!$wrong) return '<p class="muted">Inga fel i senaste försöket'.classroomEscape($when).'.</p>';
+        if (!$wrong) return '<p class="muted">Inga fel i elevens senaste försök på quizet'.classroomEscape($when).'.</p>';
         $html='<details><summary>'.count($wrong).' '.(count($wrong)===1?'fråga':'frågor').' blev fel</summary>';
         $html.='<p class="muted">Från elevens senast genomförda försök'.classroomEscape($when).'. Gäller quizet, inte en enskild utdelning.</p><ul class="wrong-list">';
         foreach ($wrong as $row) {

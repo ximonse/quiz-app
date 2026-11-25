@@ -2,6 +2,8 @@
 // admin/dashboard.php — Quiz list + create on one page
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../ai/quiz-service.php';
+require_once __DIR__ . '/../includes/teacher-shell.php';
+require_once __DIR__ . '/../includes/classroom-admin.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 
 $csrfToken = getCsrfToken();
@@ -22,6 +24,18 @@ function oldChecked($key, $defaultOnGet = false) {
 function oldSelected($key, $value, $default) {
     $selected = ($GLOBALS['error'] && ($_POST['action'] ?? '') === 'create') ? ($_POST[$key] ?? $default) : $default;
     return ($selected === $value) ? 'selected' : '';
+}
+
+// --- Dela ut till klass eller grupp ---
+// Samma handling som i Klasser, via classroomAdminAction(), sa reglerna om
+// agarskap, publicering och dubbletter bara finns pa ett stalle.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assign') {
+    requireValidCsrf();
+    try {
+        $_SESSION['dashboard_message'] = classroomAdminAction($teacherId, $_POST, []);
+    } catch (DomainException $e) { $_SESSION['dashboard_error'] = $e->getMessage(); }
+    catch (RuntimeException $e) { $_SESSION['dashboard_error'] = 'Utdelningen kunde inte sparas. Forsok igen.'; }
+    header('Location: dashboard.php'); exit;
 }
 
 // --- Handle delete ---
@@ -142,6 +156,21 @@ function parseCSV($csvText, $type) {
 $quizzes = readJSON(QUIZZES_FILE);
 $myQuizzes = array_filter($quizzes, fn($q) => ($q['teacher_id'] ?? '') === $teacherId);
 $myQuizzes = array_values($myQuizzes);
+// Klasser och grupper att dela ut till, och vad varje quiz redan natt.
+$classroom = classroomRead();
+$targets = [];
+foreach ($classroom['classes'] ?? [] as $cid => $c) if ($c['teacher_id'] === $teacherId) $targets['classes:'.$cid] = $c['name'];
+foreach ($classroom['groups'] ?? [] as $gid => $g) if ($g['teacher_id'] === $teacherId) $targets['groups:'.$gid] = 'Grupp: '.$g['name'];
+$assignedTo = [];
+foreach ($classroom['assignments'] ?? [] as $a) {
+    if ($a['teacher_id'] !== $teacherId || $a['kind'] !== 'quiz') continue;
+    $name = $classroom[$a['target_type']][$a['target_id']]['name'] ?? null;
+    if ($name !== null) $assignedTo[$a['content_id']][$name] = true;
+}
+$dashboardMessage = $_SESSION['dashboard_message'] ?? ''; unset($_SESSION['dashboard_message']);
+$dashboardError = $_SESSION['dashboard_error'] ?? ''; unset($_SESSION['dashboard_error']);
+if ($dashboardMessage) $success = $dashboardMessage;
+if ($dashboardError) $error = $dashboardError;
 usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? ''));
 ?>
 <!DOCTYPE html>
@@ -149,32 +178,17 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mina Quiz</title>
+    <title>Innehåll</title>
     <link rel="stylesheet" href="../assets/vendor/tailwind-3.4.19.css">
     <script src="../assets/vendor/qrcode-1.0.0.min.js"></script>
     <link rel="stylesheet" href="../engine/themes.css">
+    <link rel="stylesheet" href="../assets/teacher-shell.css">
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
 <div class="max-w-4xl mx-auto p-4">
 
-    <!-- Header -->
-    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-        <div class="flex flex-wrap justify-between items-center gap-3">
-            <div class="flex items-center gap-2">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-800">Hej <?= htmlspecialchars($teacherName) ?>!</h1>
-                    <p class="text-gray-700 text-sm">Hantera dina quizzes</p>
-                </div>
-                <button type="button" onclick="toggleInfoModal()" title="Så funkar appen" class="w-7 h-7 shrink-0 flex items-center justify-center rounded-full bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold text-sm">i</button>
-            </div>
-            <div class="flex flex-wrap gap-2">
-                <a href="browser-ids.php" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium">👥 Elevnamn</a>
-                <a href="batch-import.php" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium">📎 Importera fler</a>
-                <a href="classes.php" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">Klasser och uppgifter</a>
-                <a href="../index.php?logout=1" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm">Logga ut</a>
-            </div>
-        </div>
-    </div>
+    <?php teacherShell('innehall','Hej '.$teacherName.'!','Dina quiz, flashcards och det du delar ut.'); ?>
+    <p class="-mt-4 mb-6"><button type="button" onclick="toggleInfoModal()" class="text-blue-700 text-sm underline">Så funkar appen</button></p>
 
     <!-- Info-modal: hjälp för att komma igång -->
     <div id="info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if (event.target === this) toggleInfoModal()">
@@ -532,6 +546,13 @@ Nu, invänta mitt material.</pre>
                 $badgeColor = $type === 'glossary' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
                 $itemCount = count($quiz['items'] ?? []);
                 $resultCount = count($quiz['results'] ?? []);
+                // Inloggade elever och oinloggade spelare är två olika tal, inte ett.
+                $pupilResults = count(array_filter($quiz['results'] ?? [], fn($r) => !empty($r['student_id'])));
+                $guestResults = $resultCount - $pupilResults;
+                $reachedNames = array_keys($assignedTo[$quiz['id']] ?? []);
+                // Repetition kräver rätt typ, publicerat OCH utdelat; säg vilket som fattas.
+                $repetitionOn = !empty($quiz['settings']['spaced_repetition']) && in_array($type, ['fact','glossary'], true);
+                $canAssign = $reviewState === 'published' && $targets;
                 $itemWord = $type === 'glossary' ? 'glosor' : 'frågor';
                 $subject = htmlspecialchars($quiz['subject'] ?? '');
                 $tags = htmlspecialchars($quiz['tags'] ?? '');
@@ -550,6 +571,7 @@ Nu, invänta mitt material.</pre>
                         <span class="font-medium text-gray-800 truncate"><?= htmlspecialchars($quiz['title']) ?></span>
                         <span class="text-xs px-2 py-0.5 rounded-full <?= $badgeColor ?>"><?= $typeBadge ?></span>
                         <?php if ($reviewState!=='published'): ?><span class="text-xs text-amber-800"><?= $reviewState==='draft'?'Opublicerat':'Ändringar att granska' ?></span><?php endif; ?>
+                        <?php if ($repetitionOn): ?><span class="text-xs px-2 py-0.5 rounded-full <?= $reachedNames ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800' ?>"><?= $reachedNames ? 'Repetition' : 'Repetition: inte utdelad' ?></span><?php endif; ?>
                         <?php if ($subject): ?>
                             <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"><?= $subject ?></span>
                         <?php endif; ?>
@@ -558,23 +580,51 @@ Nu, invänta mitt material.</pre>
                         <?php endif; endforeach; endif; ?>
                     </div>
                     <div class="text-xs text-gray-700">
-                        <?= $itemCount ?> <?= $itemWord ?> &middot; <?= htmlspecialchars($createdDate) ?> &middot; <?= $resultCount ?> resultat
+                        <?= $itemCount ?> <?= $itemWord ?> &middot; <?= htmlspecialchars($createdDate) ?>
+                        &middot; <?= $reachedNames ? 'utdelad till '.htmlspecialchars(implode(', ', $reachedNames)) : 'inte utdelad' ?>
+                        &middot; <?= $pupilResults ?> elevsvar<?= $guestResults ? ' &middot; '.$guestResults.' oinloggade' : '' ?>
                     </div>
                 </div>
                 <div class="flex items-center gap-1 ml-4">
-                    <?php if ($reviewState==='published'): ?><button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="p-1.5 rounded hover:bg-gray-200 text-gray-700" title="Kopiera elevlänk">📋</button>
-                    <button onclick="showQrCode('<?= htmlspecialchars($playUrl) ?>', '<?= htmlspecialchars($quiz['title'], ENT_QUOTES) ?>')" class="p-1.5 rounded hover:bg-gray-200 text-gray-700" title="Visa QR-kod">📱</button>
-                    <?php endif; ?><a href="review.php?id=<?= urlencode($quiz['id']) ?>" class="text-blue-700 text-sm"><?= $reviewState==='published'?'Granska':'Granska och publicera' ?></a>
+                    <?php if ($canAssign): ?><button type="button" data-assign="<?= htmlspecialchars($quiz['id']) ?>" class="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm">Dela ut</button><?php endif; ?>
+                    <a href="review.php?id=<?= urlencode($quiz['id']) ?>" class="text-blue-700 text-sm px-1"><?= $reviewState==='published'?'Granska':'Granska och publicera' ?></a>
                     <a href="<?= quizTypeRoute($type)['editor'] ?>?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-700" title="Redigera">✏️</a>
                     <a href="stats.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-700" title="Statistik">📊</a>
-                    <form method="POST" style="display:inline" onsubmit="return confirm('Radera detta quiz?')">
-                        <?= csrfField() ?>
-                        <input type="hidden" name="action" value="delete">
-                        <input type="hidden" name="quiz_id" value="<?= htmlspecialchars($quiz['id']) ?>">
-                        <button type="submit" class="p-1.5 rounded hover:bg-red-100 text-gray-700" title="Radera">🗑️</button>
-                    </form>
+                    <details class="relative" data-more>
+                        <summary class="cursor-pointer p-1.5 rounded hover:bg-gray-200 text-gray-700" title="Fler">&#8943;</summary>
+                        <div class="absolute right-0 top-full z-10 mt-1 w-56 rounded-lg border border-gray-300 bg-white p-1 shadow-lg">
+                            <?php if ($reviewState==='published'): ?>
+                            <button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="block w-full text-left text-sm px-2 py-1.5 rounded hover:bg-gray-100">Dela fritt: kopiera länk</button>
+                            <button onclick="showQrCode('<?= htmlspecialchars($playUrl) ?>', '<?= htmlspecialchars($quiz['title'], ENT_QUOTES) ?>')" class="block w-full text-left text-sm px-2 py-1.5 rounded hover:bg-gray-100">Dela fritt: QR-kod</button>
+                            <?php endif; ?>
+                            <form method="POST" onsubmit="return confirm('Radera detta quiz?')">
+                                <?= csrfField() ?>
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="quiz_id" value="<?= htmlspecialchars($quiz['id']) ?>">
+                                <button type="submit" class="block w-full text-left text-sm px-2 py-1.5 rounded hover:bg-red-100">Radera quizet</button>
+                            </form>
+                        </div>
+                    </details>
                 </div>
             </div>
+            <?php if ($canAssign): ?>
+            <form method="POST" data-assign-panel="<?= htmlspecialchars($quiz['id']) ?>" class="hidden mb-2 px-4 py-3 rounded-lg bg-blue-50 border border-blue-200 text-sm">
+                <?= csrfField() ?>
+                <input type="hidden" name="action" value="assign">
+                <input type="hidden" name="content" value="quiz:<?= htmlspecialchars($quiz['id']) ?>">
+                <label class="font-medium mr-2" for="target-<?= htmlspecialchars($quiz['id']) ?>">Dela ut till</label>
+                <select id="target-<?= htmlspecialchars($quiz['id']) ?>" name="target" required class="px-2 py-1 border border-gray-500 rounded text-sm">
+                    <?php foreach ($targets as $value => $label): ?><option value="<?= htmlspecialchars($value) ?>"><?= htmlspecialchars($label) ?></option><?php endforeach; ?>
+                </select>
+                <button type="submit" class="ml-2 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm">Dela ut</button>
+                <button type="button" data-assign-cancel class="ml-1 px-3 py-1 rounded-lg border border-gray-400 bg-white text-blue-700 text-sm">Avbryt</button>
+                <?php if ($repetitionOn && !$reachedNames): ?><p class="mt-1 text-xs text-gray-700">Repetitionen börjar samla kort när klassens elever övat på quizet.</p><?php endif; ?>
+            </form>
+            <?php elseif ($reviewState==='published'): ?>
+            <p class="mb-2 px-4 text-xs text-gray-700">Skapa en klass i <a href="classes.php" class="text-blue-700 underline">Klasser</a> för att kunna dela ut quizet.</p>
+            <?php else: ?>
+            <p class="mb-2 px-4 text-xs text-gray-700">Publicera quizet för att kunna dela ut det till en klass.</p>
+            <?php endif; ?>
             <?php endforeach; ?>
         </div>
         <?php endif; ?>
@@ -657,6 +707,28 @@ function sortQuizzes() {
     });
     rows.forEach(r => list.appendChild(r));
 }
+
+// Dela ut: panelen ligger under raden och öppnas av radens knapp.
+document.querySelectorAll('[data-assign]').forEach(function (button) {
+    button.addEventListener('click', function () {
+        var panel = document.querySelector('[data-assign-panel="' + button.dataset.assign + '"]');
+        if (!panel) return;
+        document.querySelectorAll('[data-assign-panel]').forEach(function (other) {
+            if (other !== panel) other.classList.add('hidden');
+        });
+        panel.classList.toggle('hidden');
+        if (!panel.classList.contains('hidden')) panel.querySelector('select').focus();
+    });
+});
+document.querySelectorAll('[data-assign-cancel]').forEach(function (button) {
+    button.addEventListener('click', function () { button.closest('[data-assign-panel]').classList.add('hidden'); });
+});
+// En öppen rad-meny ska stängas när man klickar någon annanstans.
+document.addEventListener('click', function (event) {
+    document.querySelectorAll('details[data-more][open]').forEach(function (menu) {
+        if (!menu.contains(event.target)) menu.open = false;
+    });
+});
 
 function filterQuizzes() {
     const list = document.getElementById('quiz-list');

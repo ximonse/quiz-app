@@ -66,7 +66,7 @@ def run_robots(fixture: Path):
         def teacher_login(self, name='fixture', password='fixture-pass'):
             self.token('/index.php')
             status, text, _ = self.request('/index.php', form={'username': name, 'password': password, 'csrf_token': self.csrf})
-            check(status == 200 and 'Klasser och uppgifter' in text, 'Teacher login failed')
+            check(status == 200 and 'Klasser' in text, 'Teacher login failed')
 
         def pupil_login(self, student, pin, qr=False):
             self.token()
