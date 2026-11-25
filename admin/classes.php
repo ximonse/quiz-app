@@ -63,7 +63,9 @@ $confirm='Ta bort klassen '.$c['name'].($count?' och dess '.$count.($count===1?'
 <?php panelStart('overview','Utdelat och resultat',isset($_GET['assignment'])); ?><p class="muted">Quiz visar antal rätt och fel svar under försöket, inklusive repetition. Flashcards räknas när kort vänds. Hämtad PDF betyder att filen har begärts via appen.</p>
 <?php if (!$assignments): ?><p>Inget utdelat ännu.</p><?php endif; ?>
 <?php foreach (array_reverse($assignments,true) as $aid=>$a): $target=$data[$a['target_type']][$a['target_id']]['name'] ?? ($a['target_type']==='classes'?'Borttagen klass':'Borttagen grupp'); ?>
-<details <?= ($_GET['assignment'] ?? '')===$aid?'open':'' ?>><summary><strong><?= classroomEscape($a['title']) ?></strong> · <?= classroomEscape($target) ?> · <?= ['quiz'=>'Quiz','cards'=>'Flashcards','deck'=>'Flashcards','material'=>'PDF'][$a['kind']] ?></summary><div class="table-wrap"><table><thead><tr><th>Elev</th><th>Status</th><th>Övning</th></tr></thead><tbody>
+<details <?= ($_GET['assignment'] ?? '')===$aid?'open':'' ?>><summary><strong><?= classroomEscape($a['title']) ?></strong> · <?= classroomEscape($target) ?> · <?= ['quiz'=>'Quiz','cards'=>'Flashcards','deck'=>'Flashcards','material'=>'PDF'][$a['kind']] ?></summary>
+<?php if ($a['kind']==='quiz' && ($quizzes[$a['content_id']]['teacher_id'] ?? '')===$teacher): ?><p><a href="stats.php?id=<?= classroomEscape(urlencode($a['content_id'])) ?>">Statistik för quizet: snitt och svåraste frågorna</a> <span class="muted">Räknar alla som övat på quizet, även utanför den här utdelningen.</span></p><?php endif; ?>
+<div class="table-wrap"><table><thead><tr><th>Elev</th><th>Status</th><th>Övning</th></tr></thead><tbody>
 <?php $recipients=classroomAssignmentPupils($data,$a,$teacher);
 foreach ($recipients as $sid=>$s): $rows=classroomAttempts($data,$aid,$sid); $latest=$rows[0] ?? null; ?>
 <tr><td><a href="pupil.php?id=<?= classroomEscape(urlencode($sid)) ?>"><?= classroomEscape($s['name']) ?></a><?= empty($s['active'])?' (borttagen)':'' ?></td><td><?= classroomStatus($rows,$a['kind']) ?></td><td>

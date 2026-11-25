@@ -36,6 +36,11 @@ if ($assignment) {
 <?php if ($assignment): ?>
 <section class="panel"><h2><?= classroomEscape($assignment['title']) ?></h2>
 <p class="muted"><?= classroomEscape(classroomKindLabel($assignment['kind'])) ?><?= $assignment['via_group']!==''?' · utdelad via grupp '.classroomEscape($assignment['via_group']):'' ?> · <?= count($rows) ?> <?= count($rows)===1?'elev':'elever' ?> i klassen. Siffrorna gäller den här utdelningen.</p>
+<?php if ($assignment['kind']==='quiz'):
+    $quizzes=is_file(QUIZZES_FILE)?(json_decode(file_get_contents(QUIZZES_FILE),true) ?: []):[];
+    if (($quizzes[$assignment['content_id']]['teacher_id'] ?? '')===$teacher): ?>
+<p><a href="stats.php?id=<?= classroomEscape(urlencode($assignment['content_id'])) ?>">Statistik för quizet: snitt och svåraste frågorna</a> <span class="muted">Räknar alla som övat på quizet, även utanför den här utdelningen.</span></p>
+<?php endif; endif; ?>
 <?php classroomPracticeTable('Elev',$rows); ?></section>
 <?php elseif ($assignments): ?><p class="muted">Välj en uppgift ovan för att se hur klassens elever övat.</p><?php endif; ?>
 <section class="panel"><h2>Elever i klassen</h2><div class="table-wrap"><table><thead><tr><th>Elev</th><th>Inloggning</th></tr></thead><tbody>

@@ -402,6 +402,11 @@ return false;
     check('&lt;script&gt;' in wrong_page and '<script>alert(1)</script>' not in wrong_page,'Pupil answer reached the page unescaped')
     check('Fråga 100' in wrong_page,'An error for a deleted question lost its fallback label')
     check('Två plus två?' not in req(other,'/admin/pupil.php?id='+elin['id'])[1],'Wrong answers leaked to another teacher')
+    # Vägen från en utdelning till quizets statistik, bara för quiz läraren äger.
+    overview=req(teacher,'/admin/classes.php?assignment='+live_a)[1]
+    check('stats.php?id=q_fixture' in overview,'Overview lost the link to the quiz statistics')
+    class_view=req(teacher,'/admin/class.php?id='+pc+'&assignment='+live_a)[1]
+    check('stats.php?id=q_fixture' in class_view,'Class view lost the link to the quiz statistics')
     status,page,_=req(teacher,'/admin/class.php?id='+pc)
     check(status==200 and 'Testquiz' in page and 'Arkiverat quiz' in page and 'Elin Test' in page, 'Class page missing its assignments or pupils')
     status,page,_=req(teacher,'/admin/class.php?id='+pc+'&assignment='+live_a)
