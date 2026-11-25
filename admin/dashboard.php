@@ -137,11 +137,11 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
 
 
     <!-- ═══════════ MINA QUIZ ═══════════ -->
-    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+    <div class="bg-white rounded-xl shadow-lg p-4 mb-4">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-bold text-gray-800">Dina quiz (<?= count($myQuizzes) ?>)</h2>
             <div class="flex items-center gap-2">
-                <a href="create.php" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">Skapa quiz</a>
+                <a href="create.php" class="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">Skapa quiz</a>
                 <input type="text" id="search-input" oninput="filterQuizzes()" placeholder="Sök..." class="text-sm px-2 py-1 border border-gray-500 rounded w-40">
                 <label class="text-xs text-gray-700">Sortera:</label>
                 <select id="sort-select" onchange="sortQuizzes()" class="text-sm px-2 py-1 border border-gray-500 rounded">
@@ -216,14 +216,14 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                         <summary class="cursor-pointer p-1.5 rounded hover:bg-gray-200 text-gray-700" title="Fler">&#8943;</summary>
                         <div class="absolute right-0 top-full z-10 mt-1 w-56 rounded-lg border border-gray-300 bg-white p-1 shadow-lg">
                             <?php if ($reviewState==='published'): ?>
-                            <button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="block w-full text-left text-sm px-2 py-1.5 rounded hover:bg-gray-100">Dela fritt: kopiera länk</button>
-                            <button onclick="showQrCode('<?= htmlspecialchars($playUrl) ?>', '<?= htmlspecialchars($quiz['title'], ENT_QUOTES) ?>')" class="block w-full text-left text-sm px-2 py-1.5 rounded hover:bg-gray-100">Dela fritt: QR-kod</button>
+                            <button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="block w-full text-left text-sm px-2 py-1 rounded hover:bg-gray-100">Dela fritt: kopiera länk</button>
+                            <button onclick="showQrCode('<?= htmlspecialchars($playUrl) ?>', '<?= htmlspecialchars($quiz['title'], ENT_QUOTES) ?>')" class="block w-full text-left text-sm px-2 py-1 rounded hover:bg-gray-100">Dela fritt: QR-kod</button>
                             <?php endif; ?>
                             <form method="POST" onsubmit="return confirm('Radera detta quiz?')">
                                 <?= csrfField() ?>
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="quiz_id" value="<?= htmlspecialchars($quiz['id']) ?>">
-                                <button type="submit" class="block w-full text-left text-sm px-2 py-1.5 rounded hover:bg-red-100">Radera quizet</button>
+                                <button type="submit" class="block w-full text-left text-sm px-2 py-1 rounded hover:bg-red-100">Radera quizet</button>
                             </form>
                         </div>
                     </details>

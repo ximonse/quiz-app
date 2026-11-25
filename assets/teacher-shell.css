@@ -7,33 +7,33 @@
 @media screen{
   /* box-sizing sätts här: ett par av redigerarna saknar egen reset, och utan den
      la de paddingen utanför maxbredden och blev 48px bredare än de andra. */
-  .teacher-page{box-sizing:border-box;max-width:1160px;margin-left:auto;margin-right:auto;padding:24px}
+  .teacher-page{box-sizing:border-box;max-width:1160px;margin-left:auto;margin-right:auto;padding:14px}
   /* Plats för rullningslisten även på korta sidor, annars flyttar sig headern
      några pixlar i sidled mellan en kort och en lång sida. */
   html:has(.teacher-shell){scrollbar-gutter:stable}
 }
 @media screen and (max-width:600px){
-  .teacher-page{padding:16px}
+  .teacher-page{padding:10px}
 }
 .teacher-shell{font:16px/1.5 system-ui,sans-serif;color:#1f2937;background:white;border-radius:9px;
-  box-shadow:0 8px 13px -2px #182d4b32;margin:0 0 20px;overflow:hidden}
+  box-shadow:0 8px 13px -2px #182d4b32;margin:0 0 14px;overflow:hidden}
 .teacher-shell *{box-sizing:border-box}
-.teacher-shell-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 18px 0;flex-wrap:wrap}
-.teacher-shell-top h1{font-size:22px;margin:0;font-weight:700}
-.teacher-shell-meta{font-size:13.5px;color:#4b5563;margin:2px 0 0}
-.teacher-tabs{display:flex;gap:4px;padding:8px 18px 0;border-bottom:1px solid #e5e7eb;flex-wrap:wrap}
-.teacher-tabs a{font-size:15px;font-weight:600;padding:8px 14px;border-bottom:3px solid transparent;
+.teacher-shell-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 14px 0;flex-wrap:wrap}
+.teacher-shell-top h1{font-size:19px;margin:0;font-weight:700;line-height:1.25}
+.teacher-shell-meta{font-size:13px;line-height:1.35;color:#4b5563;margin:1px 0 0}
+.teacher-tabs{display:flex;gap:2px;padding:4px 14px 0;border-bottom:1px solid #e5e7eb;flex-wrap:wrap}
+.teacher-tabs a{font-size:15px;font-weight:600;line-height:1.35;padding:4px 11px;border-bottom:2px solid transparent;
   color:#4b5563;text-decoration:none}
 .teacher-tabs a:hover{color:#1d4ed8}
 .teacher-tabs a[aria-current=page]{color:#1d4ed8;border-bottom-color:#2563eb}
-.teacher-side{display:flex;gap:14px;padding:8px 18px 10px;font-size:13px;flex-wrap:wrap}
+.teacher-side{display:flex;gap:14px;padding:4px 14px 5px;font-size:13px;line-height:1.4;flex-wrap:wrap}
 .teacher-side a{color:#1d4ed8}
 .teacher-shell :focus-visible{outline:3px solid #a855f7;outline-offset:3px}
 @media(max-width:600px){
-  .teacher-shell-top{padding:10px 14px 0}
-  .teacher-tabs{padding:6px 14px 0}
-  .teacher-tabs a{padding:7px 10px}
-  .teacher-side{padding:8px 14px 10px;gap:10px}
+  .teacher-shell-top{padding:8px 12px 0}
+  .teacher-tabs{padding:4px 12px 0}
+  .teacher-tabs a{padding:5px 9px}
+  .teacher-side{padding:5px 12px 6px;gap:10px}
 }
 
 /* Radmenyn i innehållslistan: ingen inbyggd triangel bredvid den egna ikonen. */
@@ -48,3 +48,18 @@ details[data-more]>summary::marker{content:""}
   .quiz-row>div{flex:0 0 100%;min-width:0}
   .quiz-row>div:last-child{margin-left:0;justify-content:flex-start}
 }
+
+/* Kompakta arbetsvyer. Scopat till sidor som har lärarmenyn, så elevsidorna
+   behåller sin luft: de delar stilmall med klassvyerna. */
+body:has(.teacher-shell) main{padding:14px}
+body:has(.teacher-shell) .panel{padding:12px 14px;margin-bottom:14px}
+body:has(.teacher-shell) .grid{gap:14px;margin-bottom:14px}
+body:has(.teacher-shell) h2{margin-bottom:8px}
+body:has(.teacher-shell) table th,body:has(.teacher-shell) table td{padding:4px 10px}
+body:has(.teacher-shell) label{margin:5px 0}
+body:has(.teacher-shell) p{margin:6px 0}
+/* Listraden i innehållet: texten styr höjden, inte paddingen. Radavståndet
+   stramas åt här, inte textstorleken — titeln är kvar på 16px. */
+body:has(.teacher-shell) .quiz-row{padding-top:3px;padding-bottom:3px}
+body:has(.teacher-shell) .quiz-row .font-medium{line-height:1.25}
+body:has(.teacher-shell) .quiz-row .text-xs{line-height:1.3}

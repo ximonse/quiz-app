@@ -148,11 +148,11 @@ function parseCSV($csvText, $type) {
     <?php endif; ?>
 
     <!-- ═══════════ SKAPA QUIZ ═══════════ -->
-    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+    <div class="bg-white rounded-xl shadow-lg p-4 mb-4">
         <p class="text-sm text-gray-700 mb-2">Glosquiz och faktaquiz byggs här. De andra typerna har egna sidor:</p>
-        <a href="image-edit.php" class="inline-block mb-4 px-3 py-2 border rounded-lg font-medium text-blue-700">Skapa bildvalsquiz</a>
-        <a href="sort-edit.php" class="inline-block mb-4 ml-2 px-3 py-2 border rounded-lg font-medium text-blue-700">Skapa sorteringsquiz</a>
-        <a href="order-edit.php" class="inline-block mb-4 ml-2 px-3 py-2 border rounded-lg font-medium text-blue-700">Skapa ordningsquiz</a>
+        <a href="image-edit.php" class="inline-block mb-2 px-3 py-1 border rounded-lg font-medium text-blue-700">Skapa bildvalsquiz</a>
+        <a href="sort-edit.php" class="inline-block mb-2 ml-2 px-3 py-1 border rounded-lg font-medium text-blue-700">Skapa sorteringsquiz</a>
+        <a href="order-edit.php" class="inline-block mb-2 ml-2 px-3 py-1 border rounded-lg font-medium text-blue-700">Skapa ordningsquiz</a>
 
         <form id="create-quiz-form" method="POST" class="space-y-4" onsubmit="return prepareCreateSubmit();">
             <?= csrfField() ?>
@@ -196,7 +196,7 @@ function parseCSV($csvText, $type) {
 
                 <!-- AI Prompt Helper -->
                 <div class="mt-2">
-                    <button type="button" onclick="toggleAiPrompt()" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-800 font-medium text-sm">
+                    <button type="button" onclick="toggleAiPrompt()" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-800 font-medium text-sm">
                         <span>🤖</span> <span>Hämta AI-prompt för <span id="ai-prompt-type">glosorna</span></span>
                     </button>
                     <p class="text-xs text-gray-700 mt-1">Färdig prompt att klistra in i ChatGPT, Claude eller Copilot. Du laddar upp ett foto eller en lista, och får tillbaka CSV att klistra in här.</p>
