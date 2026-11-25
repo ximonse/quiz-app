@@ -185,7 +185,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
     <link rel="stylesheet" href="../assets/teacher-shell.css">
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
-<div class="max-w-4xl mx-auto p-4">
+<div class="teacher-page">
 
     <?php teacherShell('innehall','Hej '.$teacherName.'!','Dina quiz, flashcards och det du delar ut.'); ?>
     <p class="-mt-4 mb-6"><button type="button" onclick="toggleInfoModal()" class="text-blue-700 text-sm underline">Så funkar appen</button></p>

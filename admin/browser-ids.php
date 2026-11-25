@@ -22,7 +22,7 @@ $groups = browserIdentityGroups($teacherId, $quizzes, $stats, $flashcards);
     <link rel="stylesheet" href="../assets/teacher-shell.css">
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
-<main class="max-w-3xl mx-auto p-4">
+<main class="teacher-page">
     <?php teacherShell('innehall','Oinloggade spelare','Namn per webbläsare, för elever som spelat utan att logga in.'); ?>
     <p class="text-sm mb-6" style="color: var(--text-secondary)">Här visas alla namn som använts med samma webbläsar-ID i dina quiz och flashcards. Flera elever på en delad dator kan få samma ID. En elev som byter webbläsare eller rensar webbläsardata får ett nytt ID. Äldre resultat saknar ID och kan inte kopplas i efterhand.</p>
     <?php if (!$groups): ?>

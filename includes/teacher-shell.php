@@ -16,7 +16,6 @@ function teacherShellSideLinks(): array {
         ['cards.php','Inloggningskort'],
         ['browser-ids.php','Oinloggade spelare'],
         ['batch-import.php','Importera'],
-        ['../student/','Elevinloggning'],
         ['../index.php?logout=1','Logga ut'],
     ];
 }
@@ -33,8 +32,7 @@ function teacherShell(string $current, string $title, string $meta=''): void {
     }
     echo '</nav><div class="teacher-side">';
     foreach (teacherShellSideLinks() as [$href,$label]) {
-        $blank=$href==='../student/'?' target="_blank" rel="noopener"':'';
-        echo '<a href="'.teacherShellEscape($href).'"'.$blank.'>'.teacherShellEscape($label).'</a>';
+        echo '<a href="'.teacherShellEscape($href).'">'.teacherShellEscape($label).'</a>';
     }
     echo '</div></div>';
 }

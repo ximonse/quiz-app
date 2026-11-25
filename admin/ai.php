@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/teacher-shell.php';
 require_once __DIR__ . '/../ai/auth.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 $teacherId=getCurrentTeacherID(); $secret=null; $error='';
@@ -25,7 +26,7 @@ function aiEscape($value) { return htmlspecialchars((string)$value,ENT_QUOTES,'U
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ai-api – Quiz App</title>
-<link rel="stylesheet" href="../engine/themes.css">
+<link rel="stylesheet" href="../engine/themes.css"><link rel="stylesheet" href="../assets/teacher-shell.css">
 <style>
 body{font:16px/1.55 system-ui;background:#f5f7fb;color:#172033;margin:0}
 main{max-width:760px;margin:auto;padding:24px}
@@ -40,9 +41,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f4f9;border:1px so
 .error{color:#a31919}.secret{display:block;background:#f1f4f9;padding:12px;border-radius:6px}
 </style>
 </head>
-<body><main>
-<a href="dashboard.php">← Innehåll</a>
-<h1>ai-api</h1>
+<body><main class="teacher-page">
+<?php teacherShell('innehall','ai-api','Koppla en AI-klient till dina quiz.'); ?>
 <p>Med en AI-klient som stöder en egen MCP-koppling kan du låta AI:n hitta, läsa, skapa och föreslå ändringar i dina quiz. Nya quiz och ändringar sparas för granskning. Du kontrollerar innehållet och publicerar själv i appen. Kopplingen ger aldrig åtkomst till elevresultat.</p>
 <p class="note"><strong>Förutsättningar:</strong> Du behöver ett konto i en AI-tjänst och en klient som kan ansluta till en extern MCP-server med <code>Authorization: Bearer</code>. Funktionerna kan kräva en betalversion eller ett särskilt abonnemang, till exempel hos ChatGPT, Claude eller Google Antigravity. Kontrollera vad just din version stöder innan du skapar en nyckel: ett betalkonto i sig garanterar inte att den här typen av anslutning fungerar. <a href="https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-connectors-in-chatgpt">ChatGPT</a>, <a href="https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp">Claude</a> och <a href="https://www.antigravity.google/docs/mcp">Antigravity</a> har egna instruktioner.</p>
 <section>

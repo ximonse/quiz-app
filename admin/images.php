@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/teacher-shell.php';
 require_once __DIR__ . '/../ai/quiz-service.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 $id=$_GET['id']??''; $teacherId=getCurrentTeacherID(); $error=''; $success='';
@@ -33,7 +34,7 @@ $key=isset($quiz['items'])?'items':'questions';
 ?>
 <!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Infobild till frågan</title>
 <style>body{font:16px system-ui;background:#f5f7fb;color:#172033;margin:0}main{max-width:760px;margin:auto;padding:24px}section{background:white;border:1px solid #dce2ec;border-radius:12px;padding:20px;margin:18px 0}img{display:block;max-width:100%;max-height:260px;object-fit:contain;margin:12px 0}label{display:block;margin:12px 0}input[type=text]{padding:10px;width:95%;border:1px solid #aab6c8;border-radius:6px}button{padding:10px 16px;background:#245bb2;color:white;border:0;border-radius:6px;cursor:pointer}.error{color:#a31919}.success{color:#11652d}</style>
-</head><body><main><a href="dashboard.php">← Innehåll</a><a href="review.php?id=<?= urlencode($id) ?>">Granska och publicera</a><h1>Infobilder: <?= imageEscape($quiz['title']) ?></h1><p>Ladda upp en bild till valfri fråga. PNG, JPG, WebP eller GIF, högst 5 MB. Beskriv bilden för elever som använder skärmläsare.</p>
+<link rel="stylesheet" href="../assets/teacher-shell.css"></head><body><main class="teacher-page"><?php teacherShell('innehall','Infobilder: '.$quiz['title'],'Bilder till frågorna'); ?><p><a href="review.php?id=<?= urlencode($id) ?>">Granska och publicera</a></p><p>Ladda upp en bild till valfri fråga. PNG, JPG, WebP eller GIF, högst 5 MB. Beskriv bilden för elever som använder skärmläsare.</p>
 <?php if ($error): ?><p class="error"><?= imageEscape($error) ?></p><?php endif; ?><?php if ($success): ?><p class="success" role="status"><?= imageEscape($success) ?></p><?php endif; ?>
 <?php foreach ($quiz[$key] as $index=>$item): $image=$item['image']??null; $name=is_array($image)?$image['file']:$image; ?>
 <section><h2><?= $index+1 ?>. <?= imageEscape($item['concept']??$item['sentence']??$item['question']??'') ?></h2>

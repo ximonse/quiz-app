@@ -1,5 +1,20 @@
 /* Gemensam header för lärarsidorna. Allt är scopat till .teacher-shell, så filen
    kan laddas bredvid både classroom.css och Tailwind utan att röra något annat. */
+
+/* En bredd på alla lärarsidor, samma som classroom.css ger sina vyer, så att
+   headern ligger på exakt samma plats oavsett vilken sida man står på.
+   Ligger i @media screen för att inte röra utskriften av inloggningskorten. */
+@media screen{
+  /* box-sizing sätts här: ett par av redigerarna saknar egen reset, och utan den
+     la de paddingen utanför maxbredden och blev 48px bredare än de andra. */
+  .teacher-page{box-sizing:border-box;max-width:1160px;margin-left:auto;margin-right:auto;padding:24px}
+  /* Plats för rullningslisten även på korta sidor, annars flyttar sig headern
+     några pixlar i sidled mellan en kort och en lång sida. */
+  html:has(.teacher-shell){scrollbar-gutter:stable}
+}
+@media screen and (max-width:600px){
+  .teacher-page{padding:16px}
+}
 .teacher-shell{font:16px/1.5 system-ui,sans-serif;color:#1f2937;background:white;border-radius:9px;
   box-shadow:0 8px 13px -2px #182d4b32;margin:0 0 20px;overflow:hidden}
 .teacher-shell *{box-sizing:border-box}

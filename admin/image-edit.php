@@ -1,5 +1,6 @@
 <?php
-require_once __DIR__.'/../config.php'; require_once __DIR__.'/../ai/quiz-service.php';
+require_once __DIR__.'/../config.php';
+require_once __DIR__.'/../includes/teacher-shell.php'; require_once __DIR__.'/../ai/quiz-service.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 $id=$_GET['id']??''; $error=''; $teacherId=getCurrentTeacherID();
 $actor=['teacher_id'=>$teacherId,'write'=>true];
@@ -38,8 +39,8 @@ try {
 } catch (QuizAiError $e) { $error=$e->getMessage(); }
 function editorEscape($v) { return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8'); }
 ?>
-<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Redigera bildvalsquiz</title><link rel="stylesheet" href="../engine/image-choice.css?v=<?= filemtime(__DIR__ . '/../engine/image-choice.css') ?>"></head>
-<body><main><a href="dashboard.php">← Innehåll</a><header><p class="eyebrow">Bildvalsquiz</p><h1><?= $id?'Redigera bildfrågorna':'Skapa bildvalsquiz' ?></h1><p>Skriv frågan, lägg till 2–6 bilder och markera alla rätta bilder. En rätt bild ger envalsfråga; flera rätta bilder ger flervalsfråga. Bilderna fyller hela svarsknappen i liggande 4:3-format. Be en AI som skapar bilder om 4:3, ett motiv per bild och lite marginal runt motivet. Öppna ”Beskär bildens utsnitt” under varje bild för att justera vad som syns.</p>
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Redigera bildvalsquiz</title><link rel="stylesheet" href="../engine/image-choice.css?v=<?= filemtime(__DIR__ . '/../engine/image-choice.css') ?>"><link rel="stylesheet" href="../assets/teacher-shell.css"></head>
+<body><main class="teacher-page"><?php teacherShell('innehall',$id?'Redigera bildfrågorna':'Skapa bildvalsquiz','Bildvalsquiz'); ?><header><p>Skriv frågan, lägg till 2–6 bilder och markera alla rätta bilder. En rätt bild ger envalsfråga; flera rätta bilder ger flervalsfråga. Bilderna fyller hela svarsknappen i liggande 4:3-format. Be en AI som skapar bilder om 4:3, ett motiv per bild och lite marginal runt motivet. Öppna ”Beskär bildens utsnitt” under varje bild för att justera vad som syns.</p>
 <?php if ($id): ?><nav><a class="button secondary" href="review.php?id=<?= urlencode($id) ?>">Granska och publicera</a><a class="button secondary" href="images.php?id=<?= urlencode($id) ?>">Lägg till infobild</a></nav><?php endif; ?></header>
 <?php if ($error): ?><p class="error" role="alert"><?= editorEscape($error) ?></p><?php endif; ?>
 <?php if (isset($_GET['saved'])): ?><p class="success" role="status">Sparat för granskning. Publicera när du är nöjd.</p><?php endif; ?>

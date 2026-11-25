@@ -79,7 +79,7 @@ if (count($results) > 0) {
     <link rel="stylesheet" href="../assets/teacher-shell.css">
 </head>
 <body class="min-h-screen bg-gradient-to-br from-[var(--bg-from)] to-[var(--bg-to)]">
-<div class="max-w-3xl mx-auto p-4">
+<div class="teacher-page">
     <?php teacherShell('innehall',$quiz['title'],'Statistik för quizet'); ?>
 
     <!-- Overview cards -->
