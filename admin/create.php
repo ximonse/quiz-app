@@ -149,7 +149,7 @@ function parseCSV($csvText, $type) {
 
     <!-- ═══════════ SKAPA QUIZ ═══════════ -->
     <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-        <h2 class="text-lg font-bold text-gray-800 mb-4">Skapa nytt quiz</h2>
+        <p class="text-sm text-gray-700 mb-2">Glosquiz och faktaquiz byggs här. De andra typerna har egna sidor:</p>
         <a href="image-edit.php" class="inline-block mb-4 px-3 py-2 border rounded-lg font-medium text-blue-700">Skapa bildvalsquiz</a>
         <a href="sort-edit.php" class="inline-block mb-4 ml-2 px-3 py-2 border rounded-lg font-medium text-blue-700">Skapa sorteringsquiz</a>
         <a href="order-edit.php" class="inline-block mb-4 ml-2 px-3 py-2 border rounded-lg font-medium text-blue-700">Skapa ordningsquiz</a>
