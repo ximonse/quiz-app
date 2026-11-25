@@ -22,7 +22,7 @@ function teacherShellSideLinks(): array {
 // $title är sidans egen rubrik, $meta en kort rad under den (valfri).
 // Alla sidor som använder den här ligger i admin/, så länkarna är relativa dit.
 function teacherShell(string $current, string $title, string $meta=''): void {
-    $tabs=[['innehall','dashboard.php','Innehåll'],['klasser','classes.php','Klasser']];
+    $tabs=[['innehall','dashboard.php','Innehåll'],['klasser','classes.php','Klasser'],['uppfoljning','followup.php','Uppföljning']];
     echo '<div class="teacher-shell"><div class="teacher-shell-top"><div><h1>'.teacherShellEscape($title).'</h1>';
     if ($meta!=='') echo '<p class="teacher-shell-meta">'.teacherShellEscape($meta).'</p>';
     echo '</div></div><nav class="teacher-tabs" aria-label="Huvudmeny">';

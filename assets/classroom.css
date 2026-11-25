@@ -47,3 +47,5 @@ body.classroom{margin:0;font:16px/1.5 system-ui,sans-serif;color:#1f2937;backgro
 .classroom .wrong-list li{margin-bottom:8px}
 /* Sidspecifik genväg direkt under den gemensamma headern. */
 .classroom .shortcut{margin:-8px 0 16px;font-size:14px}
+/* Uppföljning: markera bara det som faktiskt ligger efter. */
+.classroom td.behind{color:#9a3412;font-weight:600}

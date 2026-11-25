@@ -269,6 +269,19 @@ return false;
     by_index={c['question_index']:c for c in rep_cards.values()}
     check(by_index[0]['lapses']==0 and by_index[1]['lapses']==1, 'Wrong attempts did not map to FSRS ratings')
     check(not state().get('repetition_outbox'), 'Repetition outbox was not drained')
+    # Uppföljningen är lärarens enda fönster mot repetitionen.
+    follow=req(teacher,'/admin/followup.php?target=classes:'+c1)[1]
+    pool=re.search(r'Inget i dag <span class="muted">av (\d+)',follow)
+    check('Alex Test' in follow and pool and int(pool.group(1))>=2,'Follow-up missed the pupil repetition pool')
+    # Backdatera ett kort: då ska det räknas som förfallet och frågan namnges.
+    rep_path=fixture/'data/repetition.json'
+    backdated=json.loads(rep_path.read_text('utf-8'))
+    due_key=[k for k,v in backdated['cards'].items() if v['student_id']==alex['id'] and v['question_index']==1][0]
+    backdated['cards'][due_key]['due']='2000-01-01'
+    rep_path.write_text(json.dumps(backdated,ensure_ascii=False),encoding='utf-8')
+    due_view=req(teacher,'/admin/followup.php?target=classes:'+c1)[1]
+    check('1 kort' in due_view and 'Fem plus fem?' in due_view,'Follow-up did not show the overdue card or name its question')
+    check('Alex Test' not in req(other,'/admin/followup.php?target=classes:'+c1)[1],'Follow-up leaked a class to another teacher')
     home=req(pupil,'/student/')[1]
     check('Klart' in home and '1 rätt' not in home and '1 fel' not in home, 'Pupil status/score privacy failed')
     payload.update(assignment_id=cards_a,attempt_id='b'*32,seq=1,right=0,wrong=0,cards=1,completed=False)
