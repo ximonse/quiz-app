@@ -9,7 +9,6 @@ if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
 
 $csrfToken = getCsrfToken();
 $teacherId = getCurrentTeacherID();
-$teacherName = $_SESSION['teacher_name'] ?? 'Lärare';
 $error = '';
 $success = '';
 
@@ -20,10 +19,16 @@ $success = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'assign') {
     requireValidCsrf();
     try {
-        $_SESSION['dashboard_message'] = classroomAdminAction($teacherId, $_POST, []);
+        $receipt = null;
+        classroomAdminAction($teacherId, $_POST, [], $receipt);
+        $_SESSION['dashboard_assignment'] = $receipt;
     } catch (DomainException $e) { $_SESSION['dashboard_error'] = $e->getMessage(); }
-    catch (RuntimeException $e) { $_SESSION['dashboard_error'] = 'Utdelningen kunde inte sparas. Forsok igen.'; }
-    header('Location: dashboard.php'); exit;
+    catch (RuntimeException $e) { $_SESSION['dashboard_error'] = 'Utdelningen kunde inte sparas. Försök igen.'; }
+    $view = array_filter([
+        'q' => is_string($_GET['q'] ?? null) ? $_GET['q'] : '',
+        'sort' => is_string($_GET['sort'] ?? null) ? $_GET['sort'] : '',
+    ], fn($value) => $value !== '');
+    header('Location: dashboard.php'.($view ? '?'.http_build_query($view) : '')); exit;
 }
 
 // --- Handle delete ---
@@ -56,10 +61,14 @@ $assignedTo = [];
 foreach ($classroom['assignments'] ?? [] as $a) {
     if ($a['teacher_id'] !== $teacherId || $a['kind'] !== 'quiz') continue;
     $name = $classroom[$a['target_type']][$a['target_id']]['name'] ?? null;
-    if ($name !== null) $assignedTo[$a['content_id']][$name] = true;
+    if ($name !== null) {
+        $label = $a['target_type'] === 'groups' ? 'gruppen '.$name : $name;
+        $assignedTo[$a['content_id']][$a['target_type'].':'.$a['target_id']] = $label;
+    }
 }
 $dashboardMessage = $_SESSION['dashboard_message'] ?? ''; unset($_SESSION['dashboard_message']);
 $dashboardError = $_SESSION['dashboard_error'] ?? ''; unset($_SESSION['dashboard_error']);
+$assignmentReceipt = $_SESSION['dashboard_assignment'] ?? null; unset($_SESSION['dashboard_assignment']);
 if ($dashboardMessage) $success = $dashboardMessage;
 if ($dashboardError) $error = $dashboardError;
 usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? ''));
@@ -75,11 +84,10 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
     <link rel="stylesheet" href="../engine/themes.css">
     <link rel="stylesheet" href="../assets/teacher-shell.css">
 </head>
-<body class="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+<body class="teacher-workflow min-h-screen">
 <div class="teacher-page">
 
-    <?php teacherShell('innehall','Hej '.$teacherName.'!','Dina quiz, flashcards och det du delar ut.'); ?>
-    <p class="-mt-4 mb-6"><button type="button" onclick="toggleInfoModal()" class="text-blue-700 text-sm underline">Så funkar appen</button></p>
+    <?php teacherShell('innehall','Innehåll'); ?>
 
     <!-- Info-modal: hjälp för att komma igång -->
     <div id="info-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onclick="if (event.target === this) toggleInfoModal()">
@@ -132,18 +140,21 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
         <div class="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm"><?= htmlspecialchars($success) ?></div>
     <?php endif; ?>
     <?php if ($error): ?>
-        <div class="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm"><?= htmlspecialchars($error) ?></div>
+        <div class="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm" role="alert"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
 
 
     <!-- ═══════════ MINA QUIZ ═══════════ -->
-    <div class="bg-white rounded-xl shadow-lg p-4 mb-4">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold text-gray-800">Dina quiz (<?= count($myQuizzes) ?>)</h2>
-            <div class="flex items-center gap-2">
-                <a href="create.php" class="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium">Skapa quiz</a>
-                <input type="text" id="search-input" oninput="filterQuizzes()" placeholder="Sök..." class="text-sm px-2 py-1 border border-gray-500 rounded w-40">
-                <label class="text-xs text-gray-700">Sortera:</label>
+    <section class="workflow-panel" aria-labelledby="library-title">
+        <div class="workflow-heading">
+            <h2 id="library-title">Dina quiz <span id="quiz-count" class="workflow-muted" aria-live="polite"><?= count($myQuizzes) ?></span></h2>
+            <a href="create.php" class="workflow-primary">Skapa quiz</a>
+        </div>
+        <?php if ($myQuizzes): ?>
+        <div class="workflow-toolbar">
+                <label for="search-input" class="workflow-muted">Sök quiz</label>
+                <input type="search" id="search-input" oninput="filterQuizzes()" placeholder="Sök titel, ämne eller tagg" class="workflow-search">
+                <label for="sort-select" class="workflow-muted">Sortera</label>
                 <select id="sort-select" onchange="sortQuizzes()" class="text-sm px-2 py-1 border border-gray-500 rounded">
                     <option value="created-desc">Nyast först</option>
                     <option value="created-asc">Äldst först</option>
@@ -152,25 +163,23 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                     <option value="type">Typ</option>
                     <option value="subject">Ämne</option>
                 </select>
-            </div>
         </div>
-
+        <?php endif; ?>
         <?php if (empty($myQuizzes)): ?>
             <p class="text-center py-8 text-gray-700">Inga quiz ännu. <a href="create.php" class="text-blue-700 underline">Skapa ditt första</a>.</p>
         <?php else: ?>
-        <div id="quiz-list" class="space-y-1">
+        <div id="quiz-list">
             <?php foreach ($myQuizzes as $quiz):
                 $storedQuiz=$quiz; $quiz=aiEffectiveQuiz($quiz);
                 $type = $quiz['type'] ?? 'glossary';
                 $typeBadge = quizTypeRoute($type)['label'];
                 $reviewState=aiReviewState($storedQuiz);
-                $badgeColor = $type === 'glossary' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700';
                 $itemCount = count($quiz['items'] ?? []);
                 $resultCount = count($quiz['results'] ?? []);
                 // Inloggade elever och oinloggade spelare är två olika tal, inte ett.
                 $pupilResults = count(array_filter($quiz['results'] ?? [], fn($r) => !empty($r['student_id'])));
                 $guestResults = $resultCount - $pupilResults;
-                $reachedNames = array_keys($assignedTo[$quiz['id']] ?? []);
+                $reachedNames = array_values($assignedTo[$quiz['id']] ?? []);
                 // Repetition kräver rätt typ, publicerat OCH utdelat; säg vilket som fattas.
                 $repetitionOn = !empty($quiz['settings']['spaced_repetition']) && in_array($type, ['fact','glossary'], true);
                 $liveContent = classroomContent(['kind' => 'quiz', 'content_id' => $quiz['id'], 'teacher_id' => $teacherId]);
@@ -182,38 +191,39 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                 $createdDate = $created ? date('Y-m-d', strtotime($created)) : '';
                 $playUrl = '../play/index.php?id=' . urlencode($quiz['id']);
             ?>
-            <div class="quiz-row flex items-center justify-between px-4 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-400 transition"
+            <article class="workflow-item"
                  data-created="<?= htmlspecialchars($created) ?>"
                  data-title="<?= htmlspecialchars($quiz['title']) ?>"
                  data-type="<?= $type ?>"
                  data-subject="<?= $subject ?>"
                  data-tags="<?= $tags ?>">
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                        <span class="font-medium text-gray-800 truncate"><?= htmlspecialchars($quiz['title']) ?></span>
-                        <span class="text-xs px-2 py-0.5 rounded-full <?= $badgeColor ?>"><?= $typeBadge ?></span>
+                <div class="quiz-row workflow-row">
+                <div class="workflow-info">
+                    <h3><?= htmlspecialchars($quiz['title']) ?></h3>
+                    <div class="workflow-meta">
+                        <span><?= $typeBadge ?></span>
                         <?php if ($reviewState!=='published'): ?><span class="text-xs text-amber-800"><?= $reviewState==='draft'?'Opublicerat':'Ändringar att granska' ?></span><?php endif; ?>
                         <?php if ($repetitionOn): ?><span class="text-xs px-2 py-0.5 rounded-full <?= ($reachedNames && $liveContent) ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800' ?>"><?= $reachedNames ? ($liveContent ? 'Repetition' : 'Repetition: inte publicerat') : 'Repetition: inte utdelad' ?></span><?php endif; ?>
                         <?php if ($subject): ?>
-                            <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600"><?= $subject ?></span>
+                            <span><?= $subject ?></span>
                         <?php endif; ?>
                         <?php if ($tags): foreach (explode(',', $tags) as $tag): $tag = trim($tag); if ($tag): ?>
-                            <span class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700"><?= htmlspecialchars($tag) ?></span>
+                            <span><?= htmlspecialchars($tag) ?></span>
                         <?php endif; endforeach; endif; ?>
                     </div>
-                    <div class="text-xs text-gray-700">
-                        <?= $itemCount ?> <?= $itemWord ?><?= $createdDate ? ' &middot; '.htmlspecialchars($createdDate) : '' ?>
+                    <div class="workflow-meta">
+                        <?= $itemCount ?> <?= $itemCount === 1 ? ($type === 'glossary' ? 'glosa' : 'fråga') : $itemWord ?><?= $createdDate ? ' &middot; '.htmlspecialchars($createdDate) : '' ?>
                         &middot; <?= $reachedNames ? 'utdelad till '.htmlspecialchars(implode(', ', $reachedNames)) : 'inte utdelad' ?>
-                        &middot; <?= $pupilResults ?> <?= $pupilResults===1?'elevsvar':'elevsvar' ?><?= $guestResults ? ' &middot; '.$guestResults.($guestResults===1?' oinloggad':' oinloggade') : '' ?>
+                        &middot; <?= $pupilResults ?> elevsvar<?= $guestResults ? ' &middot; '.$guestResults.($guestResults===1?' oinloggad':' oinloggade') : '' ?>
                     </div>
                 </div>
-                <div class="flex items-center gap-1 ml-4">
-                    <?php if ($canAssign): ?><button type="button" data-assign="<?= htmlspecialchars($quiz['id']) ?>" class="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm">Dela ut</button><?php endif; ?>
-                    <a href="review.php?id=<?= urlencode($quiz['id']) ?>" class="text-blue-700 text-sm px-1"><?= $reviewState==='published'?'Granska':'Granska och publicera' ?></a>
-                    <a href="<?= quizTypeRoute($type)['editor'] ?>?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-700" title="Redigera">✏️</a>
-                    <a href="stats.php?id=<?= urlencode($quiz['id']) ?>" class="p-1.5 rounded hover:bg-gray-200 text-gray-700" title="Statistik">📊</a>
+                <div class="workflow-actions">
+                    <?php if ($canAssign): ?><button type="button" data-assign="<?= htmlspecialchars($quiz['id']) ?>" aria-expanded="false" aria-controls="assign-<?= htmlspecialchars($quiz['id']) ?>" class="workflow-primary">Dela ut</button><?php endif; ?>
+                    <a href="review.php?id=<?= urlencode($quiz['id']) ?>" class="workflow-link"><?= $reviewState==='published'?'Granska':'Granska och publicera' ?></a>
+                    <a href="<?= quizTypeRoute($type)['editor'] ?>?id=<?= urlencode($quiz['id']) ?>" class="workflow-link">Redigera</a>
+                    <a href="stats.php?id=<?= urlencode($quiz['id']) ?>" class="workflow-link">Statistik</a>
                     <details class="relative" data-more>
-                        <summary class="cursor-pointer p-1.5 rounded hover:bg-gray-200 text-gray-700" title="Fler">&#8943;</summary>
+                        <summary class="cursor-pointer p-1.5 rounded hover:bg-gray-200 text-gray-700" aria-label="Fler åtgärder för <?= htmlspecialchars($quiz['title']) ?>">&#8943;</summary>
                         <div class="absolute right-0 top-full z-10 mt-1 w-56 rounded-lg border border-gray-300 bg-white p-1 shadow-lg">
                             <?php if ($reviewState==='published'): ?>
                             <button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="block w-full text-left text-sm px-2 py-1 rounded hover:bg-gray-100">Dela fritt: kopiera länk</button>
@@ -229,17 +239,26 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                     </details>
                 </div>
             </div>
+            <?php if (($assignmentReceipt['content_id'] ?? null) === $quiz['id']): ?>
+            <div class="workflow-receipt" role="status">
+                <span>Utdelad till <?= $assignmentReceipt['target_type'] === 'groups' ? 'gruppen ' : '' ?><?= htmlspecialchars($assignmentReceipt['recipient']) ?>.</span>
+                <a href="followup.php?assignment=<?= urlencode($assignmentReceipt['id']) ?>">Följ upp utdelningen</a>
+            </div>
+            <?php endif; ?>
             <?php if ($canAssign): ?>
-            <form method="POST" data-assign-panel="<?= htmlspecialchars($quiz['id']) ?>" class="hidden mb-2 px-4 py-3 rounded-lg bg-blue-50 border border-blue-200 text-sm">
+            <form method="POST" id="assign-<?= htmlspecialchars($quiz['id']) ?>" data-assign-panel hidden class="workflow-assign">
                 <?= csrfField() ?>
                 <input type="hidden" name="action" value="assign">
                 <input type="hidden" name="content" value="quiz:<?= htmlspecialchars($quiz['id']) ?>">
-                <label class="font-medium mr-2" for="target-<?= htmlspecialchars($quiz['id']) ?>">Dela ut till</label>
+                <label for="target-<?= htmlspecialchars($quiz['id']) ?>">Mottagare för <?= htmlspecialchars($quiz['title']) ?></label>
+                <div class="workflow-assign-controls">
                 <select id="target-<?= htmlspecialchars($quiz['id']) ?>" name="target" required class="px-2 py-1 border border-gray-500 rounded text-sm">
+                    <option value="">Välj klass eller grupp</option>
                     <?php foreach ($targets as $value => $label): ?><option value="<?= htmlspecialchars($value) ?>"><?= htmlspecialchars($label) ?></option><?php endforeach; ?>
                 </select>
-                <button type="submit" class="ml-2 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm">Dela ut</button>
-                <button type="button" data-assign-cancel class="ml-1 px-3 py-1 rounded-lg border border-gray-400 bg-white text-blue-700 text-sm">Avbryt</button>
+                <button type="submit" class="workflow-primary">Dela ut</button>
+                <button type="button" data-assign-cancel class="workflow-link">Avbryt</button>
+                </div>
                 <?php if ($repetitionOn && !$reachedNames): ?><p class="mt-1 text-xs text-gray-700">Repetitionen börjar samla kort när klassens elever övat på quizet.</p><?php endif; ?>
             </form>
             <?php elseif ($liveContent): ?>
@@ -247,11 +266,14 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
             <?php else: ?>
             <p class="mb-2 px-4 text-xs text-gray-700">Publicera quizet för att kunna dela ut det till en klass.</p>
             <?php endif; ?>
+            </article>
             <?php endforeach; ?>
         </div>
+        <p id="quiz-no-results" class="workflow-muted" hidden>Inga quiz matchar din sökning.</p>
         <?php endif; ?>
-    </div>
-    <div class="flex justify-center pb-6">
+    </section>
+    <div class="workflow-toolbar workflow-footer">
+        <button type="button" onclick="toggleInfoModal()" class="workflow-link">Så funkar appen</button>
         <a href="ai.php" class="inline-block px-4 py-2 rounded-lg bg-white border border-blue-200 text-blue-700 hover:bg-blue-50 font-medium text-sm">ai-api</a>
     </div>
 </div>
@@ -313,7 +335,7 @@ function closeQrModal() {
 function sortQuizzes() {
     const list = document.getElementById('quiz-list');
     if (!list) return;
-    const rows = [...list.querySelectorAll('.quiz-row')];
+    const rows = [...list.children];
     const val = document.getElementById('sort-select').value;
 
     rows.sort((a, b) => {
@@ -327,23 +349,30 @@ function sortQuizzes() {
             default: return 0;
         }
     });
-    rows.forEach(r => list.appendChild(r));
+    rows.forEach(row => list.appendChild(row));
+    updateLibraryUrl();
 }
 
-// Dela ut: panelen ligger under raden och öppnas av radens knapp.
-document.querySelectorAll('[data-assign]').forEach(function (button) {
-    button.addEventListener('click', function () {
-        var panel = document.querySelector('[data-assign-panel="' + button.dataset.assign + '"]');
-        if (!panel) return;
-        document.querySelectorAll('[data-assign-panel]').forEach(function (other) {
-            if (other !== panel) other.classList.add('hidden');
+function setAssignmentPanel(item, open) {
+    item.querySelector('[data-assign-panel]').hidden = !open;
+    item.querySelector('[data-assign]').setAttribute('aria-expanded', String(open));
+}
+
+document.querySelectorAll('[data-assign]').forEach(button => {
+    const item = button.closest('.workflow-item');
+    const panel = item.querySelector('[data-assign-panel]');
+    button.addEventListener('click', () => {
+        const open = panel.hidden;
+        document.querySelectorAll('[data-assign-panel]:not([hidden])').forEach(other => {
+            if (other !== panel) setAssignmentPanel(other.closest('.workflow-item'), false);
         });
-        panel.classList.toggle('hidden');
-        if (!panel.classList.contains('hidden')) panel.querySelector('select').focus();
+        setAssignmentPanel(item, open);
+        if (open) panel.querySelector('select').focus();
     });
-});
-document.querySelectorAll('[data-assign-cancel]').forEach(function (button) {
-    button.addEventListener('click', function () { button.closest('[data-assign-panel]').classList.add('hidden'); });
+    panel.querySelector('[data-assign-cancel]').addEventListener('click', () => {
+        setAssignmentPanel(item, false);
+        button.focus();
+    });
 });
 // En öppen rad-meny ska stängas när man klickar någon annanstans.
 document.addEventListener('click', function (event) {
@@ -356,10 +385,33 @@ function filterQuizzes() {
     const list = document.getElementById('quiz-list');
     if (!list) return;
     const query = document.getElementById('search-input').value.trim().toLowerCase();
-    list.querySelectorAll('.quiz-row').forEach(row => {
+    let visible = 0;
+    for (const row of list.children) {
         const haystack = [row.dataset.title, row.dataset.subject, row.dataset.tags].join(' ').toLowerCase();
-        row.style.display = (query !== '' && !haystack.includes(query)) ? 'none' : '';
-    });
+        row.hidden = !haystack.includes(query);
+        if (!row.hidden) visible++;
+    }
+    document.getElementById('quiz-count').textContent = visible;
+    document.getElementById('quiz-no-results').hidden = visible > 0;
+    updateLibraryUrl();
+}
+
+function updateLibraryUrl() {
+    const url = new URL(location.href);
+    const query = document.getElementById('search-input').value.trim();
+    const sort = document.getElementById('sort-select').value;
+    if (query) url.searchParams.set('q', query); else url.searchParams.delete('q');
+    if (sort !== 'created-desc') url.searchParams.set('sort', sort); else url.searchParams.delete('sort');
+    history.replaceState(history.state, '', url);
+}
+
+if (document.getElementById('quiz-list')) {
+    const params = new URLSearchParams(location.search);
+    const sort = document.getElementById('sort-select');
+    document.getElementById('search-input').value = params.get('q') || '';
+    if ([...sort.options].some(option => option.value === params.get('sort'))) sort.value = params.get('sort');
+    if (sort.value !== 'created-desc') sortQuizzes();
+    filterQuizzes();
 }
 
 function toggleInfoModal() {

@@ -25,7 +25,7 @@ if ($student) {
         $target=$data[$a['target_type']][$a['target_id']]['name'] ?? ($a['target_type']==='classes'?'Borttagen klass':'Borttagen grupp');
         $detail=$a['kind']==='quiz'?quizWrongQuestionsHtml($quizzes,(string)$a['content_id'],$student['id'],$teacher):'';
         $rows[]=classroomPracticeRow($data,$aid,$student['id'],$a['kind'])
-            +['first'=>classroomEscape($a['title']).' <span class="muted">'.classroomEscape(classroomKindLabel($a['kind']).' · '.$target).'</span>','detail'=>$detail];
+            +['first'=>'<span id="assignment-'.classroomEscape($aid).'">'.classroomEscape($a['title']).'</span> <span class="muted">'.classroomEscape(classroomKindLabel($a['kind']).' · '.$target).'</span>','detail'=>$detail];
     }
 }
 ?>

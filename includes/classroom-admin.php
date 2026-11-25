@@ -54,7 +54,7 @@ function classroomAssign(array &$data, string $teacher, string $targetType, stri
     $data['assignments'][$id]=$assignment;
     return ['assignment'=>$assignment,'target_name'=>$target['name'],'recipients'=>count(classroomRecipients($data,$assignment))];
 }
-function classroomAdminAction(string $teacher, array $post, array $files): string {
+function classroomAdminAction(string $teacher, array $post, array $files, ?array &$assignmentReceipt=null): string {
     $action=(string)($post['action'] ?? '');
     $uploaded=null;
     // Hasha nya PIN-koder innan transaktionen öppnas. 30 elever tog annars flera
@@ -159,12 +159,20 @@ function classroomAdminAction(string $teacher, array $post, array $files): strin
                 }
                 $content=explode(':',(string)($post['content'] ?? ''),2);
                 if (count($content)!==2 || !in_array($content[0],['quiz','cards','deck'],true)) throw new DomainException('Välj innehåll.');
-                classroomAssign($data,$teacher,$target[0],$target[1],$content[0],$content[1],'teacher');
-                return 'Uppgiften är utdelad.';
+                $created=classroomAssign($data,$teacher,$target[0],$target[1],$content[0],$content[1],'teacher');
+                $assignment=$created['assignment'];
+                return ['message'=>'Uppgiften är utdelad.', 'assignment'=>[
+                    'id'=>$assignment['id'], 'recipient'=>$created['target_name'],
+                    'target_type'=>$assignment['target_type'], 'content_id'=>$assignment['content_id'],
+                ]];
             }
             throw new DomainException('Okänd åtgärd.');
         });
     } catch (Throwable $e) { if ($uploaded) unlink(DATA_DIR.'materials/'.$uploaded); throw $e; }
-    if (is_array($result)) { $_SESSION['classroom_cards']=['expires'=>time()+900,'cards'=>$result['cards']]; return $result['message']; }
+    if (is_array($result)) {
+        if (isset($result['cards'])) $_SESSION['classroom_cards']=['expires'=>time()+900,'cards'=>$result['cards']];
+        $assignmentReceipt=$result['assignment'] ?? null;
+        return $result['message'];
+    }
     return $result;
 }
