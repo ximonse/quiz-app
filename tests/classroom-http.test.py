@@ -402,6 +402,17 @@ return false;
     check('&lt;script&gt;' in wrong_page and '<script>alert(1)</script>' not in wrong_page,'Pupil answer reached the page unescaped')
     check('Fråga 100' in wrong_page,'An error for a deleted question lost its fallback label')
     check('Två plus två?' not in req(other,'/admin/pupil.php?id='+elin['id'])[1],'Wrong answers leaked to another teacher')
+    # Ett felfritt senare försök får inte visa ett äldre försöks fel som "senaste".
+    # Noel används här, så Elins lista står kvar för --serve.
+    noel_login=client(); noel_csrf=csrf(noel_login)
+    noel_pupil=next(s for s in state()['students'].values() if s['name']=='Noel Test')
+    check('Hej Noel Test' in req(noel_login,'/student/',form={'csrf_token':noel_csrf,'code':noel_pupil['code'],'pin':pcards['Noel Test']})[1],'Noel could not log in')
+    noel_base={'quiz_id':'q_fixture','student_id':noel_pupil['id'],'student_name':'Noel','total':2}
+    check(req(noel_login,'/api/save-result.php',payload={**noel_base,'score':1,'request_id':'c'*32,'errors':[{'item_index':1,'given':'Fem','correct':'Sex'}]})[0]==200,'First Noel result failed')
+    check('Tre plus tre?' in req(teacher,'/admin/pupil.php?id='+noel_pupil['id'])[1],'Wrong answer missing before the clean run')
+    check(req(noel_login,'/api/save-result.php',payload={**noel_base,'score':2,'request_id':'f'*32,'errors':[]})[0]==200,'Clean Noel result failed')
+    clean_page=req(teacher,'/admin/pupil.php?id='+noel_pupil['id'])[1]
+    check('Tre plus tre?' not in clean_page and 'Inga fel i senaste' in clean_page,'A clean latest attempt still showed an older run as the latest')
     # Vägen från en utdelning till quizets statistik, bara för quiz läraren äger.
     overview=req(teacher,'/admin/classes.php?assignment='+live_a)[1]
     check('stats.php?id=q_fixture' in overview,'Overview lost the link to the quiz statistics')
