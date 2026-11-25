@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/settings.php';
 require_once __DIR__ . '/images.php';
 require_once __DIR__ . '/image-validation.php';
 require_once __DIR__ . '/sort-validation.php';
@@ -36,24 +37,20 @@ function aiValidateDocument(array $input, string $teacherId): array {
     }
     $settings = $input['settings'] ?? [];
     if (!is_array($settings)) throw new QuizAiError('Invalid settings.');
-    $defaults = ['answer_mode'=>'multiple_choice', 'question_direction'=>'concept', 'concept_language'=>'sv',
-        'required_correct'=>1, 'reverse_enabled'=>false, 'reverse_answer_mode'=>'multiple_choice',
-        'reverse_required_correct'=>1, 'quiz_mode'=>'training', 'tts_enabled'=>true, 'language'=>'sv',
-        'spelling_mode'=>'student_choice', 'time_lock'=>null, 'generate_flashcards'=>false, 'flashcard_mix_directions'=>false,
-        'spaced_repetition'=>false];
+    // The contract lives in ai/settings.php so the validator and the description the
+    // AI tools advertise are generated from the same arrays.
+    $defaults = aiSettingDefaults();
     if (array_diff(array_keys($settings), array_keys($defaults))) throw new QuizAiError('Unknown settings.');
     $settings = array_replace($defaults, $settings);
-    foreach (['answer_mode'=>['multiple_choice','text_only','hybrid'], 'reverse_answer_mode'=>['multiple_choice','text_only','hybrid'],
-        'question_direction'=>['concept','description'], 'concept_language'=>['sv','same'], 'quiz_mode'=>['training','test'],
-        'spelling_mode'=>['easy','puritan','student_choice']] as $key=>$values)
+    foreach (aiSettingChoices() as $key=>$values)
         if (!in_array($settings[$key], $values, true)) throw new QuizAiError("Invalid $key.");
-    foreach (['required_correct','reverse_required_correct'] as $key)
-        if (!is_int($settings[$key]) || $settings[$key] < 1 || $settings[$key] > 10) throw new QuizAiError("$key must be 1 to 10.");
-    foreach (['reverse_enabled','tts_enabled','generate_flashcards','flashcard_mix_directions','spaced_repetition'] as $key)
+    foreach (aiSettingIntegers() as $key=>[$min,$max])
+        if (!is_int($settings[$key]) || $settings[$key] < $min || $settings[$key] > $max) throw new QuizAiError("$key must be $min to $max.");
+    foreach (aiSettingBooleans() as $key)
         if (!is_bool($settings[$key])) throw new QuizAiError("$key must be boolean.");
     // No review player exists yet for sort/order/image_choice questions, so the setting
     // would silently do nothing there — reject it instead of accepting a dead flag.
-    if ($settings['spaced_repetition'] && !in_array($type, ['fact', 'glossary'], true))
+    if ($settings['spaced_repetition'] && !in_array($type, aiRepetitionTypes(), true))
         throw new QuizAiError('spaced_repetition is only available for fact and glossary quizzes.');
     if (!is_string($settings['language']) || !preg_match('/^[a-z]{2}(-[A-Z]{2})?$/D', $settings['language'])) throw new QuizAiError('Invalid language.');
     if ($settings['time_lock'] !== null) {
@@ -69,9 +66,10 @@ function aiValidateDocument(array $input, string $teacherId): array {
         if ($settings['time_lock']['opens'] && $settings['time_lock']['closes'] && $settings['time_lock']['opens'] >= $settings['time_lock']['closes'])
             throw new QuizAiError('Opening must be before closing.');
     }
-    if ($type === 'image_choice' && ($settings['answer_mode'] !== 'multiple_choice' || $settings['reverse_enabled'] || $settings['generate_flashcards'])) throw new QuizAiError('Image choices use multiple_choice, without reverse mode or flashcards.');
-    if ($type === 'sort' && ($settings['answer_mode'] !== 'multiple_choice' || $settings['reverse_enabled'])) throw new QuizAiError('Sort quizzes use drag and drop, without reverse mode.');
-    if ($type === 'order' && ($settings['answer_mode'] !== 'multiple_choice' || $settings['reverse_enabled'] || $settings['generate_flashcards'])) throw new QuizAiError('Order quizzes use drag and drop, without reverse mode or flashcards.');
+    // Picture and drag-and-drop types are answered by selection only.
+    $rule = aiTypeRules()[$type] ?? null;
+    if ($rule && ($settings['answer_mode'] !== 'multiple_choice' || $settings['reverse_enabled']
+        || (!$rule['flashcards'] && $settings['generate_flashcards']))) throw new QuizAiError($rule['message']);
     return ['title'=>aiText($input['title'] ?? '', 'title', 300), 'type'=>$type,
         'subject'=>aiText($input['subject'] ?? '', 'subject', 100, false), 'grade'=>aiText($input['grade'] ?? '', 'grade', 100, false),
         'tags'=>aiText($input['tags'] ?? '', 'tags', 500, false), 'settings'=>$settings, 'items'=>$normalized];

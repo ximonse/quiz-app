@@ -35,6 +35,25 @@ function classroomRemovePupil(array &$data, string $id): void {
     $data['students'][$id]['active']=false;
     foreach ($data['groups'] ?? [] as $gid=>$group) $data['groups'][$gid]['students']=array_values(array_diff($group['students'],[$id]));
 }
+// Dela ut ett quiz, flashcards eller en kortlek till en klass eller grupp.
+// Samma regler för läraren i appen och för AI över MCP: ägarskap kontrolleras,
+// innehållet måste vara publicerat och tillgängligt för elever, och $source
+// skrivs på uppgiften så läraren ser vad en AI delat ut. Material (PDF) går
+// inte via den här vägen — uppladdningen hanteras bara i appen.
+function classroomAssign(array &$data, string $teacher, string $targetType, string $targetId, string $kind, string $contentId, string $source): array {
+    if (!in_array($targetType,['classes','groups'],true)) throw new DomainException('Välj klass eller grupp.');
+    if (!in_array($kind,['quiz','cards','deck'],true)) throw new DomainException('Välj innehåll.');
+    $target=classroomOwned($data,$targetType,$targetId,$teacher);
+    $id='a_'.bin2hex(random_bytes(12));
+    $assignment=['id'=>$id,'teacher_id'=>$teacher,'target_type'=>$targetType,'target_id'=>$targetId,
+        'created'=>gmdate('c'),'kind'=>$kind,'content_id'=>$contentId];
+    $item=classroomContent($assignment);
+    if (!$item) throw new DomainException('Innehållet måste vara publicerat och tillgängligt för elever.');
+    $assignment['title']=$item['title'];
+    if ($source!=='teacher') $assignment['source']=$source;
+    $data['assignments'][$id]=$assignment;
+    return ['assignment'=>$assignment,'target_name'=>$target['name'],'recipients'=>count(classroomRecipients($data,$assignment))];
+}
 function classroomAdminAction(string $teacher, array $post, array $files): string {
     $action=(string)($post['action'] ?? '');
     $uploaded=null;
@@ -131,20 +150,17 @@ function classroomAdminAction(string $teacher, array $post, array $files): strin
             if ($action==='assign') {
                 $target=explode(':',(string)($post['target'] ?? ''),2);
                 if (count($target)!==2 || !in_array($target[0],['classes','groups'],true)) throw new DomainException('Välj klass eller grupp.');
-                classroomOwned($data,$target[0],$target[1],$teacher);
-                $id='a_'.bin2hex(random_bytes(12));
-                $assignment=['id'=>$id,'teacher_id'=>$teacher,'target_type'=>$target[0],'target_id'=>$target[1],'created'=>gmdate('c')];
                 if ($uploaded) {
-                    $assignment+=['kind'=>'material','content_id'=>$id,'title'=>classroomText($post['title'] ?? ''),'file'=>$uploaded];
-                } else {
-                    $content=explode(':',(string)($post['content'] ?? ''),2);
-                    if (count($content)!==2 || !in_array($content[0],['quiz','cards','deck'],true)) throw new DomainException('Välj innehåll.');
-                    $assignment+=['kind'=>$content[0],'content_id'=>$content[1]];
-                    $item=classroomContent($assignment);
-                    if (!$item) throw new DomainException('Innehållet måste vara publicerat och tillgängligt för elever.');
-                    $assignment['title']=$item['title'];
+                    classroomOwned($data,$target[0],$target[1],$teacher);
+                    $id='a_'.bin2hex(random_bytes(12));
+                    $data['assignments'][$id]=['id'=>$id,'teacher_id'=>$teacher,'target_type'=>$target[0],'target_id'=>$target[1],
+                        'created'=>gmdate('c'),'kind'=>'material','content_id'=>$id,'title'=>classroomText($post['title'] ?? ''),'file'=>$uploaded];
+                    return 'Uppgiften är utdelad.';
                 }
-                $data['assignments'][$id]=$assignment; return 'Uppgiften är utdelad.';
+                $content=explode(':',(string)($post['content'] ?? ''),2);
+                if (count($content)!==2 || !in_array($content[0],['quiz','cards','deck'],true)) throw new DomainException('Välj innehåll.');
+                classroomAssign($data,$teacher,$target[0],$target[1],$content[0],$content[1],'teacher');
+                return 'Uppgiften är utdelad.';
             }
             throw new DomainException('Okänd åtgärd.');
         });
