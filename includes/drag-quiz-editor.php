@@ -50,8 +50,8 @@ function dragQuizEditor(array $config): void {
 <?php if ($id): ?><nav><a class="button secondary" href="review.php?id=<?= urlencode($id) ?>">Granska och publicera</a><a class="button secondary" href="images.php?id=<?= urlencode($id) ?>">Lägg till infobild</a></nav><?php endif; ?></header>
 <?php if ($error): ?><p class="error" role="alert"><?= $e($error) ?></p><?php endif; ?>
 <?php if (isset($_GET['saved'])): ?><p class="success" role="status">Sparat för granskning. Publicera när du är nöjd.</p><?php endif; ?>
-<details class="question-card"><summary><strong>Skapa med AI eller klistra in JSON</strong></summary>
-<p>Kopiera prompten till valfri AI, skriv vad quizet ska handla om och klistra in svaret här. Bilder lägger du till efteråt i formuläret.</p>
+<details class="question-card" open><summary><strong>🤖 Hämta AI-prompt för <?= $e($config['label']) ?>, eller klistra in JSON</strong></summary>
+<p>Kopiera prompten till valfri AI (ChatGPT, Claude, Copilot), skriv vad quizet ska handla om och klistra in svaret här. Bilder lägger du till efteråt i formuläret.</p>
 <div class="actions"><button type="button" id="copy-prompt" class="secondary">Kopiera prompt</button><a class="button secondary" href="../assets/templates/<?= $e($config['template']) ?>" download>Ladda ner mall (JSON)</a><span id="copy-status" role="status" aria-live="polite"></span></div>
 <pre id="ai-prompt" hidden><?= $e($config['prompt']) ?></pre>
 <label for="import-json">AI-svar eller JSON</label><textarea id="import-json" rows="6" placeholder='{"title": "...", "type": "<?= $e($config['type']) ?>", "items": [...]}'></textarea>
