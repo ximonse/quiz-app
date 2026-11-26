@@ -381,6 +381,45 @@ return false;
     check(state()==guarded, 'Other teacher deleted a class')
     live=client(); live_csrf=csrf(live)
     check('Hej Tove Test' in req(live,'/student/',form={'csrf_token':live_csrf,'code':tove['code'],'pin':tove_pin})[1], 'Pupil of the temporary class could not log in')
+    # Remove a different group while the pupil stays active in the class and the other group.
+    admin({'action':'group','name':'Grupp för borttagning','members[]':[tove['id']]})
+    removal_group=named('groups','Grupp för borttagning')
+    removal_path='/admin/classes.php?group='+removal_group+'&remove=1'
+    group_assignment=assign('quiz:q_sort','groups:'+removal_group)
+    before_removal=state()
+    page=req(teacher,removal_path)[1]
+    confirmation=page.split('id="group-removal"',1)[1].split('</section>',1)[0]
+    check('Sorteringsquiz · Quiz' in confirmation and 'Ordningsquiz · Quiz' not in confirmation,
+          'Group confirmation did not show the affected assignments')
+    check(state()==before_removal, 'Opening the group confirmation changed data')
+    version=re.search(r'name="impact_version" value="([^"]+)"',confirmation).group(1)
+    payload={'action':'group_delete','group_id':removal_group,'impact_version':version}
+    check(req(teacher,removal_path,form=payload)[0]==403, 'Group deletion accepted a request without CSRF')
+    admin(payload,other,other_csrf)
+    check(state()==before_removal, 'Another teacher deleted the group')
+    check(req(live,'/student/open.php?assignment='+group_assignment)[0]==200, 'Group pupil could not open assignment')
+    group_activity={'student_id':tove['id'],'assignment_id':group_assignment,'attempt_id':'9'*32,
+                    'seq':1,'right':2,'wrong':1,'cards':0,'completed':True}
+    check(req(live,'/api/classroom-activity.php',payload=group_activity,token=csrf(live))[0]==200,
+          'Practice on the group assignment could not be stored')
+    assign('quiz:q_order','groups:'+removal_group)
+    with_new_assignment=state()
+    response=req(teacher,removal_path,form={**payload,'csrf_token':teacher_csrf})[1]
+    check('utdelningarna har ändrats' in response and 'Ordningsquiz · Quiz' in response.split('id="group-removal"',1)[1].split('</section>',1)[0],
+          'An outdated confirmation did not show the newly affected assignment')
+    check(state()==with_new_assignment, 'An outdated confirmation changed data')
+    payload['impact_version']=re.search(r'name="impact_version" value="([^"]+)"',response).group(1)
+    response=admin(payload)[1]
+    removed=state()
+    check('Gruppen Grupp för borttagning har tagits bort.' in response and removal_group not in removed['groups'],
+          'Group deletion failed')
+    check(removed['students']==with_new_assignment['students'] and removed['groups'][tgid]==with_new_assignment['groups'][tgid]
+          and removed['assignments']==with_new_assignment['assignments'] and removed['attempts']==with_new_assignment['attempts'],
+          'Group deletion altered pupil accounts, other groups, assignments or results')
+    check(req(live,'/student/open.php?assignment='+group_assignment)[0]==403 and 'Hej Tove Test' in req(live,'/student/')[1],
+          'Group deletion did not revoke only the assignment access')
+    history=req(teacher,'/admin/followup.php?assignment='+group_assignment)[1]
+    check('Tove Test' in history and '2 rätt · 1 fel' in history, 'Group deletion hid the previous results')
     check('är borttagen tillsammans med 1 elev' in admin({'action':'class_delete','class_id':temp})[1], 'Class delete failed')
     purged=state()
     check(temp not in purged['classes'], 'Deleted class row remained')

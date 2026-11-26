@@ -54,6 +54,15 @@ function classroomAssign(array &$data, string $teacher, string $targetType, stri
     $data['assignments'][$id]=$assignment;
     return ['assignment'=>$assignment,'target_name'=>$target['name'],'recipients'=>count(classroomRecipients($data,$assignment))];
 }
+function classroomGroupRemovalImpact(array $data, array $group): array {
+    $assignments=array_filter($data['assignments'] ?? [],fn($assignment)=>
+        $assignment['teacher_id']===$group['teacher_id'] &&
+        $assignment['target_type']==='groups' && $assignment['target_id']===$group['id']);
+    return [
+        'assignments'=>$assignments,
+        'version'=>hash('sha256',serialize([$group['name'],array_keys($assignments)])),
+    ];
+}
 function classroomAdminAction(string $teacher, array $post, array $files, ?array &$assignmentReceipt=null): string {
     $action=(string)($post['action'] ?? '');
     $uploaded=null;
@@ -136,6 +145,18 @@ function classroomAdminAction(string $teacher, array $post, array $files, ?array
                 foreach ($ids as $sid) $cards[]=['id'=>$sid,'pin'=>classroomResetLogin($data,$sid,$prepared[$sid])];
                 $count=count($cards);
                 return ['message'=>$count.($count===1?' elev har':' elever har').' fått ny PIN och QR-kod. Tidigare inloggningar är avslutade.','cards'=>$cards];
+            }
+            if ($action==='group_delete') {
+                $id=(string)($post['group_id'] ?? '');
+                $group=classroomOwned($data,'groups',$id,$teacher);
+                $impact=classroomGroupRemovalImpact($data,$group);
+                $version=$post['impact_version'] ?? null;
+                if (!is_string($version) || !hash_equals($impact['version'],$version)) {
+                    throw new DomainException('Gruppen eller utdelningarna har ändrats. Kontrollera uppgifterna nedan och bekräfta igen.');
+                }
+                // Removing the target revokes access while preserving the assignments and their history.
+                unset($data['groups'][$id]);
+                return 'Gruppen '.$group['name'].' har tagits bort.';
             }
             if ($action==='group') {
                 $id=(string)($post['group_id'] ?? '');
