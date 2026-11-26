@@ -83,6 +83,15 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
     <script src="../assets/vendor/qrcode-1.0.0.min.js"></script>
     <link rel="stylesheet" href="../engine/themes.css">
     <link rel="stylesheet" href="../assets/teacher-shell.css">
+    <style>
+        @media print {
+            body.print-quiz-qr { background: white; }
+            body.print-quiz-qr > .teacher-page, .print-quiz-qr .qr-modal-actions { display: none; }
+            .print-quiz-qr #qr-modal { position: static; background: white; }
+            .print-quiz-qr #qr-modal > div { box-shadow: none; }
+            .print-quiz-qr #qr-modal-code { padding: 24px; }
+        }
+    </style>
 </head>
 <body class="teacher-workflow min-h-screen">
 <div class="teacher-page">
@@ -122,7 +131,7 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                 </div>
                 <div>
                     <h3 class="font-bold text-gray-800 mb-1">Dela ut eller dela fritt</h3>
-                    <p><strong>Dela ut</strong> ger quizet till en klass eller grupp, så eleverna hittar det när de loggar in och repetitionen kan börja samla kort. <strong>Dela fritt</strong> ligger i ⋯-menyn på raden och ger en länk eller QR-kod som vem som helst kan spela utan konto; då skriver eleven in sitt namn själv.</p>
+                    <p><strong>Dela ut</strong> lägger quizet i elevernas uppgifter. Under ⋯ hittar du <strong>QR-kod med elevinloggning</strong> för att öppna quizet direkt och spara resultatet på elevkontot. <strong>Dela fritt</strong> låter även gäster spela.</p>
                 </div>
                 <div>
                     <h3 class="font-bold text-gray-800 mb-1">📊 Statistik</h3>
@@ -225,9 +234,12 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
                     <details class="relative" data-more>
                         <summary class="cursor-pointer p-1.5 rounded hover:bg-gray-200 text-gray-700" aria-label="Fler åtgärder för <?= htmlspecialchars($quiz['title']) ?>">&#8943;</summary>
                         <div class="absolute right-0 top-full z-10 mt-1 w-56 rounded-lg border border-gray-300 bg-white p-1 shadow-lg">
+                            <?php if (isset($liveContent['items'])): ?>
+                            <button type="button" data-quiz-qr="../student/?quiz=<?= rawurlencode($quiz['id']) ?>" data-quiz-title="<?= htmlspecialchars($storedQuiz['title'], ENT_QUOTES) ?>" onclick="showQrCode(this.dataset.quizQr, this.dataset.quizTitle, true)" class="block w-full text-left text-sm px-2 py-1 rounded hover:bg-gray-100">QR-kod med elevinloggning</button>
+                            <?php endif; ?>
                             <?php if ($reviewState==='published'): ?>
                             <button onclick="copyLink('<?= htmlspecialchars($playUrl) ?>')" class="block w-full text-left text-sm px-2 py-1 rounded hover:bg-gray-100">Dela fritt: kopiera länk</button>
-                            <button onclick="showQrCode('<?= htmlspecialchars($playUrl) ?>', '<?= htmlspecialchars($quiz['title'], ENT_QUOTES) ?>')" class="block w-full text-left text-sm px-2 py-1 rounded hover:bg-gray-100">Dela fritt: QR-kod</button>
+                            <button type="button" data-play-url="<?= htmlspecialchars($playUrl) ?>" data-quiz-title="<?= htmlspecialchars($quiz['title'], ENT_QUOTES) ?>" onclick="showQrCode(this.dataset.playUrl, this.dataset.quizTitle)" class="block w-full text-left text-sm px-2 py-1 rounded hover:bg-gray-100">Dela fritt: QR-kod</button>
                             <?php endif; ?>
                             <form method="POST" onsubmit="return confirm('Radera detta quiz?')">
                                 <?= csrfField() ?>
@@ -282,12 +294,14 @@ usort($myQuizzes, fn($a, $b) => strcmp($b['created'] ?? '', $a['created'] ?? '')
 <div id="qr-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" onclick="if(event.target===this) closeQrModal()">
     <div class="bg-white rounded-xl shadow-lg p-6 max-w-sm w-full mx-4 text-center">
         <h3 id="qr-modal-title" class="text-lg font-bold text-gray-800 mb-3"></h3>
+        <p id="qr-modal-instructions" class="text-sm text-gray-700 mb-3" hidden>Skanna med kameran. Logga in om du blir ombedd.</p>
         <div id="qr-modal-code" class="flex justify-center mb-3"></div>
         <p id="qr-modal-url" class="text-xs text-gray-700 break-all mb-4"></p>
-        <div class="flex gap-2 justify-center">
+        <div class="qr-modal-actions flex gap-2 justify-center">
             <a id="qr-modal-download" download="quiz-qr.png" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-sm">
                 Ladda ner
             </a>
+            <button type="button" onclick="printQuizQr()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-1.5 rounded text-sm">Skriv ut</button>
             <button onclick="closeQrModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-1.5 rounded text-sm">
                 Stäng
             </button>
@@ -301,7 +315,7 @@ function copyLink(path) {
     navigator.clipboard.writeText(url).then(() => alert('Länk kopierad!'));
 }
 
-function showQrCode(path, title) {
+function showQrCode(path, title, requiresLogin = false) {
     const url = new URL(path, window.location.href).href;
     const container = document.getElementById('qr-modal-code');
     container.innerHTML = '';
@@ -311,6 +325,7 @@ function showQrCode(path, title) {
         height: 220
     });
     document.getElementById('qr-modal-title').textContent = title || 'QR-kod';
+    document.getElementById('qr-modal-instructions').hidden = !requiresLogin;
     document.getElementById('qr-modal-url').textContent = url;
     document.getElementById('qr-modal').classList.remove('hidden');
     document.getElementById('qr-modal').classList.add('flex');
@@ -318,13 +333,28 @@ function showQrCode(path, title) {
     setTimeout(() => {
         const canvas = container.querySelector('canvas');
         const downloadLink = document.getElementById('qr-modal-download');
+        downloadLink.download = (title || 'Quiz').replace(/[\\/:*?"<>|]/g, '-') + (requiresLogin ? ' - elevinloggning' : '') + '.png';
         if (canvas) {
-            downloadLink.href = canvas.toDataURL('image/png');
+            const margin = 24;
+            const printable = document.createElement('canvas');
+            printable.width = canvas.width + 2 * margin;
+            printable.height = canvas.height + 2 * margin;
+            const context = printable.getContext('2d');
+            context.fillStyle = '#fff';
+            context.fillRect(0, 0, printable.width, printable.height);
+            context.drawImage(canvas, margin, margin);
+            downloadLink.href = printable.toDataURL('image/png');
         } else {
             const img = container.querySelector('img');
             downloadLink.href = img ? img.src : '#';
         }
     }, 50);
+}
+
+function printQuizQr() {
+    document.body.classList.add('print-quiz-qr');
+    window.addEventListener('afterprint', () => document.body.classList.remove('print-quiz-qr'), {once:true});
+    window.print();
 }
 
 function closeQrModal() {
