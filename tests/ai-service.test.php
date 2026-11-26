@@ -1,9 +1,12 @@
 <?php
 // Entirely synthetic temp storage: never load the real config.local.php or data.
 $root=dirname(__DIR__); $fixture=sys_get_temp_dir().'/quiz-ai-test-'.bin2hex(random_bytes(8));
-mkdir($fixture.'/data',0755,true); mkdir($fixture.'/ai',0755,true);
+mkdir($fixture.'/data',0755,true); mkdir($fixture.'/ai',0755,true); mkdir($fixture.'/includes',0755,true);
 copy($root.'/config.php',$fixture.'/config.php');
 foreach (glob($root.'/ai/*.php') as $file) copy($file,$fixture.'/ai/'.basename($file));
+// ai/classroom-service.php reaches into includes/, so the sandbox needs those too.
+// DATA_DIR stays $fixture/data because config.php is loaded from the fixture.
+foreach (glob($root.'/includes/*.php') as $file) copy($file,$fixture.'/includes/'.basename($file));
 register_shutdown_function(function () use ($fixture) {
     $entries=new RecursiveIteratorIterator(new RecursiveDirectoryIterator($fixture,FilesystemIterator::SKIP_DOTS),RecursiveIteratorIterator::CHILD_FIRST);
     foreach ($entries as $entry) { if ($entry->isDir()) rmdir($entry->getPathname()); else unlink($entry->getPathname()); }
@@ -222,4 +225,88 @@ $orderPublished=aiCall($actor,'quiz_publish',['id'=>$order['id'],'revision'=>$or
 check($orderPublished['publication']==='published' && aiStudentQuiz(aiRead(QUIZZES_FILE)[$order['id']])['type']==='order','MCP order quiz publication failed.');
 check(quizTypeRoute('order')['editor']==='order-edit.php','Order route failed.');
 
-echo "PASS: $passed service checks, including publication, draft isolation, ownership, retries, conflicts, image choices, sort and order quizzes and legacy edits.\n";
+// Drift guard: the settings contract and the description the AI reads are generated
+// from the same arrays in ai/settings.php. Adding a setting or an allowed value
+// without it reaching the tool description is the silent failure this catches —
+// the AI then guesses and gets "Unknown settings" or "Invalid ..." back.
+$schema=null;
+foreach (aiTools() as $tool) if ($tool['name']==='quiz_create') $schema=$tool['inputSchema']['properties']['quiz']['description'];
+check(is_string($schema) && $schema!=='','quiz_create advertises no quiz schema.');
+$sample=['title'=>'Driftkoll','type'=>'fact','items'=>[['concept'=>'Ett plus ett?','description'=>'Två','wrong_options'=>['Tre','Fyra']]]];
+foreach (aiSettingDefaults() as $key=>$default) {
+    check(str_contains($schema,$key),"Setting $key is missing from the quiz_create description.");
+    foreach (aiSettingChoices()[$key] ?? [] as $value) {
+        check(str_contains($schema,$value),"Allowed value $value for $key is missing from the quiz_create description.");
+        $candidate=$sample; $candidate['settings']=[$key=>$value];
+        $accepted=aiValidateDocument($candidate,'teacher-a');
+        check($accepted['settings'][$key]===$value,"Documented value $value for $key was not accepted.");
+    }
+    foreach (aiSettingIntegers()[$key] ?? [] as $bound) {
+        $candidate=$sample; $candidate['settings']=[$key=>$bound];
+        check(aiValidateDocument($candidate,'teacher-a')['settings'][$key]===$bound,"Documented bound $bound for $key was rejected.");
+    }
+}
+check(aiValidateDocument($sample,'teacher-a')['settings']===aiSettingDefaults(),'Defaults differ from the documented contract.');
+foreach (aiTypeRules() as $type=>$rule) check(str_contains($schema,$type),"Type rule for $type is undocumented.");
+
+// Classroom reach: quiz_classes lists only your own classes and groups and names no
+// pupil; quiz_assign hands out published content once and cannot be undone, so the
+// retry receipt and every refusal matter more here than anywhere else in the API.
+writeJSON(CLASSROOM_FILE,[
+    'classes'=>['c_own'=>['teacher_id'=>'teacher-a','name'=>'Slojd 6-3'],
+                'c_other'=>['teacher_id'=>'teacher-b','name'=>'Annan klass']],
+    'groups'=>['g_own'=>['teacher_id'=>'teacher-a','name'=>'Halvklass','students'=>['s1']],
+               'g_other'=>['teacher_id'=>'teacher-b','name'=>'Annan grupp','students'=>[]]],
+    'students'=>[
+        's1'=>['id'=>'s1','teacher_id'=>'teacher-a','class_id'=>'c_own','name'=>'Elev Ett','active'=>true,'code'=>'HEMLIG1'],
+        's2'=>['id'=>'s2','teacher_id'=>'teacher-a','class_id'=>'c_own','name'=>'Elev Tva','active'=>true,'code'=>'HEMLIG2'],
+        's3'=>['id'=>'s3','teacher_id'=>'teacher-a','class_id'=>'c_own','name'=>'Slutad','active'=>false,'code'=>'HEMLIG3'],
+        's4'=>['id'=>'s4','teacher_id'=>'teacher-b','class_id'=>'c_other','name'=>'Annans elev','active'=>true,'code'=>'HEMLIG4']],
+    'assignments'=>[]]);
+
+$listed=aiCall($actor,'quiz_classes',[]);
+check(count($listed['classes'])===1 && $listed['classes'][0]['id']==='c_own','quiz_classes leaked or dropped a class.');
+check($listed['classes'][0]['pupils']===2,'quiz_classes counted inactive or foreign pupils.');
+check(count($listed['groups'])===1 && $listed['groups'][0]['id']==='g_own','quiz_classes leaked or dropped a group.');
+$asText=json_encode($listed);
+foreach (['Elev Ett','Elev Tva','HEMLIG1','s1'] as $secret) check(!str_contains($asText,$secret),"quiz_classes exposed $secret.");
+check(aiCall($readonly,'quiz_classes',[])['classes'][0]['id']==='c_own','A read-only actor may list classes.');
+
+// A published quiz reaches the two active pupils in the class.
+$assigned=aiCall($actor,'quiz_assign',['target_type'=>'classes','target_id'=>'c_own','kind'=>'quiz',
+    'content_id'=>$published['id'],'request_id'=>'assign-first-001']);
+check($assigned['recipients']===2 && $assigned['repeated']===false,'quiz_assign reached the wrong pupils.');
+check($assigned['target_name']==='Slojd 6-3' && $assigned['kind']==='quiz','quiz_assign reported the wrong target.');
+check((classroomRead()['assignments'][$assigned['assignment_id']]['source'] ?? '')==='ai','An AI assignment is not marked as made by an AI.');
+
+// The same request_id is a retry, never a second assignment in the pupils' lists.
+$again=aiCall($actor,'quiz_assign',['target_type'=>'classes','target_id'=>'c_own','kind'=>'quiz',
+    'content_id'=>$published['id'],'request_id'=>'assign-first-001']);
+check($again['repeated']===true && $again['assignment_id']===$assigned['assignment_id'],'A repeated request_id made a duplicate.');
+check(count(classroomRead()['assignments'])===1,'A retry grew the assignment list.');
+
+// Refusals: unpublished content, another teacher's class, a read-only actor and a bad request_id.
+$draftOnly=aiCall($actor,'quiz_create',['quiz'=>$quiz,'request_id'=>'assign-draft-001']);
+rejects(fn()=>aiCall($actor,'quiz_assign',['target_type'=>'classes','target_id'=>'c_own','kind'=>'quiz',
+    'content_id'=>$draftOnly['id'],'request_id'=>'assign-unpublished-1']),400);
+rejects(fn()=>aiCall($actor,'quiz_assign',['target_type'=>'classes','target_id'=>'c_other','kind'=>'quiz',
+    'content_id'=>$published['id'],'request_id'=>'assign-foreign-001']),400);
+rejects(fn()=>aiCall($actor,'quiz_assign',['target_type'=>'groups','target_id'=>'g_other','kind'=>'quiz',
+    'content_id'=>$published['id'],'request_id'=>'assign-foreigngrp-1']),400);
+rejects(fn()=>aiCall($readonly,'quiz_assign',['target_type'=>'classes','target_id'=>'c_own','kind'=>'quiz',
+    'content_id'=>$published['id'],'request_id'=>'assign-readonly-01']),403);
+rejects(fn()=>aiCall($actor,'quiz_assign',['target_type'=>'classes','target_id'=>'c_own','kind'=>'quiz',
+    'content_id'=>$published['id'],'request_id'=>'kort']),400);
+rejects(fn()=>aiCall($actor,'quiz_assign',['target_type'=>'skolor','target_id'=>'c_own','kind'=>'quiz',
+    'content_id'=>$published['id'],'request_id'=>'assign-badtarget-1']),400);
+check(count(classroomRead()['assignments'])===1,'A refused assignment still reached the pupils.');
+
+// The irreversible write is flagged to the client, and the read-only tool is not.
+$annotated=[];
+foreach (aiTools() as $tool) $annotated[$tool['name']]=$tool['annotations'];
+check($annotated['quiz_assign']['destructiveHint']===true,'quiz_assign is not flagged as destructive.');
+check($annotated['quiz_classes']['readOnlyHint']===true,'quiz_classes is not flagged as read-only.');
+$names=array_column(aiTools(false),'name');
+check(!in_array('quiz_assign',$names,true) && in_array('quiz_classes',$names,true),'A read-only connection is offered the wrong classroom tools.');
+
+echo "PASS: $passed service checks, including publication, draft isolation, ownership, retries, conflicts, image choices, sort and order quizzes, the settings drift guard, classroom listing and assignment, and legacy edits.\n";
