@@ -12,7 +12,8 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
         $_SESSION['classroom_message']=classroomAdminAction($teacher,$_POST,$_FILES);
         // Behåll lärarens klassfilter över omdirigeringen, så listan ser likadan ut efteråt.
         $query=array_filter(['cards'=>in_array($_POST['action'] ?? '',['students','reset','reset_many'],true)?'1':'','class'=>(string)($_POST['class'] ?? '')]);
-        header('Location: classes.php'.($query?'?'.http_build_query($query):'')); exit;
+        $anchor=($_POST['action'] ?? '')==='group_delete'?'#panel-groups':'';
+        header('Location: classes.php'.($query?'?'.http_build_query($query):'').$anchor); exit;
     }
     catch (DomainException $e) { $error=$e->getMessage(); }
     catch (RuntimeException $e) { $error='Ändringen kunde inte sparas. Försök igen.'; }
@@ -51,10 +52,41 @@ $confirm='Ta bort klassen '.$c['name'].($count?' och dess '.$count.($count===1?'
 <?php endforeach; ?><?php if (!$visible): ?><tr><td colspan="5"><?= $students?'Inga elever i den valda klassen.':'Inga elever ännu.' ?></td></tr><?php endif; ?></tbody></table></div>
 <?php if ($visible): ?><form method="post" id="bulk-reset"><?= csrfField() ?><input type="hidden" name="action" value="reset_many"><input type="hidden" name="class" value="<?= classroomEscape($classFilter) ?>"><p><button class="secondary">Ny PIN och QR-kod för valda</button> <span class="muted">Markera eleverna i listan. Filtrera på klass och markera alla för en hel klass.</span></p></form><?php endif; ?><?php panelEnd(); ?>
 <?php panelStart('groups','Grupper',isset($_GET['group'])); ?><p class="muted">Välj elever från en eller flera klasser. En elev kan ingå i flera grupper.</p>
-<?php $editId=(string)($_GET['group'] ?? ''); $edit=$groups[$editId] ?? ['name'=>'','students'=>[]]; ?>
+<?php
+$editId=is_string($_GET['group'] ?? null) && isset($groups[$_GET['group']]) ? $_GET['group'] : '';
+$edit=$groups[$editId] ?? ['name'=>'','students'=>[]];
+$confirmRemoval=$editId!=='' && ($_GET['remove'] ?? '')==='1';
+?>
 <?php foreach ($groups as $id=>$g): ?><p><a href="?group=<?= urlencode($id) ?>"><?= classroomEscape($g['name']) ?></a> · <?= count($g['students']) ?> <?= count($g['students'])===1?'elev':'elever' ?></p><?php endforeach; ?>
 <details <?= $editId?'open':'' ?>><summary><?= $editId?'Redigera grupp':'Skapa grupp' ?></summary><form method="post"><?= csrfField() ?><input type="hidden" name="action" value="group"><input type="hidden" name="group_id" value="<?= classroomEscape(isset($groups[$editId])?$editId:'') ?>"><label for="group-name">Gruppnamn</label><input id="group-name" name="name" value="<?= classroomEscape($edit['name']) ?>" required maxlength="100"><div class="members">
-<?php foreach ($classes as $cid=>$c): ?><fieldset><legend><?= classroomEscape($c['name']) ?></legend><?php foreach ($students as $id=>$s): if ($s['class_id']!==$cid) continue; ?><label><input type="checkbox" name="members[]" value="<?= classroomEscape($id) ?>" <?= in_array($id,$edit['students'],true)?'checked':'' ?>><?= classroomEscape($s['name']) ?></label><?php endforeach; ?></fieldset><?php endforeach; ?></div><p><button><?= $editId?'Spara grupp':'Skapa grupp' ?></button> <?php if ($editId): ?><a href="classes.php">Ny grupp</a><?php endif; ?></p></form></details><?php panelEnd(); ?>
+<?php foreach ($classes as $cid=>$c): ?><fieldset><legend><?= classroomEscape($c['name']) ?></legend><?php foreach ($students as $id=>$s): if ($s['class_id']!==$cid) continue; ?><label><input type="checkbox" name="members[]" value="<?= classroomEscape($id) ?>" <?= in_array($id,$edit['students'],true)?'checked':'' ?>><?= classroomEscape($s['name']) ?></label><?php endforeach; ?></fieldset><?php endforeach; ?></div><p><button><?= $editId?'Spara grupp':'Skapa grupp' ?></button> <?php if ($editId): ?><a href="classes.php">Ny grupp</a><?php endif; ?></p></form>
+<?php if ($confirmRemoval): $impact=classroomGroupRemovalImpact($data,$edit); ?>
+<section class="notice error" id="group-removal" aria-labelledby="group-removal-title">
+<h3 id="group-removal-title">Ta bort gruppen <?= classroomEscape($edit['name']) ?>?</h3>
+<?php if ($impact['assignments']): ?>
+<p>Eleverna förlorar tillgång till följande utdelningar via gruppen:</p>
+<ul>
+<?php foreach ($impact['assignments'] as $assignment): ?>
+<li><?= classroomEscape($assignment['title'].' · '.classroomKindLabel($assignment['kind'])) ?></li>
+<?php endforeach; ?>
+</ul>
+<?php else: ?>
+<p>Gruppen har inga utdelningar.</p>
+<?php endif; ?>
+<p>Elevkonton och tidigare resultat sparas.</p>
+<form method="post">
+<?= csrfField() ?>
+<input type="hidden" name="action" value="group_delete">
+<input type="hidden" name="group_id" value="<?= classroomEscape($editId) ?>">
+<input type="hidden" name="impact_version" value="<?= classroomEscape($impact['version']) ?>">
+<button class="secondary">Bekräfta borttagning</button>
+<a href="?group=<?= urlencode($editId) ?>#panel-groups">Avbryt</a>
+</form>
+</section>
+<?php elseif ($editId!==''): ?>
+<p><a href="?group=<?= urlencode($editId) ?>&amp;remove=1#group-removal">Ta bort grupp</a></p>
+<?php endif; ?>
+</details><?php panelEnd(); ?>
 <?php panelStart('assign','Dela ut quiz, flashcards eller PDF'); ?><?php if (!$classes): ?><p><a href="#panel-new-class">Skapa en klass först</a>.</p><?php else: ?><form method="post" enctype="multipart/form-data"><?= csrfField() ?><input type="hidden" name="action" value="assign">
 <label for="target">Till klass eller grupp</label><select id="target" name="target" required><option value="" selected>Välj klass eller grupp</option><optgroup label="Klasser"><?php foreach ($classes as $id=>$c): ?><option value="classes:<?= classroomEscape($id) ?>"><?= classroomEscape($c['name']) ?></option><?php endforeach; ?></optgroup><optgroup label="Grupper"><?php foreach ($groups as $id=>$g): ?><option value="groups:<?= classroomEscape($id) ?>"><?= classroomEscape($g['name']) ?></option><?php endforeach; ?></optgroup></select>
 <label for="content">Innehåll</label><select id="content" name="content" required><option value="">Välj innehåll</option><option value="material">Ladda upp PDF</option>
