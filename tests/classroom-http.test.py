@@ -456,7 +456,20 @@ return false;
     board=req(teacher,'/admin/dashboard.php')[1]
     check('data-assign-panel' in board and 'Dela ut' in board,'Dashboard lost the assign control')
     check('Publicera quizet' in board,'Dashboard did not say why an unpublished quiz cannot be assigned')
-    check(req(teacher,'/admin/dashboard.php',form={'csrf_token':teacher_csrf,'action':'assign','content':'quiz:q_gloss','target':'classes:'+pc})[0]==200,'Assigning from the dashboard failed')
+    view_query='?q=Glosquiz&sort=title-asc'
+    status, receipt, receipt_url=req(teacher,'/admin/dashboard.php'+view_query,form={
+        'csrf_token':teacher_csrf,'action':'assign','content':'quiz:q_gloss','target':'classes:'+pc,
+    })
+    check(status==200 and receipt_url.endswith(view_query),'Assignment did not preserve the library view')
+    followup_link=re.search(r'href="(followup[.]php[?]assignment=[^"]+)">Följ upp utdelningen',receipt)
+    check(followup_link is not None and 'Utdelad till 7D.' in receipt,'Assignment receipt lacked the saved recipient or follow-up link')
+    exact_path='/admin/'+followup_link.group(1)
+    status, exact, _=req(teacher,exact_path+'&target=classes:'+c1)
+    check(status==200 and 'Glosquiz' in exact and 'Klass · 7D' in exact and 'Elin Test' in exact,
+          'Assignment follow-up lost the recorded quiz or recipient')
+    check('Inte påbörjat' in exact and '2 rätt · 1 fel' not in exact,
+          'Assignment follow-up counted practice from a different assignment')
+    check(req(other,exact_path)[0]==404,'Another teacher could open the assignment follow-up')
     check('Glosquiz' in req(teacher,'/admin/class.php?id='+pc)[1],'Assignment from the dashboard never reached the class')
     check('utdelad till 7D' in req(teacher,'/admin/dashboard.php')[1],'Dashboard row lost the receipt for where the quiz went')
     check(req(teacher,'/admin/dashboard.php',form={'action':'assign','content':'quiz:q_gloss','target':'classes:'+pc})[0]==403,'Assigning from the dashboard without CSRF was accepted')
