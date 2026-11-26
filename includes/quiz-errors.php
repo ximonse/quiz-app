@@ -8,10 +8,8 @@
 // skrivs ut utan classroomEscape() i vyn.
 require_once __DIR__.'/classroom.php';
 
-// Elevens resultat på ett quiz, nyast först. Bara lärarens egna quiz.
-function quizPupilResults(array $quizzes, string $quizId, string $studentId, string $teacher): array {
-    $quiz=$quizzes[$quizId] ?? null;
-    if (!is_array($quiz) || ($quiz['teacher_id'] ?? '')!==$teacher) return [];
+// Results for one pupil on an already authorized quiz, newest first.
+function quizPupilResults(array $quiz, string $studentId): array {
     $rows=[];
     foreach ($quiz['results'] ?? [] as $result) {
         if (!is_array($result) || ($result['student_id'] ?? null)!==$studentId) continue;
@@ -58,32 +56,16 @@ function quizWrongQuestions(array $quiz, array $result): array {
     usort($rows,fn($a,$b)=>[$b['count'],$a['index']]<=>[$a['count'],$b['index']]);
     return $rows;
 }
-// Hopfällbar lista för elevvyn. Returnerar '' när det inte finns något att visa,
-// så tabellen slipper en tom rad.
-function quizWrongQuestionsHtml(array $quizzes, string $quizId, string $studentId, string $teacher): string {
-    $quiz=$quizzes[$quizId] ?? null;
-    if (!is_array($quiz)) return '';
-    // Bara det senaste försöket. Ett äldre försök med fel säger inget om vad
-    // eleven kan nu, och fick aldrig presenteras som "senaste".
-    $result=quizPupilResults($quizzes,$quizId,$studentId,$teacher)[0] ?? null;
-    if ($result) {
-        $wrong=quizWrongQuestions($quiz,$result);
-        $when='';
-        if (!empty($result['timestamp']) && is_string($result['timestamp'])) {
-            $stamp=strtotime($result['timestamp']);
-            if ($stamp) $when=' '.date('Y-m-d',$stamp);
-        }
-        if (!$wrong) return '<p class="muted">Inga fel i elevens senaste försök på quizet'.classroomEscape($when).'.</p>';
-        $html='<details><summary>'.count($wrong).' '.(count($wrong)===1?'fråga':'frågor').' blev fel</summary>';
-        $html.='<p class="muted">Från elevens senast genomförda försök'.classroomEscape($when).'. Gäller quizet, inte en enskild utdelning.</p><ul class="wrong-list">';
-        foreach ($wrong as $row) {
-            $html.='<li><strong>'.classroomEscape($row['label'] ?? ('Fråga '.($row['index']+1))).'</strong>';
-            if ($row['count']>1) $html.=' <span class="muted">'.$row['count'].' försök</span>';
-            if ($row['given']!==null) $html.='<br>Eleven svarade: <q>'.classroomEscape($row['given']).'</q>';
-            if ($row['correct']!==null) $html.='<br><span class="muted">Rätt svar: '.classroomEscape($row['correct']).'</span>';
-            $html.='</li>';
-        }
-        return $html.'</ul></details>';
+function quizWrongQuestionsHtml(array $quiz, array $result): string {
+    $wrong=quizWrongQuestions($quiz,$result);
+    if (!$wrong) return '<p class="muted">Inga fel i elevens senaste försök på quizet.</p>';
+    $html='<details><summary>'.count($wrong).' '.(count($wrong)===1?'fråga':'frågor').' blev fel</summary><ul class="wrong-list">';
+    foreach ($wrong as $row) {
+        $html.='<li><strong>'.classroomEscape($row['label'] ?? ('Fråga '.($row['index']+1))).'</strong>';
+        if ($row['count']>1) $html.=' <span class="muted">'.$row['count'].' försök</span>';
+        if ($row['given']!==null) $html.='<br>Eleven svarade: <q>'.classroomEscape($row['given']).'</q>';
+        if ($row['correct']!==null) $html.='<br><span class="muted">Rätt svar: '.classroomEscape($row['correct']).'</span>';
+        $html.='</li>';
     }
-    return '';
+    return $html.'</ul></details>';
 }

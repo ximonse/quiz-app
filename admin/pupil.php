@@ -17,15 +17,20 @@ $found=$query===''?[]:array_filter($mine,fn($s)=>strpos(classroomFold($s['name']
 uasort($found,fn($a,$b)=>[empty($a['active']),$a['name']]<=>[empty($b['active']),$b['name']]);
 $student=null;
 if ($id!=='') { try { $student=classroomOwned($data,'students',$id,$teacher); } catch (DomainException $e) { $student=null; } }
-$rows=[];
+$rows=[]; $quizResults=[];
 if ($student) {
-    // Svaren per fråga ligger i quizen, inte i klassrummets försök.
-    $quizzes=is_file(QUIZZES_FILE)?(json_decode(file_get_contents(QUIZZES_FILE),true) ?: []):[];
+    foreach (readJSON(QUIZZES_FILE) as $quizId=>$quiz) {
+        if (($quiz['teacher_id'] ?? '')!==$teacher) continue;
+        $results=quizPupilResults($quiz,$student['id']);
+        if ($results) $quizResults[$quizId]=['quiz'=>$quiz,'latest'=>$results[0],'tries'=>count($results)];
+    }
+    uasort($quizResults, fn($a,$b)=>strcmp($b['latest']['timestamp'] ?? '',$a['latest']['timestamp'] ?? ''));
     foreach (classroomPupilAssignments($data,$student) as $aid=>$a) {
         $target=$data[$a['target_type']][$a['target_id']]['name'] ?? ($a['target_type']==='classes'?'Borttagen klass':'Borttagen grupp');
-        $detail=$a['kind']==='quiz'?quizWrongQuestionsHtml($quizzes,(string)$a['content_id'],$student['id'],$teacher):'';
+        $resultLink=$a['kind']==='quiz' && isset($quizResults[$a['content_id']])
+            ? ' <a href="#quiz-'.classroomEscape($a['content_id']).'">Quizresultat</a>' : '';
         $rows[]=classroomPracticeRow($data,$aid,$student['id'],$a['kind'])
-            +['first'=>'<span id="assignment-'.classroomEscape($aid).'">'.classroomEscape($a['title']).'</span> <span class="muted">'.classroomEscape(classroomKindLabel($a['kind']).' · '.$target).'</span>','detail'=>$detail];
+            +['first'=>'<span id="assignment-'.classroomEscape($aid).'">'.classroomEscape($a['title']).'</span> <span class="muted">'.classroomEscape(classroomKindLabel($a['kind']).' · '.$target).'</span>'.$resultLink];
     }
 }
 ?>
@@ -38,8 +43,21 @@ if ($student) {
 <?php endif; endif; ?></section>
 <?php if ($id!=='' && !$student): ?><p class="notice error" role="alert">Eleven hittades inte.</p><?php endif; ?>
 <?php if ($student): ?>
+<section class="panel"><h2>Quizresultat</h2>
+<?php if (!$quizResults): ?><p class="muted">Inga sparade quizresultat ännu.</p><?php else: ?>
+<div class="table-wrap"><table><thead><tr><th>Quiz</th><th>Senaste resultat</th><th>Genomförda försök</th><th>Felsvar</th></tr></thead><tbody>
+<?php foreach ($quizResults as $quizId=>$entry): $latest=$entry['latest']; ?>
+<tr id="quiz-<?= classroomEscape($quizId) ?>">
+    <td><a href="stats.php?id=<?= rawurlencode($quizId) ?>"><?= classroomEscape($entry['quiz']['title']) ?></a></td>
+    <td><?= (int)($latest['score'] ?? 0) ?>/<?= (int)($latest['total'] ?? 0) ?> <span class="muted"><?= classroomEscape($latest['timestamp'] ?? '') ?></span></td>
+    <td><?= $entry['tries'] ?></td>
+    <td><?= quizWrongQuestionsHtml($entry['quiz'],$latest) ?></td>
+</tr>
+<?php endforeach; ?>
+</tbody></table></div>
+<?php endif; ?></section>
 <section class="panel"><h2>Övning</h2>
-<p class="muted"><?= classroomEscape($classes[$student['class_id']]['name'] ?? 'Borttagen klass') ?><?= empty($student['active'])?' · borttagen, historiken är kvar':'' ?> · inloggning <?= classroomEscape($student['code']) ?>. En rad per utdelning, även uppgifter eleven inte börjat på. Fäll ut felsvaren för att se vilka frågor som satt hårt.</p>
+<p class="muted"><?= classroomEscape($classes[$student['class_id']]['name'] ?? 'Borttagen klass') ?><?= empty($student['active'])?' · borttagen, historiken är kvar':'' ?> · inloggning <?= classroomEscape($student['code']) ?>. En rad per utdelning, även uppgifter eleven inte börjat på.</p>
 <?php classroomPracticeTable('Uppgift',$rows); ?></section>
 <?php endif; ?>
 </main></body></html>

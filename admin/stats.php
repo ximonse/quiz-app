@@ -1,19 +1,40 @@
 <?php
 // admin/stats.php — Quiz statistics + clear results
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../includes/classroom.php';
 require_once __DIR__ . '/../includes/teacher-shell.php';
 if (!isLoggedInAsTeacher()) { header('Location: ../index.php'); exit; }
+header('Cache-Control: no-store');
 
 $quizId = $_GET['id'] ?? '';
 $quizzes = readJSON(QUIZZES_FILE);
+$teacher = getCurrentTeacherID();
 
-if (!isset($quizzes[$quizId]) || ($quizzes[$quizId]['teacher_id'] ?? '') !== getCurrentTeacherID()) {
+if (!is_string($quizId) || !isset($quizzes[$quizId]) || ($quizzes[$quizId]['teacher_id'] ?? '') !== $teacher) {
     header('Location: dashboard.php');
     exit;
 }
 
 $quiz = $quizzes[$quizId];
 $results = $quiz['results'] ?? [];
+$classroom = classroomRead();
+$classes = array_filter($classroom['classes'] ?? [], fn($class) => $class['teacher_id'] === $teacher);
+uasort($classes, fn($a, $b) => strnatcasecmp($a['name'], $b['name']));
+$classId = $_GET['class'] ?? '';
+$pupilResults = [];
+if ($classId !== '') {
+    if (!is_string($classId) || !isset($classes[$classId])) {
+        http_response_code(404);
+        exit('Klassen finns inte. Öppna quizstatistiken igen för att välja en klass.');
+    }
+    $pupils = array_filter($classroom['students'] ?? [], fn($pupil) => $pupil['teacher_id'] === $teacher && $pupil['class_id'] === $classId);
+    $results = array_values(array_filter($results, fn($result) => isset($pupils[$result['student_id'] ?? ''])));
+    foreach ($results as $result) {
+        $id = $result['student_id'];
+        $pupilResults[$id] = ['latest' => $result, 'count' => ($pupilResults[$id]['count'] ?? 0) + 1];
+    }
+    uksort($pupilResults, fn($a, $b) => strnatcasecmp($pupils[$a]['name'], $pupils[$b]['name']));
+}
 $items = $quiz['items'] ?? [];
 $csrfToken = getCsrfToken();
 
@@ -82,6 +103,20 @@ if (count($results) > 0) {
 <div class="teacher-page">
     <?php teacherShell('innehall',$quiz['title'],'Statistik för quizet'); ?>
 
+    <?php if ($classes): ?>
+    <div class="teacher-workflow mb-4"><form method="get" class="workflow-toolbar">
+        <input type="hidden" name="id" value="<?= classroomEscape($quizId) ?>">
+        <label for="class-filter">Klass</label>
+        <select id="class-filter" name="class">
+            <option value="">Alla spelare</option>
+            <?php foreach ($classes as $id => $class): ?>
+            <option value="<?= classroomEscape($id) ?>"<?= $id === $classId ? ' selected' : '' ?>><?= classroomEscape($class['name']) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <button class="workflow-primary">Visa</button>
+    </form></div>
+    <?php endif; ?>
+
     <!-- Overview cards -->
     <div class="grid grid-cols-3 gap-4 mb-6">
         <div class="rounded-lg p-4 text-center" style="background: var(--card-bg); border: 1px solid var(--border)">
@@ -141,6 +176,22 @@ if (count($results) > 0) {
     </div>
     <?php endif; ?>
 
+    <?php if ($classId !== ''): ?>
+    <section class="rounded-lg p-4 mb-6" style="background: var(--card-bg); border: 1px solid var(--border)">
+        <h2 class="font-medium mb-3">Resultat per elev i <?= classroomEscape($classes[$classId]['name']) ?></h2>
+        <?php if (!$pupilResults): ?><p>Inga sparade resultat för klassen.</p><?php else: ?>
+        <div class="space-y-1">
+        <?php foreach ($pupilResults as $id => $entry): $latest = $entry['latest']; ?>
+            <div class="flex items-center justify-between gap-3 py-2 border-b" style="border-color: var(--border)">
+                <a class="text-blue-700 underline" href="pupil.php?id=<?= rawurlencode($id) ?>#quiz-<?= rawurlencode($quizId) ?>"><?= classroomEscape($pupils[$id]['name']) ?></a>
+                <span class="text-sm">Senast <strong><?= (int)($latest['score'] ?? 0) ?>/<?= (int)($latest['total'] ?? 0) ?></strong> · <?= $entry['count'] ?> försök</span>
+            </div>
+        <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+    </section>
+    <?php endif; ?>
+
     <!-- Recent results -->
     <div class="rounded-lg p-4 mb-6" style="background: var(--card-bg); border: 1px solid var(--border)">
         <h2 class="font-medium mb-3" style="color: var(--text-primary)">Senaste resultat</h2>
@@ -173,7 +224,7 @@ if (count($results) > 0) {
     </div>
 
     <!-- Clear results -->
-    <?php if (!empty($results)): ?>
+    <?php if ($classId === '' && !empty($results)): ?>
     <form method="POST" action="../api/clear-results.php" onsubmit="return clearResults(event)" class="text-center">
         <button type="button" onclick="clearResults()" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm">Rensa alla resultat (<?= count($results) ?> st)</button>
     </form>

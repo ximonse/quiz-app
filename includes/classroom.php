@@ -206,8 +206,10 @@ function classroomResultIdentity(array $input): void {
 function classroomEscape($value): string { return htmlspecialchars((string)$value,ENT_QUOTES,'UTF-8'); }
 function classroomPlayer(string $contentId, string $kind): void {
     $student=classroomStudent();
+    $loginUrl='../student/';
+    if ($kind==='quiz' && $contentId!=='' && ($_GET['from'] ?? null)==='qr') $loginUrl.='?quiz='.rawurlencode($contentId);
     if (!$student) {
-        if (isset($_GET['assignment'])) { header('Location: ../student/'); exit; }
+        if (isset($_GET['assignment']) || $loginUrl!=='../student/') { header('Location: '.$loginUrl); exit; }
         return;
     }
     header('Cache-Control: no-store');
@@ -219,7 +221,7 @@ function classroomPlayer(string $contentId, string $kind): void {
         foreach ($data['assignments'] ?? [] as $candidate) if ($candidate['content_id']===$contentId && $candidate['kind']===$kind && classroomAllowed($data,$student,$candidate)) { $assignment=$candidate; break; }
     }
     if (isset($_GET['assignment']) && (!$assignment || !classroomContent($assignment))) { http_response_code(403); exit('Uppgiften är inte tillgänglig.'); }
-    $GLOBALS['classroom_player']=['student'=>$student,'assignment'=>$assignment];
+    $GLOBALS['classroom_player']=['student'=>$student,'assignment'=>$assignment,'loginUrl'=>$loginUrl];
 }
 // $back: the quiz's start page. Players pass it so a pupil without an account gets
 // "← Start" here instead of a login link; pages without it keep the login link.
@@ -231,7 +233,7 @@ function classroomPlayerBar(?string $back = null): void {
         echo $back !== null ? '<a href="'.classroomEscape($back).'" style="'.$link.'">&larr; Start</a></div>' : '<a href="../student/">Elevinloggning</a></div>';
         return;
     }
-    echo '<a href="../student/" style="'.$link.'">&larr; Mina uppgifter</a><span>'.classroomEscape($context['student']['name']).'</span><form action="../student/" method="post" style="margin:0 0 0 auto">'.csrfField().'<button name="action" value="logout" style="background:none;border:0;padding:0;margin:0;border-radius:4px;cursor:pointer;color:var(--accent,#1f4f99);font:inherit;font-weight:400;text-decoration:underline">Logga ut / byt elev</button></form></div>';
+    echo '<a href="../student/" style="'.$link.'">&larr; Mina uppgifter</a><span>'.classroomEscape($context['student']['name']).'</span><form action="'.classroomEscape($context['loginUrl']).'" method="post" style="margin:0 0 0 auto">'.csrfField().'<button name="action" value="logout" style="background:none;border:0;padding:0;margin:0;border-radius:4px;cursor:pointer;color:var(--accent,#1f4f99);font:inherit;font-weight:400;text-decoration:underline">Logga ut / byt elev</button></form></div>';
     if (!isset($_GET['preview'])) {
         $settings=['assignment_id'=>$context['assignment']['id'] ?? null,'student_id'=>$context['student']['id'],'kind'=>$context['assignment']['kind'] ?? null,'csrf'=>getCsrfToken()];
         echo '<script>window.classroomContext='.json_encode($settings,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT).';</script><script src="../engine/classroom.js?v='.filemtime(__DIR__.'/../engine/classroom.js').'"></script>';

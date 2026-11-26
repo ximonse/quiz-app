@@ -77,6 +77,7 @@ $quiz=['id'=>'q_fixture','teacher_id'=>'t1','publication'=>'published','title'=>
 'items'=>[['concept'=>'Två plus två?','description'=>'Fyra','wrong_options'=>['Tre','Fem','Sex']],['concept'=>'Tre plus tre?','description'=>'Sex','wrong_options'=>['Fyra','Fem','Sju']]],'results'=>[['student_name'=>'OLD_PRIVATE_RESULT','score'=>99,'total'=>100]]];
 $legacy=['id'=>'aabbccdd','teacher_id'=>'t1','title'=>'Gammalt quiz','type'=>'fact','active'=>true,'quiz_mode'=>'test','answer_mode'=>'multiple_choice','questions'=>[['question'=>'Två plus två?','answer'=>'Fyra','options'=>['Fyra','Tre','Fem','Sex']]]];
 $draft=$quiz;$draft['id']='q_draft';$draft['publication']='draft';
+$free=$quiz;$free['id']='q_free';$free['title']='Quiz för QR';$free['results']=[];
 $other=$quiz;$other['id']='q_other';$other['teacher_id']='t2';
 $sortQuiz=['id'=>'q_sort','teacher_id'=>'t1','publication'=>'published','title'=>'Sorteringsquiz','type'=>'sort','subject'=>'Biologi','settings'=>['quiz_mode'=>'training','answer_mode'=>'multiple_choice','required_correct'=>1,'language'=>'sv','generate_flashcards'=>true,'tts_enabled'=>false],
 'items'=>[['question'=>'Vilket rike?','flashcard_prompt'=>'Vilket rike tillhör','image'=>null,'fields'=>[['id'=>'svamp','title'=>'Svampar','text'=>'','image'=>null]],'objects'=>[['id'=>'champinjon','text'=>'Champinjon','image'=>null,'field'=>'svamp'],['id'=>'sten','text'=>'Sten','image'=>null,'field'=>null]]]],'results'=>[]];
@@ -90,7 +91,7 @@ $imageQuiz=['id'=>'q_img','teacher_id'=>'t1','publication'=>'published','title'=
 $archive=$quiz;$archive['id']='q_archive';$archive['title']='Arkiverat quiz';$archive['results']=[];
 $repQuiz=['id'=>'q_rep','teacher_id'=>'t1','publication'=>'published','title'=>'Repetitionsquiz','type'=>'fact','settings'=>['quiz_mode'=>'training','answer_mode'=>'multiple_choice','required_correct'=>1,'language'=>'sv','generate_flashcards'=>false,'tts_enabled'=>false,'spaced_repetition'=>true],
 'items'=>[['concept'=>'Fyra plus fyra?','description'=>'Åtta','wrong_options'=>['Sju','Nio','Tio']],['concept'=>'Fem plus fem?','description'=>'Tio','wrong_options'=>['Nio','Elva','Tolv']]],'results'=>[]];
-writeJSON(QUIZZES_FILE,['q_fixture'=>$quiz,'aabbccdd'=>$legacy,'q_draft'=>$draft,'q_other'=>$other,'q_sort'=>$sortQuiz,'q_order'=>$orderQuiz,'q_gloss'=>$glossQuiz,'q_img'=>$imageQuiz,'q_archive'=>$archive,'q_rep'=>$repQuiz]);
+writeJSON(QUIZZES_FILE,['q_fixture'=>$quiz,'aabbccdd'=>$legacy,'q_draft'=>$draft,'q_free'=>$free,'q_other'=>$other,'q_sort'=>$sortQuiz,'q_order'=>$orderQuiz,'q_gloss'=>$glossQuiz,'q_img'=>$imageQuiz,'q_archive'=>$archive,'q_rep'=>$repQuiz]);
 writeJSON(DATA_DIR.'flashcards.json',['d_fixture'=>['id'=>'d_fixture','teacher_id'=>'t1','title'=>'Separata kort','active'=>true,'cards'=>[['front'=>'A','back'=>'B'],['front'=>'C','back'=>'D']],'results'=>[['student_name'=>'OLD_PRIVATE_DECK_RESULT']]]]);
 writeJSON(STATS_FILE,[]);
 ''', encoding='utf-8')
@@ -429,6 +430,32 @@ return false;
     # Statistiken ska tala ett resultat utan tidsstämpel, inte varna.
     old_stats=req(teacher,'/admin/stats.php?id=q_fixture')
     check(old_stats[0]==200 and 'okänt datum' in old_stats[1],'Statistics did not survive a result without a timestamp')
+    # A printed QR works independently of assignments and preserves its quiz after a bad PIN.
+    qr_path='/student/?quiz=q_free'
+    qr_pupil=client(); qr_csrf=csrf(qr_pupil,qr_path)
+    qr_login={'csrf_token':qr_csrf,'code':elin['code'],'pin':pcards['Elin Test']}
+    status, retry, retry_url=req(qr_pupil,qr_path,form={**qr_login,'pin':'fel'})
+    check(status==200 and 'Quiz för QR' in retry and 'Inloggningen gick inte' in retry and retry_url.endswith(qr_path),'PIN retry lost the quiz target')
+    status, qr_player, player_url=req(qr_pupil,qr_path,form=qr_login)
+    check(status==200 and player_url.endswith('/play/quiz.php?id=q_free&from=qr') and 'Elin Test' in qr_player and '"assignment_id":null' in qr_player,'QR login did not open the unassigned quiz as the pupil')
+    check(req(qr_pupil,qr_path)[2]==player_url,'Signed-in QR scan did not open the same quiz directly')
+    check(req(qr_pupil,'/student/?quiz=q_sort')[2].endswith('/play/sort-quiz.php?id=q_sort&from=qr'),'QR did not use the typed quiz player')
+    check(req(client(),'/student/?quiz=q_draft')[0]==404 and req(client(),'/student/?quiz=https%3A%2F%2Fexample.test')[0]==404,'Quiz login accepted an unpublished quiz or arbitrary return URL')
+    free_result={'quiz_id':'q_free','student_name':'Gäst via QR','score':0,'total':2,'errors':[{'item_index':1}]}
+    check(req(client(),'/api/save-result.php',payload=free_result)[0]==200,'Public quiz results no longer save')
+    free_result={**free_result,'student_id':elin['id'],'score':1,'errors':[{'item_index':0,'given':'Tre','correct':'Fyra'}]}
+    check(req(qr_pupil,'/api/save-result.php',payload=free_result)[0]==200,'Unassigned account result did not save')
+    status, switch_page, switch_url=req(qr_pupil,qr_path,form={'csrf_token':qr_csrf,'action':'logout'})
+    check(status==200 and switch_url.endswith(qr_path) and 'Quiz för QR' in switch_page and 'Elevinloggning' in switch_page,'Switching pupils lost the quiz target')
+    check(req(client(),'/play/quiz.php?id=q_free&from=qr')[2].endswith(qr_path),'QR player let a missing session fall back to guest play')
+    pupil_free=req(teacher,'/admin/pupil.php?id='+elin['id'])[1]
+    check('id="quiz-q_free"' in pupil_free and 'Quiz för QR' in pupil_free and 'Eleven svarade:' in pupil_free,'Unassigned quiz and its error did not appear on the pupil page')
+    all_free=req(teacher,'/admin/stats.php?id=q_free')[1]
+    class_free=req(teacher,'/admin/stats.php?id=q_free&class='+pc)[1]
+    check('Gäst via QR' in all_free and 'Tre plus tre?' in all_free,'Unfiltered statistics lost the guest result')
+    check('Resultat per elev i 7D' in class_free and 'Elin Test' in class_free and 'Två plus två?' in class_free and 'Gäst via QR' not in class_free and 'Tre plus tre?' not in class_free,'Class selection did not filter both pupil results and question errors')
+    check('Inga sparade resultat för klassen.' in req(teacher,'/admin/stats.php?id=q_free&class='+c2)[1],'Result appeared in another class')
+    check('data-quiz-qr="../student/?quiz=q_free"' in req(teacher,'/admin/dashboard.php')[1],'Published quiz did not offer a QR login link')
     # Undermenyn hör till fliken: elevkorten i Klasser, importen i Innehåll.
     shell_library=req(teacher,'/admin/dashboard.php')[1]
     shell_classes=req(teacher,'/admin/classes.php')[1]
